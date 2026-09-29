@@ -1,0 +1,1 @@
+Copied from StakeEngine/web-sdk 1843d60cedb94b390e641b563f32ad64353bec5e (MIT). Unmodified unless a file says 'CONSTRICTOR patch'.

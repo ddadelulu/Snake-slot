@@ -1,0 +1,29 @@
+{
+  "name": "constrictor-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm --filter constrictor build",
+    "dev": "pnpm --filter constrictor dev",
+    "storybook": "pnpm --filter constrictor storybook",
+    "test": "pnpm --filter constrictor test"
+  },
+  "dependencies": {
+    "eslint": "9.21.0",
+    "eslint-config-custom": "workspace:*",
+    "prettier": "3.5.2",
+    "prettier-plugin-svelte": "3.3.3",
+    "turbo": "2.4.4"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "packageManager": "pnpm@10.5.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "svelte-preprocess"
+    ]
+  }
+}

@@ -132,3 +132,47 @@ ladder, and a round is discarded only as a last resort. Measured: 0 stuck in 40,
   same relative odds as a natural base trigger (3.4 : 0.5 : 0.1), so a bought Hunt matches a triggered one.
 - VENOM HUNT retriggers work the same as in THE HUNT (+5, max 30).
 - The snake enters free spins from an edge: its tail cell is on the border, and the frontend slides it in.
+
+### D-020: Art pipeline: Higgsfield generates, but results can't be imported here, so placeholders + manifest
+Higgsfield works (the balance was read, 8 style-lock drafts were generated for 2 credits). But generated files
+live on `d8j0ntlcm91z4.cloudfront.net` / `d2ol7oe51mr4n9.cloudfront.net`, which this environment's egress
+policy blocks (curl 403, WebFetch EGRESS_BLOCKED). Higgsfield's sandbox can fetch them, but its tooling
+forbids relaying bytes as base64/text. A test relay also truncated at ~20 KB per call, which is impractical.
+**Decision:** do not generate finals blind. The frontend ships with procedural (code-drawn) placeholder
+art in the palette. `frontend/.../assets/manifest.json` makes any file dropped in `art/final/` with the
+listed name replace its placeholder with zero code changes. `art/HIGGSFIELD_PROMPTS.md` has every final
+prompt, model, setting and target filename. Once the two hosts are allowed, the same prompts are run here
+(using the style-lock drafts as references) and the assets are post-processed and reviewed.
+Alternatives rejected: blind generation of the full set (wastes credits without QA); base64 relay (forbidden
+by the tool, impractical).
+
+### D-021: Audio is synthesized in code (original placeholders)
+Higgsfield's audio tool is speech-only; its music/SFX models are reserved for its own game pipeline
+(tool description). All SFX and the music loops are synthesized by `art/audio/synth.py` (numpy: filtered noise,
+FM bells, plucked-string bass, heartbeats). They are original, license-free and clearly marked as placeholders.
+The final-audio brief is in `art/AUDIO_SPEC.md`.
+
+### D-022: Frontend architecture (web-sdk monorepo, own app, lean runtime)
+The frontend is the web-sdk monorepo (pinned `1843d60`), with the game as `apps/constrictor`. It reuses the SDK's
+`rgs-fetcher`, `utils-fetcher`, `utils-event-emitter` (UI events) and `utils-book` (`createPlayBookUtils`:
+one async handler per book event). It does **not** use the SDK's xstate machines or `pixi-svelte`
+components. The game needs a custom snake mesh/shader and a clock that owns every delay (turbo, skip,
+reduced motion), and a thin Pixi 8 stage behind a Svelte 5 DOM UI is smaller and easier to audit.
+Studio 12 reusable modules: `packages/ui-controlbar` (presets plain/studio12/noir, dense mode for the
+mini-player) and `packages/ui-loading` (studio splash then key art). The build is SvelteKit
+adapter-static with `bundleStrategy: 'inline'` and relative paths, so a single `index.html` plus
+`assets/` and `fonts/` work from any CDN path. Fonts are self-hosted OFL (@fontsource). `@font-face` lives in
+`app.html` with `%sveltekit.assets%`, so the URLs stay relative. Alternatives rejected: the SDK's sample-app
+template (sample assets must not ship; its machine layer is more than this game needs).
+
+### D-023: Payout display source
+The RGS docs give `round.payoutMultiplier` as a float (×bet), while books store integer hundredths. The frontend
+shows only book amounts × the round's bet (`bookToMoney`) and takes the round payout from the book's
+`finalWin`, using the RGS float only as a fallback. The balance always comes from the RGS. So whether the
+RGS reports 11.5 or 1150, the game shows the same numbers.
+
+### D-024: Development RGS
+`apps/constrictor/scripts/mock_rgs.py` is a stdlib-only mock of the wallet API plus bet replay. It serves the
+static build and real books (a weighted sample from `math/extract_books.py`) and has dev endpoints to force a
+showcase book. It is used for manual play, Playwright smoke/screenshot runs and the soak test. It is not part of
+the submission.

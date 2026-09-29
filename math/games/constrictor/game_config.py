@@ -18,8 +18,8 @@ WINCAP = 25000.0
 # Share of simulations per criteria (SPEC 12.2). Quotas only decide how many books are *sampled*;
 # the real probability of each book is set by its LUT weight (SPEC 12.3).
 QUOTAS = {
-    "base": {"wincap": 0.0005, "freegame": 0.08, "basegame": 0.9195},
-    "ante": {"wincap": 0.0005, "freegame": 0.25, "basegame": 0.7495},
+    "base": {"wincap": 0.0005, "freegame": 0.05, "basegame": 0.9495},
+    "ante": {"wincap": 0.0005, "freegame": 0.10, "basegame": 0.8995},
     "hunt": {"wincap": 0.002, "freegame": 0.998},
     "venom": {"wincap": 0.004, "freegame": 0.996},
 }
