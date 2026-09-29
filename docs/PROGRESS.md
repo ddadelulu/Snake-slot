@@ -58,7 +58,8 @@ Resume point for any session. Update after every phase.
   ante `etl40b`, hunt `etl40b`/`etl10k`, venom `etl10k` (D-009: not cost-normalised; documented in MATH_REPORT).
 - Independent verification (`env/bin/python verify_constrictor.py`, 53 min on 4 cores): **2,500,000 / 2,500,000 books
   replayed with no game code, schema-valid, payout == LUT**. Exact RTP 96.00000 % in all modes (spread 0.00000 %).
-  Base: hit 29.47 %, EGG 1 in 16.02, Hunt 1 in 250, max win 1 in 1,241,198, std 33.86. Full tables and the brief
+  Base: hit 29.47 %, EGG 1 in 16.02, Hunt 1 in 250, max win 1 in 1,241,198, std 33.86, RTP split 61.79 % base
+  spins / 38.21 % Hunt. Full tables and the brief
   §4.8 target check in `docs/MATH_REPORT.md` (`env/bin/python make_report.py`).
 - `MATH_VERSION = "v1"`, SPEC §15 filled. Upload set packed for git: `math/games/constrictor/publish/`
   (`publish_parts.py join` rebuilds and verifies it).
