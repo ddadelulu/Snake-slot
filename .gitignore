@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+math/env/
+*.egg-info/
+.pytest_cache/
+# Rust
+math/optimization_program/target/
+# Math SDK temp / large outputs (see docs/DECISIONS.md D-016)
+math/games/*/library/temp_multi_threaded_files/
+math/games/*/library/books/
+math/games/*/library/optimization_files/
+# Node
+node_modules/
+.svelte-kit/
+.turbo/
+frontend/**/build/
+frontend/**/storybook-static/
+# OS
+.DS_Store
+# scratch
+*.log
