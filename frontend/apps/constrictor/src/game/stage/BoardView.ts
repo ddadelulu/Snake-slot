@@ -126,7 +126,17 @@ export class BoardView extends Container {
 				this.cells.push(cv);
 				this.cellsLayer.addChild(cv);
 			}
-		this.addChild(this.velvet, grid, this.keyGlows, this.fxUnder, this.cellsLayer, this.winLayer, this.snakeLayer, this.frame, this.fxOver);
+		// warm pool of light on the velvet (the lamp above the table): lifts the black snake off the cloth
+		const pool = new Sprite(softDot());
+		pool.anchor.set(0.5);
+		pool.position.set(BOARD / 2, BOARD / 2 - CELL * 0.4);
+		pool.width = INNER * 1.5;
+		pool.height = INNER * 1.25;
+		pool.tint = 0xb89868;
+		pool.alpha = 0.16;
+		const poolMask = new Graphics().rect(ORIGIN, ORIGIN, INNER, INNER).fill(0xffffff);
+		pool.mask = poolMask;
+		this.addChild(this.velvet, pool, poolMask, grid, this.keyGlows, this.fxUnder, this.cellsLayer, this.winLayer, this.snakeLayer, this.frame, this.fxOver);
 	}
 
 	get(c: Cell | [number, number]) {

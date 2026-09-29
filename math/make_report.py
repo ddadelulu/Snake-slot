@@ -87,10 +87,16 @@ def main():
     if any(r["mode"] == "base" for r in reps):
         b = next(r for r in reps if r["mode"] == "base")
         w = weights.get("base", {})
-        a("### Base-game RTP split")
+        a("### RTP split: base spins vs THE HUNT (target 60–65 % / 35–40 % in BASE)")
+        a("")
+        for r in reps:
+            sp = r.get("rtp_split")
+            if sp:
+                a(f"- **{NAMES[r['mode']]}:** base spins {100*sp['base_spins']:.2f} % · THE HUNT {100*sp['feature']:.2f} % of the mode's RTP.")
         if w:
             pt = w.get("p_trigger", 0)
-            a(f"The trigger probability is exact: P(≥ 3 KEYs) = {pt:.8f} (1 in {1/pt:,.2f}).")
+            a("")
+            a(f"The BASE trigger probability is exact: P(≥ 3 KEYs) = {pt:.8f} (1 in {1/pt:,.2f}).")
         a("")
     a("## 2. Win distribution (share of rounds, by payout in × bet)")
     a("")

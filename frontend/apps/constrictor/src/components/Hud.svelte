@@ -6,8 +6,8 @@
 	import { t } from '$game/i18n';
 	import { formatMoney, bookToMoney } from '$game/money';
 
-	type Props = { layout: 'side' | 'top'; showWin?: boolean };
-	let { layout, showWin = false }: Props = $props();
+	type Props = { layout: 'side' | 'top'; showWin?: boolean; showStats?: boolean };
+	let { layout, showWin = false, showStats = true }: Props = $props();
 
 	let slam = $state(0);
 	let big = $state(false);
@@ -33,22 +33,22 @@
 			<span class="fs-win num">{money(game.featureWin)}</span>
 		</div>
 	{/if}
-	{#if snakeOn}
+	{#if snakeOn && showStats}
 		<div class="stats">
 			<div class="stat">
 				<span class="lbl">{t('hud.moves')}</span>
 				{#key movesPop}
-					<span class="val num display mv" class:pop={movesPop > 0}>{game.moves ? game.moves.left : '–'}</span>
+					<span class="val num mv" class:pop={movesPop > 0}>{game.moves ? game.moves.left : '–'}</span>
 				{/key}
 			</div>
 			<div class="stat">
 				<span class="lbl">{t('hud.length')}</span>
-				<span class="val num display">{game.snakeLen}</span>
+				<span class="val num">{game.snakeLen}</span>
 			</div>
 			<div class="stat mult">
 				<span class="lbl">{t('hud.multiplier')}</span>
 				{#key slam}
-					<span class="val num display m" class:pop={slam > 0} class:big>×{game.snakeMult}</span>
+					<span class="val num m" class:pop={slam > 0} class:big>×{game.snakeMult}</span>
 				{/key}
 			</div>
 		</div>
@@ -127,7 +127,8 @@
 		color: var(--ivory-dim);
 	}
 	.val {
-		font-size: clamp(16px, 3.4vh, 30px);
+		font-size: clamp(15px, 3vh, 26px);
+		font-weight: 800;
 		line-height: 1.05;
 	}
 	.mv.pop {

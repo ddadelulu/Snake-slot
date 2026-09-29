@@ -9,7 +9,7 @@ const out = process.argv[4] ?? '.';
 const post = (p, b) => fetch(`${base}${p}`, { method: 'POST', body: JSON.stringify(b) });
 const usd = (raw) => '$' + (Math.floor(raw / 10_000) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
 const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
 const problems = [];
 page.on('console', (m) => problems.push(`console.${m.type()}: ${m.text()}`));
@@ -22,7 +22,8 @@ await page.goto(`${base}/?sessionID=soak&rgs_url=${encodeURIComponent(base)}&cur
 await page.waitForSelector('button.tap');
 await page.click('button.tap');
 await page.waitForSelector('button.spin');
-const stats = { rounds: 0, byMode: {}, wins: 0, features: 0, mismatches: 0 };
+const stats = { rounds: 0, byMode: {}, wins: 0, features: 0, mismatches: 0, heapMB: {} };
+const heap = async () => page.evaluate(() => { globalThis.gc?.(); return Math.round(performance.memory.usedJSHeapSize / 1e5) / 10; });
 const t0 = Date.now();
 for (let i = 0; i < rounds; i++) {
 	let mode = 'base';
@@ -69,6 +70,8 @@ for (let i = 0; i < rounds; i++) {
 	const err = await page.$('[role=dialog]');
 	if (err) { problems.push(`round ${i}: dialog open: ${(await err.innerText()).slice(0, 80)}`); await page.keyboard.press('Escape'); }
 	stats.rounds++;
+	if (i === 49) stats.heapMB.afterWarmup = await heap();
+	if (i === rounds - 1) stats.heapMB.end = await heap();
 	stats.byMode[mode] = (stats.byMode[mode] ?? 0) + 1;
 	if (st.last.payoutMultiplier > 0) stats.wins++;
 }

@@ -4,6 +4,7 @@
 // It only animates what the book says: positions come from book cells, never from randomness.
 
 import { Container, Geometry, Graphics, Mesh, Shader, Sprite, Texture } from 'pixi.js';
+import { softDot } from './BoardView';
 import { clock, ease } from './clock';
 import { texture } from './assets';
 
@@ -95,6 +96,26 @@ export class SnakeView extends Container {
 	private shadow = new Graphics();
 	head: Sprite;
 	private headRig = new Container(); // head sprite + tongue (Sprites cannot have children in Pixi 8)
+	private eyes: Sprite[] = [];
+	/** 0..1: venom-green glow in the eyes (guardian anticipation). */
+	eyeGlow = 0;
+	/** Extra head scale (the guardian's head is a little smaller relative to its coil). */
+	headScale = 1;
+	private look = 0;
+	private lookTarget = 0;
+
+	/** Turn the head a little toward a global point (guardian idle look); null relaxes it. */
+	lookAt(p: { x: number; y: number } | null) {
+		if (!p || !this.visible) {
+			this.lookTarget = 0;
+			return;
+		}
+		const h = this.headRig.getGlobalPosition();
+		let d = Math.atan2(p.y - h.y, p.x - h.x) - this.headAngle;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		this.lookTarget = Math.max(-0.3, Math.min(0.3, d * 0.35));
+	}
 	private tongue: Sprite;
 	private mouthOpen = false;
 	private headAngle = -Math.PI / 2;
@@ -132,6 +153,8 @@ export class SnakeView extends Container {
 			indexBuffer: new Uint32Array(idx),
 		});
 		const t = texture('snake_scales_strip');
+		t.source.autoGenerateMipmaps = true; // smooth minification (no scale shimmer on small screens)
+		t.source.style.mipmapFilter = 'linear';
 		t.source.style.addressModeU = 'repeat';
 		t.source.style.addressModeV = 'clamp-to-edge';
 		t.source.style.update();
@@ -162,6 +185,18 @@ export class SnakeView extends Container {
 		this.tongue.anchor.set(0.5, 1);
 		this.tongue.scale.set(0);
 		this.headRig.addChild(this.tongue, this.head);
+		// eye glows in head-texture pixels relative to the anchor (placeholder/final heads share the layout)
+		for (const sx of [-1, 1]) {
+			const e = new Sprite(softDot());
+			e.anchor.set(0.5);
+			e.position.set(sx * 31, -16);
+			e.width = e.height = 46;
+			e.tint = 0x3dff8a;
+			e.blendMode = 'add';
+			e.alpha = 0;
+			this.eyes.push(e);
+			this.headRig.addChild(e);
+		}
 		this.addChild(this.headRig);
 		this.visible = false;
 	}
@@ -361,11 +396,13 @@ export class SnakeView extends Container {
 		while (dA < -Math.PI) dA += 2 * Math.PI;
 		this.headAngle += dA * Math.min(1, (dt / 1000) * 14 * clock.speed);
 		this.headRig.position.set(hp.x, hp.y);
-		this.headRig.rotation = this.headAngle + Math.PI / 2;
+		this.look += (this.lookTarget - this.look) * Math.min(1, (dt / 1000) * 3);
+		this.headRig.rotation = this.headAngle + Math.PI / 2 + this.look;
 		// the head texture's neck is ~31 % of its width; scale it so the neck matches the body width
 		const hs = (c * 1.8) / Math.max(1, this.head.texture.width);
 		this.tongue.y = -0.27 * this.head.texture.height;
-		this.headRig.scale.set(hs * (this.mouthOpen ? 1.06 : 1));
+		this.headRig.scale.set(hs * this.headScale * (this.mouthOpen ? 1.06 : 1));
+		for (const e of this.eyes) e.alpha = this.eyeGlow * (0.75 + 0.25 * Math.sin(clock.time * 7));
 		this.headRig.visible = this.enterClip > 0.02;
 		// idle tongue flick every 3-6 s (cosmetic timing)
 		this.nextFlick -= dt / 1000;

@@ -59,7 +59,7 @@ square canvas (visual centering), export `512×512` (@2x) and `256×256` (@1x) W
 | FRAME | `board_frame.png` (2048×2048, transparent centre) | 1:1 (`gpt_image_2_5`, transparent) | Top-down photograph of a square frame of riveted black steel with a thin aged-brass inner edge, the inside of the frame is empty and transparent, rivets evenly spaced, subtle wear, [LIGHT], no text |
 | VELVET | `board_velvet.jpg` (2048×2048) | 1:1 | Top-down macro photograph of deep black velvet fabric, fine pile texture, very subtle sheen, evenly lit, seamless, no folds |
 | GUARDIAN | `guardian_serpent.png` (3000×3000, transparent) | 1:1 (`gpt_image_2_5`, transparent, [REF]=SNAKE_HEAD) | A giant black sunbeam serpent coiled in a square loop around an empty square space (as if wrapped around a game board), top-down three-quarter view, massive glossy iridescent body, head resting on the upper-left coil with its eye CLOSED, isolated on a transparent background, the centre square completely empty and transparent, [LIGHT], photoreal, no text |
-| GUARDIAN_EYE | `guardian_eye.png` (512×512, transparent) | 1:1 (`gpt_image_2_5`) | Extreme macro of a single serpent eye, glossy black with a thin gold-amber iris ring and vertical slit pupil, wet reflection of a warm tungsten light from the upper left, isolated on transparent background, photoreal, no text |
+| ~~GUARDIAN_EYE~~ | (dropped) | | Not needed any more: the guardian is drawn in-engine as a snake mesh wrapped around the frame, and its own head/eyes glow venom green during anticipation (P7). |
 
 ## 4. Videos (silent, no text, center-safe; compress to WebM/MP4 ≤ ~3 MB each)
 

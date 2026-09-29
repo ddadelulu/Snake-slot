@@ -40,7 +40,6 @@ IMAGES = {
     "bg_portrait": ("bg_portrait.jpg", "plate", (1080, 1920), "cover"),
     "board_velvet": ("board_velvet.jpg", "plate", (512, 512), "cover"),
     "board_frame": ("board_frame.png", "sprite", (1024, 1024), "stretch"),
-    "guardian_eye": ("guardian_eye.png", "sprite", (256, 256), "contain"),
     "tile_background": ("tile_background.png", "tile", None, None),
     "tile_foreground": ("tile_foreground.png", "tile", None, None),
     "keyart": ("keyart_16x9.jpg", "plate", (1920, 1080), "cover"),

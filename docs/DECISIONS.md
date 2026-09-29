@@ -176,3 +176,41 @@ RGS reports 11.5 or 1150, the game shows the same numbers.
 static build and real books (a weighted sample from `math/extract_books.py`) and has dev endpoints to force a
 showcase book. It is used for manual play, Playwright smoke/screenshot runs and the soak test. It is not part of
 the submission.
+
+### D-025: The upload set is committed in <100 MB parts
+GitHub rejects files over 100 MB, and three book files are larger (ante 138 MB, hunt 229 MB, venom 369 MB).
+`math/publish_parts.py pack` splits them into 95 MB parts under `math/games/constrictor/publish/`, with
+`SHA256SUMS` of the whole files. `join` rebuilds and verifies them. Alternatives rejected: Git LFS (it can't be
+verified through this environment's git proxy); leaving the books out and regenerating (about 2 h of compute
+and not guaranteed byte-identical, so the LUT hashes would not match what was verified).
+
+### D-026: Hero transitions are in-engine, not video, for now
+The brief's videos (intro, Hunt trigger, Ouroboros accent, max win) can't be imported (D-020). The Hunt/Venom
+intro is an in-engine vault-door wheel (SVG) that spins open behind the title. OUROBOROS is slow motion,
+camera push, ring ignition, green shards and a ×2 slam. Max win is a gold shower, a shake and the
+Limelight-set "THE VAULT IS EMPTY". The manifest already has video slots (`vid_*`); when finals exist they can
+play as lazy-loaded overlays without replacing the board animation.
+
+### D-027: Guardian = the snake renderer wrapped around the frame
+Instead of a separate guardian illustration plus an eye sprite, the guardian is a second `SnakeView` whose
+path is a rounded rectangle around the frame (the same scale strip, shader and head as the playing snake).
+For anticipation its eyes glow venom green (two additive soft dots on the head rig). When the pointer is a
+mouse, its head turns subtly toward it (desktop only, off under reduced motion). The `guardian_eye` asset was
+dropped from the manifest and the prompts file. Reason: one consistent creature, no extra art dependency,
+and it stays alive (breathing, tongue flicks).
+
+### D-028: No filters in the render loop
+All Pixi `BlurFilter`s were removed: the snake contact shadow uses layered strokes, cluster glows use layered
+wide strokes, and key glows and particles use one shared radial soft-dot texture. Measured in headless
+software rendering at 1200×675: 1.7 fps → 4 fps. Mobile GPUs pay for filters in the same way. The scale strip
+is mipmapped to stop shimmer when minified.
+
+### D-029: Counters use Archivo tabular numerals, titles use the Deco face
+In Big Shoulders Display 900 the "1" reads as "|" at HUD sizes (for example "×1" looked like "×|"). Every
+counter (MOVES, LENGTH, multiplier, money) uses Archivo 800 with tabular figures. Titles, win tiers and the
+wordmark keep Big Shoulders; the max-win title uses Limelight.
+
+### D-030: MOVES + snake status on a plaque above the board
+The brief asks for a MOVES counter above the board and a status line "LENGTH 12 · ×17". In landscape, a
+brass plaque sits on the board's top rail (`StatusPlaque.svelte`), and the side panel keeps the feature
+counter and feature win. In portrait, the HUD row above the board shows the same values.

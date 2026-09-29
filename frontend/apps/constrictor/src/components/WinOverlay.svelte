@@ -21,6 +21,8 @@
 	let ouro = $state(0); // OUROBOROS title flash counter
 	let pop = $state<{ amount: number; id: number } | null>(null);
 
+	const BOLTS = Array.from({ length: 16 }, (_, i) => (i * Math.PI) / 8);
+	const SPOKES = Array.from({ length: 6 }, (_, i) => (i * Math.PI) / 3);
 	const TIER_KEYS = ['', 'win.strike', 'win.constrict', 'win.devour', 'win.apex', 'win.vaultEmpty'];
 	const STINGERS = ['', 'stinger_strike', 'stinger_constrict', 'stinger_devour', 'stinger_apex', 'stinger_vault_empty'];
 	const COUNT_MS = [0, 1200, 1900, 2800, 3800, 5200];
@@ -91,6 +93,16 @@
 				<div class="hint">{t('win.tapToSkip')}</div>
 			</div>
 		{:else if card.kind === 'intro'}
+			<svg class="vault" class:venom={card.feature === 'venom'} viewBox="-100 -100 200 200" aria-hidden="true">
+				<circle r="94" class="rim" />
+				<circle r="82" class="plate" />
+				{#each BOLTS as a}<circle cx={87 * Math.cos(a)} cy={87 * Math.sin(a)} r="3.4" class="bolt" />{/each}
+				<g class="wheel">
+					{#each SPOKES as a}<line x1={14 * Math.cos(a)} y1={14 * Math.sin(a)} x2={56 * Math.cos(a)} y2={56 * Math.sin(a)} />{/each}
+					<circle r="58" class="wheel-rim" />
+					<circle r="14" class="hub" />
+				</g>
+			</svg>
 			<div class="intro" class:venom={card.feature === 'venom'}>
 				<div class="rule"></div>
 				<div class="title display">{card.feature === 'venom' ? t('feature.venomTitle') : t('feature.huntTitle')}</div>
@@ -212,6 +224,76 @@
 		height: 1px;
 		background: linear-gradient(90deg, transparent, var(--brass-hi), transparent);
 	}
+	.vault {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: min(78vmin, 560px);
+		height: min(78vmin, 560px);
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+		opacity: 0.4;
+		animation: vaultdoor 2600ms ease-in both;
+	}
+	.vault .rim {
+		fill: #16181b;
+		stroke: #9c7a45;
+		stroke-width: 3;
+	}
+	.vault .plate {
+		fill: none;
+		stroke: rgba(217, 178, 111, 0.35);
+		stroke-width: 1.5;
+	}
+	.vault .bolt {
+		fill: #d9b26f;
+	}
+	.vault .wheel {
+		stroke: #d9b26f;
+		stroke-width: 5;
+		stroke-linecap: round;
+		fill: none;
+		animation: wheel 1500ms cubic-bezier(0.5, 0, 0.3, 1) both;
+	}
+	.vault .wheel-rim {
+		stroke-width: 4;
+	}
+	.vault .hub {
+		fill: #9c7a45;
+	}
+	.vault.venom .rim,
+	.vault.venom .wheel {
+		stroke: #3dff8a;
+	}
+	.vault.venom .bolt {
+		fill: #3dff8a;
+	}
+	@keyframes wheel {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(300deg);
+		}
+	}
+	@keyframes vaultdoor {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.9);
+		}
+		12%,
+		60% {
+			opacity: 0.55;
+			transform: translate(-50%, -50%) scale(1);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(1.35);
+		}
+	}
+	.intro {
+		position: relative;
+	}
 	.retrigger {
 		font-size: clamp(30px, 9vmin, 90px);
 		color: var(--brass-hi);
@@ -303,6 +385,8 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
+		.vault,
+		.vault .wheel,
 		.title,
 		.retrigger,
 		.overlay.dim {

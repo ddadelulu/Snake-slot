@@ -367,7 +367,7 @@ def replay(book, mode):
             moves_phase(grid, snake, "basegame")
         else:
             check(peek() != "hatch", "hatch without egg")
-        evaluate_phase(grid, snake)
+        info["base_win"] = evaluate_phase(grid, snake)
         if snake:
             nxt("snakeExit")
         if len(keys) >= 3 and not capped:
@@ -517,6 +517,9 @@ def verify_mode(mode, cost, limit=None, procs=4):
                 acc["capped"] += pr * info["capped"]
                 acc["retrig"] += pr * (info["retriggers"] > 0)
                 acc["len8"] += pr * (info["max_len"] >= 8)
+                # RTP split (base/ante): the base spin's own win vs everything the feature adds
+                acc["rtp_base_part"] += pr * info.get("base_win", 0)
+                acc["rtp_feature_part"] += pr * (pay - info.get("base_win", 0))
                 if info["trigger"] and info["fs_final_mult"] is not None:
                     acc["fs_w"] += pr
                     acc["fs_mult"] += pr * info["fs_final_mult"]
@@ -586,6 +589,11 @@ def verify_mode(mode, cost, limit=None, procs=4):
         "ouroboros_per_round": acc["bites"],
         "len8_prob": acc["len8"],
         "retrigger_prob": acc["retrig"],
+        "rtp_split": (
+            {"base_spins": acc["rtp_base_part"] / (acc["rtp_base_part"] + acc["rtp_feature_part"]),
+             "feature": acc["rtp_feature_part"] / (acc["rtp_base_part"] + acc["rtp_feature_part"])}
+            if mode in ("base", "ante") and acc["rtp_base_part"] + acc["rtp_feature_part"] > 0 else None
+        ),
         "avg_final_mult_in_feature": acc["fs_mult"] / fs,
         "avg_spins_in_feature": acc["fs_spins"] / fs,
         "most_likely_payout_share": top_share,
@@ -628,11 +636,18 @@ def main():
                     (size, v), = kv.items()
                     assert abs(pay_h(name, int(size)) - round(v * 100)) == 0, f"fe config pay mismatch {name} {size}"
         print("fe config paytable == verifier paytable: OK")
+    # results are merged into the JSON after every mode, so an interrupted run only loses the mode in progress
+    existing = []
+    if os.path.exists(args.json):
+        with open(args.json, encoding="UTF-8") as f:
+            existing = [r for r in json.load(f) if r.get("mode") not in args.modes]
     reports = []
     ok = True
     for m in args.modes:
         r = verify_mode(m, costs[m], args.limit, args.procs)
         reports.append(r)
+        with open(args.json, "w", encoding="UTF-8") as f:
+            json.dump(existing + reports, f, indent=2, default=str)
         status = "PASS" if r["replay_fail"] == 0 else "FAIL"
         ok &= r["replay_fail"] == 0
         ts = r["three_star"]
@@ -645,10 +660,8 @@ def main():
         )
         for bid, err in r["fails"][:5]:
             print("    fail", bid, err)
-    rtps = [r["rtp_exact"] for r in reports]
+    rtps = [r["rtp_exact"] for r in existing + reports]
     print(f"RTP spread across modes: {100*(max(rtps)-min(rtps)):.5f}%")
-    with open(args.json, "w", encoding="UTF-8") as f:
-        json.dump(reports, f, indent=2, default=str)
     sys.exit(0 if ok else 1)
 
 

@@ -614,6 +614,43 @@ def tile_background(n=1200):
     return Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB").filter(ImageFilter.GaussianBlur(3))
 
 
+def tile_foreground(n=1024):
+    """Key image for the dashboard tile: the serpent coiled around the black opal, head raised."""
+    strip = np.array(scale_strip(), float)[..., :3]
+    sh, sw = strip.shape[:2]
+    cx, cy, rx, ry, hw = n * 0.5, n * 0.64, n * 0.33, n * 0.2, 0.2
+    yy, xx = np.mgrid[0:n, 0:n].astype(float)
+    ex, ey = (xx - cx) / rx, (yy - cy) / ry
+    r = np.hypot(ex, ey)
+    th = np.arctan2(ey, ex)
+    band = np.abs(r - 1) < hw
+    across = np.clip((r - 1) / hw, -1, 1)
+    u = ((th / (2 * np.pi)) % 1.0) * sw * 3
+    v = (across * 0.5 + 0.5) * (sh - 1)
+    tex = strip[v.astype(int).clip(0, sh - 1), u.astype(int) % sw]
+    nz = np.sqrt(np.clip(1 - across ** 2, 0, 1))
+    lam = np.clip(0.35 + 0.65 * (nz * 0.8 - across * 0.45 * np.sign(ey + 1e-9) * -1), 0.15, 1.2)
+    spec = np.clip(nz, 0, 1) ** 24 * np.clip(-ey, 0, 1) * 0.0 + np.exp(-((across + 0.35) / 0.12) ** 2) * 0.35
+    col = tex * lam[..., None] * 1.25 + 255 * spec[..., None] * 0.35
+    rgba = np.zeros((n, n, 4))
+    rgba[..., :3] = np.clip(col, 0, 255)
+    rgba[..., 3] = 255 * band
+    ring = Image.fromarray(rgba.astype(np.uint8), "RGBA").filter(ImageFilter.GaussianBlur(0.8))
+    back = np.array(ring)
+    back[..., 3] = (back[..., 3] * (ey < 0)).astype(np.uint8)
+    front = np.array(ring)
+    front[..., 3] = (front[..., 3] * (ey >= 0)).astype(np.uint8)
+    fg = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    fg.alpha_composite(Image.fromarray(back, "RGBA"))
+    gem = opal().resize((int(n * 0.43), int(n * 0.43)), Image.LANCZOS)
+    fg.alpha_composite(gem, (int(cx - gem.width / 2), int(cy - gem.height * 0.62)))
+    fg.alpha_composite(Image.fromarray(front, "RGBA"))
+    # raised head rising from the front-right of the coil, looking up-left
+    head = snake_head(False).resize((int(n * 0.56), int(n * 0.56)), Image.LANCZOS).rotate(24, resample=Image.BICUBIC, expand=True)
+    fg.alpha_composite(head, (int(cx + rx * 0.58 - head.width * 0.55), int(cy + ry * 0.35 - head.height * 0.93)))
+    return drop_shadow(fg, (10, 16), 22, 140)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     save(opal(), "sym_H1.png")
@@ -644,11 +681,7 @@ def main():
     save(frame(), "board_frame.png")
     save(guardian_eye(), "guardian_eye.png")
     save(tile_background(), "tile_background.png")
-    fg = canvas(1024, 1024)
-    head = snake_head(False).resize((720, 720), Image.LANCZOS)
-    fg = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-    fg.alpha_composite(head, (150, 40))
-    fg.alpha_composite(opal().resize((420, 420), Image.LANCZOS), (300, 560))
+    fg = tile_foreground()
     save(fg, "tile_foreground.png")
     print("placeholders written to", os.path.normpath(OUT))
 

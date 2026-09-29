@@ -4,7 +4,7 @@
 import { Application, Container, Graphics, Sprite, Texture, TilingSprite, Text } from 'pixi.js';
 import type { Cell, SnakeStep, SymbolCode, ClusterWin, BookEventOuroboros } from '../model/bookTypes';
 import { isPearl, sameCell } from '../model/bookTypes';
-import { BoardView, BOARD, CELL, center, ORIGIN, INNER } from './BoardView';
+import { BoardView, BOARD, CELL, center, ORIGIN, INNER, softDot } from './BoardView';
 import { SnakeView, type Pt } from './SnakeView';
 import { clock, ease } from './clock';
 import { texture } from './assets';
@@ -35,11 +35,13 @@ export class Stage {
 	private blinds!: TilingSprite;
 	private dim = new Graphics();
 	private dust = new Container();
+	private pointer: { x: number; y: number } | null = null; // desktop mouse only (guardian look)
+	private sparks = new Container(); // particle bursts (world space, above the board)
+	private sparkList: { s: Sprite; vx: number; vy: number; life: number; age: number; spin: number }[] = [];
 	world = new Container(); // board + guardian (camera push target)
 	board!: BoardView;
 	snake!: SnakeView;
 	private guardian = new Container();
-	private guardianEye!: Sprite;
 	private eyeOpen = 0;
 	private slot: SlotRect = { x: 0, y: 0, size: 100 };
 	private camZoom = 1;
@@ -47,7 +49,6 @@ export class Stage {
 	private shakeT = 0;
 	private wildLabel!: Text;
 	wildLabelShows = 0;
-	private pointer = { x: 0, y: 0 };
 
 	async init(host: HTMLElement) {
 		await this.app.init({
@@ -75,7 +76,7 @@ export class Stage {
 		this.snake = new SnakeView(CELL);
 		this.board.snakeLayer.addChild(this.snake);
 		this.buildGuardian();
-		this.world.addChild(this.guardian, this.board);
+		this.world.addChild(this.board, this.guardian, this.sparks); // the guardian coils over the frame
 		this.wildLabel = new Text({ text: 'WILD', style: { fontFamily: 'Big Shoulders Display', fontWeight: '900', fontSize: 64, fill: 0xd9b26f, letterSpacing: 6 } });
 		this.wildLabel.anchor.set(0.5);
 		this.wildLabel.alpha = 0;
@@ -83,33 +84,43 @@ export class Stage {
 		this.buildDust();
 
 		this.app.ticker.add((tk) => this.tick(tk.deltaMS));
-		this.app.renderer.on('resize', () => this.layout());
 		this.app.stage.eventMode = 'static';
-		this.app.stage.on('globalpointermove', (e) => (this.pointer = { x: e.global.x, y: e.global.y }));
+		this.app.stage.hitArea = this.app.screen;
+		this.app.stage.on('globalpointermove', (e) => {
+			this.pointer = e.pointerType === 'mouse' ? { x: e.global.x, y: e.global.y } : null;
+		});
+		this.app.renderer.on('resize', () => this.layout());
 		this.layout();
 	}
 
 	private buildGuardian() {
 		// A coil of the same scales around the frame (static rope), with the head resting top-left.
 		const coil = new SnakeView(CELL * 1.25);
-		const m = 22, L = BOARD - 22;
+		const m = 22, L = BOARD - 22, R = 70;
+		// rounded rectangle, clockwise from the top edge; corners are arcs so the mesh never folds
 		const path: Pt[] = [];
-		const pushLine = (x0: number, y0: number, x1: number, y1: number, n: number) => {
-			for (let i = 0; i <= n; i++) path.push({ x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n });
+		const line = (x0: number, y0: number, x1: number, y1: number, n: number) => {
+			for (let i = 0; i < n; i++) path.push({ x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n });
 		};
-		pushLine(m + 90, m, L, m, 10);
-		pushLine(L, m + 50, L, L, 10);
-		pushLine(L - 50, L, m, L, 10);
-		pushLine(m, L - 50, m, m + 140, 8);
+		const arc = (cx: number, cy: number, a0: number, n = 6) => {
+			for (let i = 0; i < n; i++) {
+				const a = a0 + (Math.PI / 2) * (i / n);
+				path.push({ x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) });
+			}
+		};
+		line(m + 90, m, L - R, m, 9);
+		arc(L - R, m + R, -Math.PI / 2);
+		line(L, m + R, L, L - R, 9);
+		arc(L - R, L - R, 0);
+		line(L - R, L, m + R, L, 9);
+		arc(m + R, L - R, Math.PI / 2);
+		line(m, L - R, m, m + 150, 7);
+		path.push({ x: m, y: m + 150 });
 		coil.setPath(path.reverse());
-		coil.alpha = 0.92;
+		coil.alpha = 0.95;
+		coil.headScale = 0.82;
 		this.guardian.addChild(coil);
 		this.guardianCoil = coil;
-		this.guardianEye = new Sprite(texture('guardian_eye'));
-		this.guardianEye.anchor.set(0.5);
-		this.guardianEye.position.set(m + 12, m + 110);
-		this.guardianEye.scale.set(0.12, 0.0);
-		this.guardian.addChild(this.guardianEye);
 	}
 	private guardianCoil!: SnakeView;
 
@@ -173,6 +184,7 @@ export class Stage {
 
 	private tick(dt: number) {
 		this.snake.update(dt);
+		this.tickSparks(dt);
 		this.guardianCoil.update(dt);
 		this.blinds.tilePosition.x += dt * 0.004;
 		this.blinds.tilePosition.y += dt * 0.002;
@@ -183,13 +195,8 @@ export class Stage {
 			if (d.y < -10) d.y = (this.app.renderer.height / this.app.renderer.resolution) + 10;
 			if (d.x > w) d.x = 0;
 		}
-		this.guardianEye.scale.y = 0.12 * this.eyeOpen;
-		// the guardian's eye follows the pointer subtly (desktop only, presentation)
-		if (this.eyeOpen > 0.1) {
-			const eye = this.guardianEye.getGlobalPosition();
-			const a = Math.atan2(this.pointer.y - eye.y, this.pointer.x - eye.x);
-			this.guardianEye.skew.x = Math.cos(a) * 0.06;
-		}
+		this.guardianCoil.eyeGlow = this.eyeOpen;
+		this.guardianCoil.lookAt(clock.reducedMotion ? null : this.pointer);
 		if (this.shakeT > 0) this.shakeT = Math.max(0, this.shakeT - dt / 400);
 		this.applyCamera();
 	}
@@ -211,6 +218,9 @@ export class Stage {
 
 	async reveal(board: (SymbolCode | null)[][], keys: Cell[], gameType: string) {
 		this.board.clearWins();
+		// the post-OUROBOROS venom sheen and the wild glow settle as the next board drops
+		const ring0 = this.snake.ring, wild0 = this.snake.wild;
+		if (ring0 > 0 || wild0 > 0) void clock.tween(400, (t) => ((this.snake.ring = ring0 * (1 - t)), (this.snake.wild = wild0 * (1 - t))));
 		this.board.keyGlow([], false);
 		let anticipating = false;
 		await this.board.drop(board, async (reel, keysSoFar) => {
@@ -294,6 +304,10 @@ export class Stage {
 		]);
 		clock.speed = prevSpeed;
 		sound.play('constrict_crunch');
+		const enc = ev.enclosed.map((c) => center(c));
+		const ex = enc.reduce((a, p) => a + p.x, 0) / Math.max(1, enc.length);
+		const ey = enc.reduce((a, p) => a + p.y, 0) / Math.max(1, enc.length);
+		this.burst(ex, ey, 60, [0x3dff8a, 0x9dffc4, 0x1fbf62], 700, 1200, false);
 		await this.board.constrict(ev.enclosed, ev.symbol, this.speedMs(1000, 380));
 		sound.play('deep_boom');
 		sound.play('mult_slam');
@@ -360,6 +374,53 @@ export class Stage {
 		this.snake.setPath([]);
 		this.snake.wild = 0;
 		this.snake.ring = 0;
+	}
+
+	/**
+	 * Cosmetic particle burst in board units (Math.random is fine here: presentation only, never outcomes).
+	 * Skipped entirely under reduced motion.
+	 */
+	burst(x: number, y: number, n: number, colors: number[], speed = 900, life = 1400, gravity = true) {
+		if (clock.reducedMotion || clock.skipping) return;
+		for (let i = 0; i < n; i++) {
+			const s = new Sprite(softDot());
+			s.anchor.set(0.5);
+			const size = 10 + Math.random() * 26;
+			s.width = s.height = size;
+			s.tint = colors[i % colors.length];
+			s.blendMode = 'add';
+			s.position.set(x, y);
+			const a = Math.random() * Math.PI * 2;
+			const v = speed * (0.25 + Math.random() * 0.75);
+			this.sparks.addChild(s);
+			this.sparkList.push({ s, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (gravity ? speed * 0.35 : 0), life: life * (0.6 + Math.random() * 0.4), age: 0, spin: gravity ? 1 : 0 });
+		}
+	}
+
+	private tickSparks(dt: number) {
+		const k = (dt / 1000) * clock.speed;
+		for (let i = this.sparkList.length - 1; i >= 0; i--) {
+			const p = this.sparkList[i];
+			p.age += dt * clock.speed;
+			p.vx *= 1 - 1.6 * k;
+			p.vy = p.vy * (1 - 1.6 * k) + (p.spin ? 1400 * k : 0);
+			p.s.x += p.vx * k;
+			p.s.y += p.vy * k;
+			const t = p.age / p.life;
+			p.s.alpha = t < 0.1 ? t * 10 : Math.max(0, 1 - (t - 0.1) / 0.9);
+			if (t >= 1) {
+				p.s.destroy();
+				this.sparkList.splice(i, 1);
+			}
+		}
+	}
+
+	/** Gold shower for big wins; level 5 = max win. */
+	celebrate(level: number) {
+		const gold = [0xd9b26f, 0xf3dca6, 0xffe9b8, 0x9c7a45];
+		const n = level >= 5 ? 140 : level >= 4 ? 90 : 50;
+		this.burst(BOARD / 2, BOARD / 2, n, gold, level >= 5 ? 1500 : 1100, level >= 5 ? 2400 : 1600);
+		if (level >= 4) this.shake();
 	}
 
 	shake() {

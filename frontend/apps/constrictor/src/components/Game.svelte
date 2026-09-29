@@ -20,6 +20,7 @@
 	import ReplayPanel from './ReplayPanel.svelte';
 	import Modal from './Modal.svelte';
 	import Logo from './Logo.svelte';
+	import StatusPlaque from './StatusPlaque.svelte';
 	import { game, modeCost, type ModeId } from '$game/state/game.svelte';
 	import { parseLaunchParams, type LaunchParams } from '$game/url';
 	import { configureI18n, t } from '$game/i18n';
@@ -264,7 +265,8 @@
 	const replayMode = $derived(!!params?.replay);
 	const showFeatures = $derived(!replayMode && !game.jurisdiction.disabledBuyFeature);
 	const anteCost = modeCost('ante');
-	const hudIdle = $derived(!game.fs && !(game.snakeLen > 0 && game.moves !== null));
+	const snakeOn = $derived(game.snakeLen > 0 && (game.moves !== null || game.fs !== null));
+	const hudIdle = $derived(!game.fs && !snakeOn);
 </script>
 
 <svelte:window bind:innerWidth={vw} bind:innerHeight={vh} onkeydown={onKey} onkeyup={onKeyUp} />
@@ -313,8 +315,14 @@
 				{/if}
 			</div>
 			<div class="side right" style="width:{L.side}px;bottom:{barH}px">
-				{#if hudIdle && !L.compact}<Logo />{:else}<Hud layout="side" showWin={L.compact} />{/if}
+				{#if game.fs || L.compact}<Hud layout="side" showWin={L.compact} showStats={L.compact} />{:else}<Logo />{/if}
 			</div>
+			{#if snakeOn && !L.compact}
+				<!-- MOVES + snake status on the board's top rail (above the board) -->
+				<div class="plaque-slot" style="left:{L.board.x + L.board.size / 2}px;top:{L.board.y + L.board.size * 0.035}px">
+					<StatusPlaque />
+				</div>
+			{/if}
 		{/if}
 	{/if}
 
@@ -571,6 +579,11 @@
 	.compact .side {
 		padding: 4px;
 		gap: 6px;
+	}
+	.plaque-slot {
+		position: absolute;
+		transform: translate(-50%, -50%);
+		z-index: 2;
 	}
 	.err-layer {
 		position: relative;

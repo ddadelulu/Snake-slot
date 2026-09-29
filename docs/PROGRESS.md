@@ -7,14 +7,14 @@ Resume point for any session. Update after every phase.
 | Phase | Status | Notes |
 |---|---|---|
 | P0 SDKs, requirements, name check | ✅ done | See below |
-| P1 SPEC.md | ✅ done | Parameters pending P3 |
+| P1 SPEC.md | ✅ done | Parameters frozen in §15 (P3) |
 | P2 Math core + tests | ✅ done | 72 tests pass |
-| P3 Optimize + verify + MATH_REPORT | ⏳ next | |
-| P4 Style bible + style lock | ☐ | Higgsfield available: 536.2 credits, budget ≤ 321.7 |
-| P5 Asset production + contact sheet | ☐ | |
-| P6 Frontend core | ☐ | |
-| P7 Hero moments, polish, audio | ☐ | |
-| P8 Compliance | ☐ | |
+| P3 Optimize + verify + MATH_REPORT | ✅ done | math v1 frozen, see below |
+| P4 Style bible + style lock | ✅ done | Style bible; 8 style-lock drafts (2.00 credits); finals blocked by CDN egress (D-020) |
+| P5 Asset production + contact sheet | ✅ done (placeholders) | Procedural placeholders + synthesized audio, manifest swap, `art/contact_sheet.png` |
+| P6 Frontend core | ✅ done | Playable loop on real books, all 4 modes |
+| P7 Hero moments, polish, audio | ⏳ in progress | |
+| P8 Compliance | ⏳ in progress | viewports, social, replay, resume tests written |
 | P9 QA soak, screenshots, submission | ☐ | |
 
 ## P0: done (2026-09-29)
@@ -50,10 +50,40 @@ Resume point for any session. Update after every phase.
   base hit ≈ 29.5 %, egg 1/16, Hunt 1/250, split ≈ 62/38; Hunt avg ≈ 90× (lean 50×, mid 149×, rich 1,165×).
 - Decisions D-013 … D-019.
 
+## P3: done (2026-09-29)
+- Production books: base 1,000,000 · ante 1,000,000 · hunt 250,000 · venom 250,000
+  (`cd math && env/bin/python games/constrictor/run.py`, batches reduced to avoid OOM: see `BATCH` in run.py).
+- Weighting (D-017): every mode exactly 96.00 % from the LUT (θ base −0.0010, ante −0.0157, hunt +0.0356, venom −0.0193).
+- SDK upload checks (`execute_all_tests`): SHA-256 + payout hash OK for all modes. 3-star advisory flags:
+  ante `etl40b`, hunt `etl40b`/`etl10k`, venom `etl10k` (D-009: not cost-normalised; documented in MATH_REPORT).
+- Independent verification (`env/bin/python verify_constrictor.py`): every book replayed from its events with
+  no game code, schema-validated, payout == LUT; results in `docs/MATH_REPORT.md`.
+- `MATH_VERSION = "v1"`, SPEC §15 filled. Upload set packed for git: `math/games/constrictor/publish/`
+  (`publish_parts.py join` rebuilds and verifies it).
+
+## P4/P5: done with placeholders (2026-09-29)
+- `docs/STYLE_BIBLE.md`, `art/HIGGSFIELD_PROMPTS.md` (every asset prompt/model/setting), `art/GENERATION_LOG.md`.
+- Higgsfield: 2.00 of 321.7 budgeted credits spent on style-lock drafts. The result CDN hosts
+  (`d8j0ntlcm91z4.cloudfront.net`, `d2ol7oe51mr4n9.cloudfront.net`) are blocked by this environment's egress
+  policy, so finals cannot be imported (D-020). The game ships procedural placeholders
+  (`art/pipeline/placeholders.py`) and synthesized audio (`art/audio/synth.py`, D-021); dropping finals into
+  `art/final/` and running `art/pipeline/build_assets.py` swaps them in with no code change.
+- `art/contact_sheet.png` (`art/pipeline/contact_sheet.py`), `art/AUDIO_SPEC.md`, tile layers (bright, no text).
+
+## P6: done (2026-09-29)
+- `frontend/apps/constrictor`: Svelte 5 + Pixi 8, single-file static build (`pnpm build`), D-022.
+- Loop: authenticate → play → animate book → end-round (payout > 0), resume of unfinished rounds, bet replay,
+  autoplay (confirmed), buy + ante confirmation, rules/paytable/modes/UI guide/disclaimer, social wording.
+- Dev loop: `python3 scripts/mock_rgs.py` serves the build + real books (D-024);
+  `node tests/e2e/smoke.mjs` (FORCE=mode:category for showcase books).
+- Tests: `npx vitest run` → 21 passed (money, bets, social, params, book soak over 3,981 real books).
+
 ## Next up
-P3: production books (base 1M, ante 1M, hunt 250k, venom 250k), weighting, `verify_constrictor.py`
-(independent replay of every book), schema validation of every book, `MATH_REPORT.md`, freeze v1.
+P7 polish (hero moments), P8 compliance runs (`tests/e2e/{viewports,social,compliance}.mjs`),
+P9 browser soak (`tests/e2e/soak.mjs`), Storybook, 7-viewport screenshots, `docs/SUBMISSION.md`.
 
 ## Open issues
 - Live Stake docs sites are blocked by egress; the docs git repo (March 2026) plus math-sdk (Sept 2026) were used instead.
 - Coba similarity (D-001/D-012) needs Dylan's eye before submission.
+- Final art/video: allow the two Higgsfield CDN hosts in the environment's network settings, then run the
+  prompts in `art/HIGGSFIELD_PROMPTS.md` (budget left ≈ 319 credits).

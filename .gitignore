@@ -22,3 +22,6 @@ frontend/**/storybook-static/
 *.log
 # reassembled upload set (math/publish_parts.py join)
 math/games/*/publish/upload/
+# local run logs / QA outputs
+frontend/apps/constrictor/*.log
+frontend/apps/constrictor/storybook-static/

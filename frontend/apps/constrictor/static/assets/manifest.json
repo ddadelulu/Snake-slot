@@ -156,12 +156,6 @@
    "source": "placeholder",
    "w": 1024,
    "h": 1024
-  },
-  "guardian_eye": {
-   "file": "img/guardian_eye.webp",
-   "source": "placeholder",
-   "w": 256,
-   "h": 256
   }
  },
  "audio": {

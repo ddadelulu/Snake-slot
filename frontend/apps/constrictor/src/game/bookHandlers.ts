@@ -94,6 +94,7 @@ export function createBookPlayer(stage: Stage) {
 			// Free spins: only DEVOUR and above stop the feature for a full banner; smaller wins get a quick pop.
 			const minLevel = game.fs ? 3 : 1;
 			if (ev.winLevel >= minLevel && ev.winLevel <= 4) {
+				if (ev.winLevel >= 2) stage.celebrate(ev.winLevel);
 				await eventEmitter.broadcastAsync({ type: 'tierWin', level: ev.winLevel, amount: ev.amount });
 			} else {
 				eventEmitter.broadcast({ type: 'spinWin', amount: ev.amount });
@@ -106,6 +107,7 @@ export function createBookPlayer(stage: Stage) {
 		},
 		wincap: async (ev) => {
 			game.totalWin = ev.amount;
+			stage.celebrate(5);
 			await eventEmitter.broadcastAsync({ type: 'maxWin', amount: ev.amount });
 		},
 		freeSpinRetrigger: async (ev) => {
@@ -121,6 +123,7 @@ export function createBookPlayer(stage: Stage) {
 			game.snakeMult = 1;
 		},
 		freeSpinEnd: async (ev) => {
+			if (ev.winLevel >= 3) stage.celebrate(ev.winLevel);
 			await eventEmitter.broadcastAsync({ type: 'featureOutro', amount: ev.amount, level: ev.winLevel, capped: game.totalWin >= 2_500_000 });
 			sound.stop('music_hunt', 0.8);
 			sound.stop('music_hunt_layer', 0.8);
