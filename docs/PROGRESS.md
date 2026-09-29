@@ -7,8 +7,8 @@ Resume point for any session. Update after every phase.
 | Phase | Status | Notes |
 |---|---|---|
 | P0 SDKs, requirements, name check | ✅ done | See below |
-| P1 SPEC.md | ⏳ next | |
-| P2 Math core + tests | ☐ | |
+| P1 SPEC.md | ✅ done | Parameters pending P3 |
+| P2 Math core + tests | ⏳ next | |
 | P3 Optimize + verify + MATH_REPORT | ☐ | |
 | P4 Style bible + style lock | ☐ | Higgsfield available: 536.2 credits, budget ≤ 321.7 |
 | P5 Asset production + contact sheet | ☐ | |
@@ -32,8 +32,12 @@ Resume point for any session. Update after every phase.
   `cd math && python3.12 -m venv env && env/bin/pip install -r requirements.txt && env/bin/pip install -e .`
 - Solvent repo is not available → build the control bar + loading screen fresh (D-003).
 
+## P1: done (2026-09-29)
+- `docs/SPEC.md` written: rules §2–§10, event schema §11, math plan §12. Numeric parameters are marked [P3] and frozen at math v1.
+- Key rule decisions (in SPEC): cells the tail leaves become EMPTY (blockers); the bite ends the snake's moves; buys start directly in the feature (no base spin); the Venom Hunt retrigger works as in the Hunt.
+
 ## Next up
-P1: write `docs/SPEC.md` (full rules, event schema, math plan).
+P2: math core (`math/games/constrictor/`) + pytest suite.
 
 ## Open issues
 - Live Stake docs sites are blocked by egress; the docs git repo (March 2026) plus math-sdk (Sept 2026) were used instead.
