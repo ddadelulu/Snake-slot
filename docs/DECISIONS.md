@@ -79,3 +79,56 @@ and runs through a wrapper script that exits after the static adapter reports co
 7×7 and 25,000× are the brief's values and are kept. If reviewers or Dylan want more distance from Coba,
 the cheapest change is the cap (e.g. 30,000×, if the math supports it and the cap stays obtainable; MATH_REPORT
 will say whether it does). The grid size is baked into the whole game and should stay 7×7.
+
+### D-013: A flat top end in the paytable
+A snake of length ≥ 4 turns almost every neighbouring symbol into a paying cluster (wild sharing, SPEC 7.2).
+Per-spin pays before the multiplier grow very fast with length under a conventional steep paytable:
+C(8) ≈ 23×, C(15) ≈ 145× (measured, `/tmp` sweep `cl.py`, 3,000 boards per length). With a flat top end,
+C(8) ≈ 14× and C(15) ≈ 29×. We use the flat shape: the **multiplier**, not the size band, drives the big
+wins, and the natural RTP stays controllable.
+Alternatives: a steep paytable plus a much lower pearl supply, rejected because the Hunt then dies
+(OUROBOROS never happens); fewer symbol types, rejected because the brief fixes 8.
+
+### D-014: Pearl tiers (a per-round "reel-set" choice for pearls)
+The value of a Hunt is extremely convex in pearls eaten: a Hunt with no pearls pays ~7×, with ~1.4
+pearls ~76×, with ~4.6 pearls ~845× (measured). With i.i.d. pearls, a Hunt averaging ~90× almost never
+reaches length 8, so OUROBOROS never happens. Decision: draw a hidden pearl tier once per feature
+round (lean / normal / rich) and once per base egg spin (normal / rich), the same way games pick a reel set.
+Rich rounds are where the snake grows long and bites its tail. Rules are unchanged; SPEC 5.5 documents it.
+
+### D-015: VENOM HUNT starts at ×2 instead of ×5; the cost is set by the math
+A length-8 snake pays ~15× per spin before the multiplier. Starting at ×5 put the natural average at
+~2,700–5,500× (sweeps V1–V4, S1). Following the brief ("if it doesn't balance, make it cost more;
+don't change the mechanic"), the start is **length 8, ×2**, lean pearls, and the cost is chosen so
+the natural RTP sits just above 96 % (the LUT tilt then trims it). Start length stays 8, so OUROBOROS is
+on from the first spin.
+
+### D-016: Compact book encoding + zstd level 19
+Measured on the same sample: Hunt books were 2,674 B each (SDK default level 3, verbose cells). Compact cells
+`[reel,row]` + string symbols + level 19 gives 822 B (3.25× smaller). Venom went from 4,196 to 1,356 B.
+Two lines in the vendored SDK writer are patched (marked `CONSTRICTOR patch`): the compressor level and
+compact JSON separators. The output is standard zstd / JSONL, and the RGS format checks pass.
+
+### D-017: LUT weighting by exact bucket quotas + a power tilt (instead of the Rust PigFarm)
+The weights define the real probability of each book. Our own weighting (SPEC 12.3, `optimize.py`):
+exact bucket probabilities (the trigger probability is a known fraction from the key table, the max-win
+frequency is explicit), natural in-bucket distribution, and one power-tilt parameter solved by
+bisection for **exact 96.00000 %**. The tilt is reported per mode. Why: it keeps the natural feature
+frequencies (egg, trigger, Ouroboros) honest and lands RTP exactly. The PigFarm optimizer was built and
+run on the SDK sample in P0 and remains an alternative.
+
+### D-018: The snake never boxes itself in (pearl-proof lookahead)
+A first run hit "no legal path" (head trapped by its own body next to pearls). Fix (SPEC 5.5): a
+free-spin path is only accepted if its final shape keeps a 12-cell self-avoiding escape walk that
+avoids the whole body. That walk is pearl-proof, because growing is the worst case. There is a relaxation
+ladder, and a round is discarded only as a last resort. Measured: 0 stuck in 40,000 natural Hunts;
+3 in 24,000 boosted-Venom stress rounds (those are resampled).
+
+### D-019: Rule details settled in SPEC
+- Cells the tail leaves are **EMPTY** (the snake ate them) and act as blockers until the next drop.
+  Alternative: the symbols reappear, rejected because the brief says the symbol is eaten.
+- The OUROBOROS bite **ends the snake's moves** for that spin; the remaining counter is forfeited.
+- Buy rounds start directly in the feature (no paid base spin); the Hunt buy's 3/4/5-key start uses the
+  same relative odds as a natural base trigger (3.4 : 0.5 : 0.1), so a bought Hunt matches a triggered one.
+- VENOM HUNT retriggers work the same as in THE HUNT (+5, max 30).
+- The snake enters free spins from an edge: its tail cell is on the border, and the frontend slides it in.

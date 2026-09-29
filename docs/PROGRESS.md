@@ -8,8 +8,8 @@ Resume point for any session. Update after every phase.
 |---|---|---|
 | P0 SDKs, requirements, name check | ✅ done | See below |
 | P1 SPEC.md | ✅ done | Parameters pending P3 |
-| P2 Math core + tests | ⏳ next | |
-| P3 Optimize + verify + MATH_REPORT | ☐ | |
+| P2 Math core + tests | ✅ done | 72 tests pass |
+| P3 Optimize + verify + MATH_REPORT | ⏳ next | |
 | P4 Style bible + style lock | ☐ | Higgsfield available: 536.2 credits, budget ≤ 321.7 |
 | P5 Asset production + contact sheet | ☐ | |
 | P6 Frontend core | ☐ | |
@@ -36,8 +36,23 @@ Resume point for any session. Update after every phase.
 - `docs/SPEC.md` written: rules §2–§10, event schema §11, math plan §12. Numeric parameters are marked [P3] and frozen at math v1.
 - Key rule decisions (in SPEC): cells the tail leaves become EMPTY (blockers); the bite ends the snake's moves; buys start directly in the feature (no base spin); the Venom Hunt retrigger works as in the Hunt.
 
+## P2: done (2026-09-29)
+- `math/games/constrictor/`: `engine.py` (pure: board draw, path DFS, enclosure, constrict, wild-aware
+  clusters, all in integer tenths), `rounds.py` (base/Hunt/Venom rounds, SPEC 11 events, cap clipping),
+  `params.py` (all tunables), `modes.py`, `game_config.py` + `gamestate.py` (math-sdk integration),
+  `optimize.py` (LUT weighting, D-017), `run.py` (full pipeline), `schema/book.schema.json`.
+- Tuning aids (not used for publishing): `tune.py`, `analyze.py`, `sweep.py`.
+- Tests: `cd math && env/bin/pytest tests -q` → **72 passed**.
+- Quick end-to-end run (`env/bin/python games/constrictor/run.py --quick`, 4,000 books per mode): SDK books,
+  exact 96.00000000 % weighting, configs and the SDK RGS checks (hash, format) all pass. The 3-star warnings
+  flag the ante/hunt/venom tails (to address in P3).
+- Natural tuning results (tune.py; see MATH_REPORT in P3 for the published numbers):
+  base hit ≈ 29.5 %, egg 1/16, Hunt 1/250, split ≈ 62/38; Hunt avg ≈ 90× (lean 50×, mid 149×, rich 1,165×).
+- Decisions D-013 … D-019.
+
 ## Next up
-P2: math core (`math/games/constrictor/`) + pytest suite.
+P3: production books (base 1M, ante 1M, hunt 250k, venom 250k), weighting, `verify_constrictor.py`
+(independent replay of every book), schema validation of every book, `MATH_REPORT.md`, freeze v1.
 
 ## Open issues
 - Live Stake docs sites are blocked by egress; the docs git repo (March 2026) plus math-sdk (Sept 2026) were used instead.

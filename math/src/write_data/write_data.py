@@ -146,7 +146,8 @@ def output_lookup_and_force_files(
 
     if compress:
         final_out = gamestate.output_files.get_final_book_name(betmode, True)
-        compressor = zstd.ZstdCompressor()
+        # CONSTRICTOR patch (docs/DECISIONS.md D-016): level 19, multi-threaded. Same zstd format.
+        compressor = zstd.ZstdCompressor(level=19, threads=-1)
         with open(final_out, "wb") as f_out:
             with compressor.stream_writer(f_out, closefd=False) as writer:
                 for fname in file_list:
@@ -296,7 +297,8 @@ def output_lookup_and_force_files(
 
 def write_json(gamestate, filename: str, payout_ints=None):
     """Convert the list of dictionaries to a JSON-encoded string and compress it in chunks."""
-    json_objects = [json.dumps(item) for item in gamestate.library.values()]
+    # CONSTRICTOR patch (D-016): compact separators, identical JSON semantics.
+    json_objects = [json.dumps(item, separators=(",", ":")) for item in gamestate.library.values()]
     combined_data = "\n".join(json_objects) + "\n"
 
     if filename.endswith(".zst"):

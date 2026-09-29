@@ -8,7 +8,7 @@ math/env/
 math/optimization_program/target/
 # Math SDK temp / large outputs (see docs/DECISIONS.md D-016)
 math/games/*/library/temp_multi_threaded_files/
-math/games/*/library/books/
+math/games/*/library/
 math/games/*/library/optimization_files/
 # Node
 node_modules/

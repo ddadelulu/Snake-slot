@@ -145,12 +145,23 @@ The round starts directly in VENOM HUNT (`enterBonus`, reason `venom`): **12 fre
 > bulge the frontend animates travels to the tail and the tail extends one cell.
 
 ### 5.5 Path generation (math-internal, not a player-facing rule)
-A randomized depth-first search over legal steps, with per-candidate weights:
-`w = 1 · (biasStraight if same direction) · (biasPearl if the cell holds a pearl) · (biasPearlValue^v)`.
-If a partial path cannot be completed to `N` steps, the search backtracks. At each step where a
-qualifying bite is legal, it is taken with probability `pBite`. All bias parameters belong to the
-distribution conditions **[P3]**. If no legal N-step path exists (very rare, e.g. the head is boxed in
-by its own body), `N` is redrawn. N is always announced **after** a valid path exists.
+A randomized depth-first search over legal steps, with per-candidate weights
+`w = biasStraight (same direction) × biasPearl (cell holds a pearl) × biasSeek (step gets closer to the
+nearest pearl) × biasTail (length ≥ 7 and the cell touches the tail) × seekTail (length ≥ 8, no pending
+growth, step gets closer to the tail)`. If a partial path cannot be completed to `N` steps, the search
+backtracks. At each step where a qualifying bite is legal, it is taken with probability `pBite`
+(otherwise only if no other move exists). All bias parameters are part of the draw tables **[P3]**.
+- **Never boxed in (free games):** a path is accepted only if its final shape still leaves a
+  *pearl-proof* continuation, i.e. a self-avoiding walk of 12 cells from the head that avoids the whole body.
+  That walk stays legal whatever the next board holds. If none exists for any drawn N, the guarantee
+  relaxes to 8, then to 4 (the minimum counter), then to none with the shortest counters. If the snake
+  still cannot move (never observed in natural play, ~1 in 10⁴ under the boosted max-win search), the
+  generator discards the round and draws again. So every published book has a legal path.
+- N is always announced **after** a valid path exists.
+- **Pearl tiers:** each base egg spin, and each feature round, first draws a hidden pearl *tier*
+  (like choosing a reel set). The tier selects the pearl count/value tables and walk biases for that spin
+  or round. This makes the pearl supply lumpy (most hatchlings and hunts are lean, a few are rich) without
+  changing any rule.
 
 ### 5.6 End of a base-game spin
 After evaluation the hatchling slithers off the board (`snakeExit`). Nothing carries over.
@@ -240,7 +251,7 @@ With no snake on the board, `M = 1`.
 ### 8.2 VENOM HUNT (buy only)
 The same as THE HUNT except:
 - **12 free spins**. Retriggers work exactly as in THE HUNT (+5, max 30 total).
-- The snake enters at **length 8** with **M = ×5** (values [P3]; if the mode doesn't balance, raise the cost rather than change the mechanic).
+- The snake enters at **length 8** with **M = ×2**. (The brief's ×5 did not balance: a length-8 wild snake pays ~15× per spin before the multiplier. Following the brief, the cost rises instead of the mechanic changing; see D-015.)
 - Venom Pearls **+10 and +25** are both enabled.
 - OUROBOROS is more likely (the snake is long from the start; `pBite` [P3]).
 
@@ -275,46 +286,48 @@ The same as THE HUNT except:
 
 ## 11. Book event schema
 
-All amounts are integers in **hundredths of the base bet** (`100` = 1×), the same unit as
-`payoutMultiplier`. Every amount is a multiple of 10. Each event carries `index` (its position in
-`events`) and `type`. A machine-readable JSON Schema is in `math/games/constrictor/schema/book.schema.json`,
-and every book is validated against it (P3).
+Compact encoding (book size, DECISIONS D-016). All amounts are integers in **hundredths of the base
+bet** (`100` = 1×), the same unit as `payoutMultiplier`. Every amount is a multiple of 10. Each event
+has `index` (its position in `events`, used by the web-sdk) and `type`. The machine-readable JSON Schema is
+`math/games/constrictor/schema/book.schema.json`. Every book is validated against it (P3).
+
+**Cells** are `[reel, row]`. **Symbols** are strings: `H1`…`L4`, `KEY`, `EGG`, pearls `P1` `P2` `P3`
+`P5` `P10` `P25` (value after the P), `EMPTY` (only in `crushed`), and `null` for a snake-occupied cell in a
+free-spin reveal. Boards are `board[reel][row]` (7 columns × 7 rows, top to bottom).
 
 | type | Fields | When |
 |---|---|---|
-| `reveal` | `board` (7×7, `null` at snake cells), `gameType` (`basegame`/`freegame`), `keys` (count), `keyPositions` | every spin |
-| `hatch` | `position`, `length` (=1), `target` (=3), `multiplier` (=1) | base/ante spin with an EGG |
+| `reveal` | `board`, `gameType` (`basegame`/`freegame`), `keys` (list of KEY cells) | every spin |
+| `hatch` | `at` (egg cell). The snake starts: length 1, target 3, mult 1 | base/ante spin with an EGG |
 | `enterBonus` | `reason` (`hunt`/`venom`) | first event of a buy round |
-| `freeSpinTrigger` | `totalFs`, `keys`, `positions` (key cells; `[]` for buys) | Hunt/Venom start |
-| `snakeEnter` | `body` (head→tail), `edge` (`left/right/top/bottom`), `length`, `target`, `multiplier` | start of a free-spin round |
+| `freeSpinTrigger` | `totalFs`, `keys` (count 3–5; 0 for Venom), `positions` (key cells; `[]` for buys) | feature start |
+| `snakeEnter` | `body` (head→tail; tail on the border), `edge` (`left/right/top/bottom`), `mult`. target = length | feature start |
 | `updateFreeSpin` | `amount` (spin number, 1-based), `total` | before each free spin |
-| `snakeMoves` | `moves` (N shown on the counter), `steps[]`: `{from, to, eat, grow, tail, length, target, multiplier, bite}` | whenever a snake is on the board |
-| `ouroboros` | `ring` (head→tail), `enclosed` (cells), `crushed` (enclosed cells' prior contents), `symbol` (X), `multiplierBefore`, `multiplier` | after a biting `snakeMoves` |
-| `snakeWild` | `positions` (all body cells), `length`, `multiplier` | before evaluation, when a snake is present |
+| `snakeMoves` | `moves` (N on the counter), `steps[]` | whenever a snake is on the board |
+| `ouroboros` | `ring` (head→tail), `enclosed`, `crushed` (prior contents of `enclosed`), `symbol` (X), `multFrom`, `mult` | after a biting `snakeMoves` |
+| `snakeWild` | `cells` (all body cells, head→tail), `mult` | before evaluation, when a snake is present |
 | `winInfo` | `totalWin`, `wins[]`: `{symbol, clusterSize, win, positions, meta:{globalMult, winWithoutMult, wildCount, overlay}}` | spin with ≥ 1 paying cluster |
 | `setWin` | `amount` (spin win after clipping), `winLevel` | spin with win > 0 |
 | `setTotalWin` | `amount` (running round total, capped) | after every spin's evaluation |
-| `freeSpinRetrigger` | `totalFs`, `added`, `keys`, `positions` | 3+ KEYs in a free spin |
-| `wincap` | `amount` (= 2,500,000), `uncappedAmount` | when the cap is reached |
+| `wincap` | `amount` (= 2,500,000), `uncappedAmount` | when the cap is reached; the round ends |
+| `freeSpinRetrigger` | `totalFs`, `added`, `keys` (count), `positions` | 3+ KEYs in a free spin, if spins can still be added |
 | `snakeExit` | (none) | end of a base/ante spin that had a snake |
-| `freeSpinEnd` | `amount` (free-game total, capped), `winLevel` | end of a free-spin round |
+| `freeSpinEnd` | `amount` (feature total, capped), `winLevel` | end of a feature |
 | `finalWin` | `amount` (= `payoutMultiplier`) | last event of every book |
 
-`snakeMoves.steps[i]` fields:
-- `from` / `to`: head cell before / after.
-- `eat`: the contents of `to` before entry: `{"name": ...}` (regular, KEY), `{"name":"PEARL","value":v}`,
-  or `null` for EMPTY or the tail cell of a bite.
-- `grow`: whether the tail stayed. `tail`: the tail cell **after** the step.
-- `length`, `target`, `multiplier`: state after the step (pearl added).
-- `bite`: `true` only on a qualifying OUROBOROS step (always the last step).
+`snakeMoves.steps[i]`: `from`, `to` (head before/after), `eat` (contents of `to` before entry: a symbol
+code, or `null` for EMPTY and for the tail cell of a bite), `len` and `mult` (state after the step, pearl
+added), `grow: true` only when the tail stayed, `bite: true` only on a qualifying OUROBOROS step (always
+the last step). The tail and the growth queue are implied by the step sequence (§5.4). The verifier
+reconstructs them.
 
 `winLevel` (presentation tiers, × base bet): 0 = below 15×, 1 = STRIKE ≥ 15×, 2 = CONSTRICT ≥ 50×,
 3 = DEVOUR ≥ 150×, 4 = APEX PREDATOR ≥ 500×, 5 = THE VAULT IS EMPTY (max win).
 
-Example of the order in a base spin with an egg: `reveal → hatch → snakeMoves → (ouroboros) → snakeWild →
-(winInfo → setWin) → setTotalWin → snakeExit → (freeSpinTrigger → snakeEnter → [updateFreeSpin → reveal
-→ snakeMoves → (ouroboros) → snakeWild → (winInfo → setWin) → setTotalWin → (freeSpinRetrigger) → (wincap)]* →
-freeSpinEnd) → finalWin`.
+Event order, base spin with an egg: `reveal → hatch → snakeMoves → (ouroboros) → snakeWild → (winInfo →
+setWin) → setTotalWin → (wincap) → snakeExit → (freeSpinTrigger → snakeEnter → [updateFreeSpin → reveal →
+snakeMoves → (ouroboros) → snakeWild → (winInfo → setWin) → setTotalWin → (wincap | freeSpinRetrigger)]* →
+freeSpinEnd) → finalWin`. Buy rounds start with `enterBonus → freeSpinTrigger → snakeEnter …`.
 
 ---
 

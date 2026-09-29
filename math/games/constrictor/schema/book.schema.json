@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CONSTRICTOR book (docs/SPEC.md section 11)",
+  "type": "object",
+  "required": ["id", "payoutMultiplier", "events"],
+  "properties": {
+    "id": {"type": "integer", "minimum": 0},
+    "payoutMultiplier": {"type": "integer", "minimum": 0, "maximum": 2500000, "multipleOf": 10},
+    "criteria": {"type": "string"},
+    "baseGameWins": {"type": "number"},
+    "freeGameWins": {"type": "number"},
+    "events": {"type": "array", "minItems": 2, "items": {"$ref": "#/definitions/event"}}
+  },
+  "definitions": {
+    "cell": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 6}, "minItems": 2, "maxItems": 2},
+    "cells": {"type": "array", "items": {"$ref": "#/definitions/cell"}},
+    "reg": {"enum": ["H1", "H2", "H3", "H4", "L1", "L2", "L3", "L4"]},
+    "sym": {"enum": ["H1", "H2", "H3", "H4", "L1", "L2", "L3", "L4", "KEY", "EGG", "P1", "P2", "P3", "P5", "P10", "P25"]},
+    "amount": {"type": "integer", "minimum": 0, "multipleOf": 10},
+    "column": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"anyOf": [{"$ref": "#/definitions/sym"}, {"type": "null"}]}},
+    "event": {
+      "type": "object",
+      "required": ["index", "type"],
+      "properties": {"index": {"type": "integer", "minimum": 0}, "type": {"type": "string"}},
+      "allOf": [
+        {"if": {"properties": {"type": {"const": "reveal"}}}, "then": {
+          "required": ["board", "gameType", "keys"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "board": {"type": "array", "minItems": 7, "maxItems": 7, "items": {"$ref": "#/definitions/column"}},
+            "gameType": {"enum": ["basegame", "freegame"]}, "keys": {"allOf": [{"$ref": "#/definitions/cells"}, {"maxItems": 5}]}}}},
+        {"if": {"properties": {"type": {"const": "hatch"}}}, "then": {
+          "required": ["at"], "additionalProperties": false, "properties": {"index": {}, "type": {}, "at": {"$ref": "#/definitions/cell"}}}},
+        {"if": {"properties": {"type": {"const": "enterBonus"}}}, "then": {
+          "required": ["reason"], "additionalProperties": false, "properties": {"index": {}, "type": {}, "reason": {"enum": ["hunt", "venom"]}}}},
+        {"if": {"properties": {"type": {"const": "freeSpinTrigger"}}}, "then": {
+          "required": ["totalFs", "keys", "positions"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "totalFs": {"enum": [10, 12, 15]}, "keys": {"enum": [0, 3, 4, 5]}, "positions": {"$ref": "#/definitions/cells"}}}},
+        {"if": {"properties": {"type": {"const": "snakeEnter"}}}, "then": {
+          "required": ["body", "edge", "mult"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "body": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 3, "maxItems": 20}]},
+            "edge": {"enum": ["left", "right", "top", "bottom"]}, "mult": {"type": "integer", "minimum": 1}}}},
+        {"if": {"properties": {"type": {"const": "updateFreeSpin"}}}, "then": {
+          "required": ["amount", "total"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "amount": {"type": "integer", "minimum": 1, "maximum": 30}, "total": {"type": "integer", "minimum": 10, "maximum": 30}}}},
+        {"if": {"properties": {"type": {"const": "snakeMoves"}}}, "then": {
+          "required": ["moves", "steps"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "moves": {"type": "integer", "minimum": 4, "maximum": 12},
+            "steps": {"type": "array", "minItems": 1, "maxItems": 12, "items": {
+              "type": "object", "required": ["from", "to", "eat", "len", "mult"], "additionalProperties": false,
+              "properties": {"from": {"$ref": "#/definitions/cell"}, "to": {"$ref": "#/definitions/cell"},
+                "eat": {"anyOf": [{"$ref": "#/definitions/sym"}, {"type": "null"}]},
+                "len": {"type": "integer", "minimum": 2, "maximum": 20}, "mult": {"type": "integer", "minimum": 1},
+                "grow": {"const": true}, "bite": {"const": true}}}}}}},
+        {"if": {"properties": {"type": {"const": "ouroboros"}}}, "then": {
+          "required": ["ring", "enclosed", "crushed", "symbol", "multFrom", "mult"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "ring": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 8}]},
+            "enclosed": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 1}]},
+            "crushed": {"type": "array", "items": {"anyOf": [{"$ref": "#/definitions/sym"}, {"const": "EMPTY"}]}},
+            "symbol": {"$ref": "#/definitions/reg"}, "multFrom": {"type": "integer", "minimum": 1}, "mult": {"type": "integer", "minimum": 2}}}},
+        {"if": {"properties": {"type": {"const": "snakeWild"}}}, "then": {
+          "required": ["cells", "mult"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "cells": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 1, "maxItems": 20}]}, "mult": {"type": "integer", "minimum": 1}}}},
+        {"if": {"properties": {"type": {"const": "winInfo"}}}, "then": {
+          "required": ["totalWin", "wins"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "totalWin": {"$ref": "#/definitions/amount"},
+            "wins": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["symbol", "clusterSize", "win", "positions", "meta"], "additionalProperties": false,
+              "properties": {"symbol": {"$ref": "#/definitions/reg"}, "clusterSize": {"type": "integer", "minimum": 5, "maximum": 49},
+                "win": {"$ref": "#/definitions/amount"}, "positions": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 5}]},
+                "meta": {"type": "object", "required": ["globalMult", "winWithoutMult", "wildCount", "overlay"], "additionalProperties": false,
+                  "properties": {"globalMult": {"type": "integer", "minimum": 1}, "winWithoutMult": {"$ref": "#/definitions/amount"},
+                    "wildCount": {"type": "integer", "minimum": 0, "maximum": 20}, "overlay": {"$ref": "#/definitions/cell"}}}}}}}}},
+        {"if": {"properties": {"type": {"const": "setWin"}}}, "then": {
+          "required": ["amount", "winLevel"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "amount": {"$ref": "#/definitions/amount"}, "winLevel": {"type": "integer", "minimum": 0, "maximum": 5}}}},
+        {"if": {"properties": {"type": {"const": "setTotalWin"}}}, "then": {
+          "required": ["amount"], "additionalProperties": false, "properties": {"index": {}, "type": {}, "amount": {"$ref": "#/definitions/amount"}}}},
+        {"if": {"properties": {"type": {"const": "wincap"}}}, "then": {
+          "required": ["amount", "uncappedAmount"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "amount": {"const": 2500000}, "uncappedAmount": {"type": "integer", "minimum": 2500000}}}},
+        {"if": {"properties": {"type": {"const": "freeSpinRetrigger"}}}, "then": {
+          "required": ["totalFs", "added", "keys", "positions"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "totalFs": {"type": "integer", "maximum": 30}, "added": {"type": "integer", "minimum": 1, "maximum": 5},
+            "keys": {"enum": [3, 4, 5]}, "positions": {"$ref": "#/definitions/cells"}}}},
+        {"if": {"properties": {"type": {"const": "snakeExit"}}}, "then": {"additionalProperties": false, "properties": {"index": {}, "type": {}}}},
+        {"if": {"properties": {"type": {"const": "freeSpinEnd"}}}, "then": {
+          "required": ["amount", "winLevel"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "amount": {"$ref": "#/definitions/amount"}, "winLevel": {"type": "integer", "minimum": 0, "maximum": 5}}}},
+        {"if": {"properties": {"type": {"const": "finalWin"}}}, "then": {
+          "required": ["amount"], "additionalProperties": false, "properties": {"index": {}, "type": {}, "amount": {"$ref": "#/definitions/amount"}}}},
+        {"properties": {"type": {"enum": ["reveal", "hatch", "enterBonus", "freeSpinTrigger", "snakeEnter", "updateFreeSpin", "snakeMoves", "ouroboros",
+          "snakeWild", "winInfo", "setWin", "setTotalWin", "wincap", "freeSpinRetrigger", "snakeExit", "freeSpinEnd", "finalWin"]}}}
+      ]
+    }
+  }
+}
