@@ -65,7 +65,8 @@
 		const portrait = H > W * 1.1;
 		const compact = !portrait && (H < 330 || W < 560);
 		if (portrait) {
-			const hudH = Math.max(58, Math.min(96, H * 0.1));
+			// during a feature the top row also carries the spin counter + feature win (two rows)
+			const hudH = game.fs ? Math.max(104, Math.min(140, H * 0.16)) : Math.max(58, Math.min(96, H * 0.1));
 			const featH = W < 360 ? 44 : 52;
 			const avail = H - barH - hudH - featH - 12;
 			const size = Math.max(120, Math.min(W - 10, avail));
