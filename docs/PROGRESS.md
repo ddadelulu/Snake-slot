@@ -13,9 +13,9 @@ Resume point for any session. Update after every phase.
 | P4 Style bible + style lock | ✅ done | Style bible; 8 style-lock drafts (2.00 credits); finals blocked by CDN egress (D-020) |
 | P5 Asset production + contact sheet | ✅ done (placeholders) | Procedural placeholders + synthesized audio, manifest swap, `art/contact_sheet.png` |
 | P6 Frontend core | ✅ done | Playable loop on real books, all 4 modes |
-| P7 Hero moments, polish, audio | ⏳ in progress | |
-| P8 Compliance | ⏳ in progress | viewports, social, replay, resume tests written |
-| P9 QA soak, screenshots, submission | ☐ | |
+| P7 Hero moments, polish, audio | ✅ done (placeholder art) | see below |
+| P8 Compliance | ✅ done | every brief §3 item ✅ except the advisory 3-star metrics (⚠️, D-009) |
+| P9 QA soak, screenshots, submission | ✅ done | `docs/SUBMISSION.md`, `docs/MATH_REPORT.md`, `docs/screenshots/` |
 
 ## P0: done (2026-09-29)
 
@@ -56,8 +56,10 @@ Resume point for any session. Update after every phase.
 - Weighting (D-017): every mode exactly 96.00 % from the LUT (θ base −0.0010, ante −0.0157, hunt +0.0356, venom −0.0193).
 - SDK upload checks (`execute_all_tests`): SHA-256 + payout hash OK for all modes. 3-star advisory flags:
   ante `etl40b`, hunt `etl40b`/`etl10k`, venom `etl10k` (D-009: not cost-normalised; documented in MATH_REPORT).
-- Independent verification (`env/bin/python verify_constrictor.py`): every book replayed from its events with
-  no game code, schema-validated, payout == LUT; results in `docs/MATH_REPORT.md`.
+- Independent verification (`env/bin/python verify_constrictor.py`, 53 min on 4 cores): **2,500,000 / 2,500,000 books
+  replayed with no game code, schema-valid, payout == LUT**. Exact RTP 96.00000 % in all modes (spread 0.00000 %).
+  Base: hit 29.47 %, EGG 1 in 16.02, Hunt 1 in 250, max win 1 in 1,241,198, std 33.86. Full tables and the brief
+  §4.8 target check in `docs/MATH_REPORT.md` (`env/bin/python make_report.py`).
 - `MATH_VERSION = "v1"`, SPEC §15 filled. Upload set packed for git: `math/games/constrictor/publish/`
   (`publish_parts.py join` rebuilds and verifies it).
 
@@ -78,9 +80,28 @@ Resume point for any session. Update after every phase.
   `node tests/e2e/smoke.mjs` (FORCE=mode:category for showcase books).
 - Tests: `npx vitest run` → 21 passed (money, bets, social, params, book soak over 3,981 real books).
 
+## P7: done (2026-09-29)
+- Hero moments in-engine (D-026): vault-door wheel intro for THE HUNT / VENOM HUNT; OUROBOROS slow motion + camera
+  push + ring ignition + venom shards + ×2 slam; gold showers for DEVOUR/APEX/max win; guardian serpent coiled
+  around the frame with glowing eyes on anticipation and a head that follows the mouse (D-027); MOVES/LENGTH plaque
+  (D-030); viper head placeholder; coiled-serpent tile. Performance: no filters in the render loop (D-028).
+- Audio: synthesized placeholders for every cue in `art/AUDIO_SPEC.md` (music layers with the Hunt multiplier).
+
+## P8: done (2026-09-29)
+- `node tests/e2e/compliance.mjs` 14/14 (resume, replay without wallet calls, insufficient balance, clean console),
+  `node tests/e2e/social.mjs` 0 hits, `node tests/e2e/viewports.mjs` 7/7 with no overflow, rules-content test 7/7.
+
+## P9: done (2026-09-29)
+- Browser soak `node tests/e2e/soak.mjs http://localhost:8080 1200`: 1,200 real rounds (all modes), 0 WIN/BALANCE
+  mismatches, 0 console/network problems. It found a real memory leak (Pixi 8 GraphicsContext retention), now fixed;
+  heap 11.4 → 15.2 MB over 1,200 rounds and flattening, heap-snapshot diff shows no JS-object growth.
+- Storybook: 39 stories render (`npx storybook build`, `node tests/e2e/storybook.mjs`).
+- `docs/screenshots/` (36), `docs/RULES.md` (generated), `docs/SUBMISSION.md` (blurb, rules, RTP/cost/max win,
+  20 replay event ids, tile layers, QA evidence, compliance checklist, open items).
+
 ## Next up
-P7 polish (hero moments), P8 compliance runs (`tests/e2e/{viewports,social,compliance}.mjs`),
-P9 browser soak (`tests/e2e/soak.mjs`), Storybook, 7-viewport screenshots, `docs/SUBMISSION.md`.
+- Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).
+- Dylan: review D-001/D-012 (Coba overlap) and D-015 (Venom 700×) before submission.
 
 ## Open issues
 - Live Stake docs sites are blocked by egress; the docs git repo (March 2026) plus math-sdk (Sept 2026) were used instead.

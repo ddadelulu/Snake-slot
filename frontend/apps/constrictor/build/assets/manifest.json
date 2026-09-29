@@ -1,0 +1,296 @@
+{
+ "version": 1,
+ "images": {
+  "sym_H1": {
+   "file": "img/sym_H1.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_H2": {
+   "file": "img/sym_H2.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_H3": {
+   "file": "img/sym_H3.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_H4": {
+   "file": "img/sym_H4.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_L1": {
+   "file": "img/sym_L1.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_L2": {
+   "file": "img/sym_L2.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_L3": {
+   "file": "img/sym_L3.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_L4": {
+   "file": "img/sym_L4.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_EGG": {
+   "file": "img/sym_EGG.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "sym_KEY": {
+   "file": "img/sym_KEY.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_white": {
+   "file": "img/pearl_white.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_gold": {
+   "file": "img/pearl_gold.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_rose": {
+   "file": "img/pearl_rose.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_black": {
+   "file": "img/pearl_black.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_venom": {
+   "file": "img/pearl_venom.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "pearl_venom_grand": {
+   "file": "img/pearl_venom_grand.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "snake_head": {
+   "file": "img/snake_head.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "snake_head_open": {
+   "file": "img/snake_head_open.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "snake_tongue": {
+   "file": "img/snake_tongue.webp",
+   "source": "placeholder",
+   "w": 128,
+   "h": 128
+  },
+  "snake_tail": {
+   "file": "img/snake_tail.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "snake_scales_strip": {
+   "file": "img/snake_scales_strip.webp",
+   "source": "placeholder",
+   "w": 1024,
+   "h": 128
+  },
+  "snake_shed": {
+   "file": "img/snake_shed.webp",
+   "source": "placeholder",
+   "w": 256,
+   "h": 256
+  },
+  "bg_landscape": {
+   "file": "img/bg_landscape.jpg",
+   "source": "placeholder",
+   "w": 1920,
+   "h": 1080
+  },
+  "bg_portrait": {
+   "file": "img/bg_portrait.jpg",
+   "source": "placeholder",
+   "w": 1080,
+   "h": 1920
+  },
+  "board_velvet": {
+   "file": "img/board_velvet.jpg",
+   "source": "placeholder",
+   "w": 512,
+   "h": 512
+  },
+  "board_frame": {
+   "file": "img/board_frame.webp",
+   "source": "placeholder",
+   "w": 1024,
+   "h": 1024
+  }
+ },
+ "audio": {
+  "amb_vault": {
+   "file": "audio/amb_vault.mp3",
+   "source": "placeholder"
+  },
+  "cluster_win": {
+   "file": "audio/cluster_win.mp3",
+   "source": "placeholder"
+  },
+  "constrict_crunch": {
+   "file": "audio/constrict_crunch.mp3",
+   "source": "placeholder"
+  },
+  "countup_loop": {
+   "file": "audio/countup_loop.mp3",
+   "source": "placeholder"
+  },
+  "deep_boom": {
+   "file": "audio/deep_boom.mp3",
+   "source": "placeholder"
+  },
+  "egg_crack": {
+   "file": "audio/egg_crack.mp3",
+   "source": "placeholder"
+  },
+  "egg_wobble": {
+   "file": "audio/egg_wobble.mp3",
+   "source": "placeholder"
+  },
+  "gem_tick": {
+   "file": "audio/gem_tick.mp3",
+   "source": "placeholder"
+  },
+  "gulp": {
+   "file": "audio/gulp.mp3",
+   "source": "placeholder"
+  },
+  "hatch_hiss": {
+   "file": "audio/hatch_hiss.mp3",
+   "source": "placeholder"
+  },
+  "heartbeat_loop": {
+   "file": "audio/heartbeat_loop.mp3",
+   "source": "placeholder"
+  },
+  "hunt_intro_sting": {
+   "file": "audio/hunt_intro_sting.mp3",
+   "source": "placeholder"
+  },
+  "key_land": {
+   "file": "audio/key_land.mp3",
+   "source": "placeholder"
+  },
+  "land_1": {
+   "file": "audio/land_1.mp3",
+   "source": "placeholder"
+  },
+  "land_2": {
+   "file": "audio/land_2.mp3",
+   "source": "placeholder"
+  },
+  "land_3": {
+   "file": "audio/land_3.mp3",
+   "source": "placeholder"
+  },
+  "mult_slam": {
+   "file": "audio/mult_slam.mp3",
+   "source": "placeholder"
+  },
+  "mult_tick": {
+   "file": "audio/mult_tick.mp3",
+   "source": "placeholder"
+  },
+  "music_base": {
+   "file": "audio/music_base.mp3",
+   "source": "placeholder"
+  },
+  "music_hunt": {
+   "file": "audio/music_hunt.mp3",
+   "source": "placeholder"
+  },
+  "music_hunt_layer": {
+   "file": "audio/music_hunt_layer.mp3",
+   "source": "placeholder"
+  },
+  "ouro_bite": {
+   "file": "audio/ouro_bite.mp3",
+   "source": "placeholder"
+  },
+  "ouroboros_sting": {
+   "file": "audio/ouroboros_sting.mp3",
+   "source": "placeholder"
+  },
+  "slither_loop": {
+   "file": "audio/slither_loop.mp3",
+   "source": "placeholder"
+  },
+  "stinger_apex": {
+   "file": "audio/stinger_apex.mp3",
+   "source": "placeholder"
+  },
+  "stinger_constrict": {
+   "file": "audio/stinger_constrict.mp3",
+   "source": "placeholder"
+  },
+  "stinger_devour": {
+   "file": "audio/stinger_devour.mp3",
+   "source": "placeholder"
+  },
+  "stinger_strike": {
+   "file": "audio/stinger_strike.mp3",
+   "source": "placeholder"
+  },
+  "stinger_vault_empty": {
+   "file": "audio/stinger_vault_empty.mp3",
+   "source": "placeholder"
+  },
+  "tongue_flick": {
+   "file": "audio/tongue_flick.mp3",
+   "source": "placeholder"
+  },
+  "ui_click": {
+   "file": "audio/ui_click.mp3",
+   "source": "placeholder"
+  },
+  "ui_toggle": {
+   "file": "audio/ui_toggle.mp3",
+   "source": "placeholder"
+  },
+  "vault_door": {
+   "file": "audio/vault_door.mp3",
+   "source": "placeholder"
+  }
+ },
+ "video": {}
+}

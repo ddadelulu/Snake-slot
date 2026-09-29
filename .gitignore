@@ -25,3 +25,5 @@ math/games/*/publish/upload/
 # local run logs / QA outputs
 frontend/apps/constrictor/*.log
 frontend/apps/constrictor/storybook-static/
+# the game's static build is a deliverable (upload-ready)
+!frontend/apps/constrictor/build/

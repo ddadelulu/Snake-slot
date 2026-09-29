@@ -35,12 +35,12 @@ def main():
     with open(params_path, encoding="UTF-8") as f:
         for line in f:
             if line.startswith("MATH_VERSION"):
-                ver = line.split("=")[1].strip().strip('"')
+                ver = line.split('"')[1]  # MATH_VERSION = "v1"  # comment
     L = []
     a = L.append
     a("# CONSTRICTOR: Math Report")
     a("")
-    a(f"Math version **{ver}** · generated {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} by `math/make_report.py`.")
+    a(f"Math version **{ver}** · generated {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} by `math/make_report.py`.")
     a("Every number below comes from these commands (run from `/math`):")
     a("")
     a("```")
@@ -98,6 +98,36 @@ def main():
             a("")
             a(f"The BASE trigger probability is exact: P(≥ 3 KEYs) = {pt:.8f} (1 in {1/pt:,.2f}).")
         a("")
+    # Brief §4.8 targets, each ✅/❌ computed from the verifier output above
+    by = {r["mode"]: r for r in reps}
+    SHORT = {"base": "base", "ante": "ante", "hunt": "hunt", "venom": "venom"}
+    ok = lambda c: "✅" if c else "❌"
+    a("### Brief §4.8 targets vs results")
+    a("")
+    a("| Target | Result | |")
+    a("|---|---|---|")
+    a(f"| RTP 96.00 % in every mode (±0.05 %) | " + ", ".join(f"{SHORT[r['mode']]} {100*r['rtp_exact']:.5f} %" for r in reps) + f" | {ok(all(abs(r['rtp_exact']-0.96) <= 0.0005 for r in reps))} |")
+    a(f"| Spread between modes ≤ 0.5 % | {100*(max(rtps)-min(rtps)):.5f} % | {ok(max(rtps)-min(rtps) <= 0.005)} |")
+    a(f"| Max win 25,000× more often than 1 in 10,000,000 in every mode | " + ", ".join(f"{SHORT[r['mode']]} {fmt_1in(r['max_win_prob'])}" for r in reps) + f" | {ok(all(r['max_win_prob'] and r['max_win_prob'] > 1e-7 for r in reps))} |")
+    if "base" in by:
+        b = by["base"]
+        a(f"| Base hit rate 25–35 % | {100*b['hit_rate']:.2f} % | {ok(0.25 <= b['hit_rate'] <= 0.35)} |")
+        a(f"| EGG hatch about 1 in 12–20 | {fmt_1in(b['egg_prob'])} | {ok(1/20 <= b['egg_prob'] <= 1/12)} |")
+        a(f"| THE HUNT from base about 1 in 200–300 | {fmt_1in(b['feature_prob'])} | {ok(1/300 <= b['feature_prob'] <= 1/200)} |")
+        sp = b.get("rtp_split")
+        if sp:
+            a(f"| Base RTP split ≈ 60–65 % base spins / 35–40 % Hunt | {100*sp['base_spins']:.2f} % / {100*sp['feature']:.2f} % | {ok(0.60 <= sp['base_spins'] <= 0.65)} |")
+        a(f"| High volatility (std dev per unit cost) | {b['std_per_cost']:.2f} | {ok(b['std_per_cost'] >= 15)} |")
+    gaps = []
+    for r in reps:
+        vals = [v for _, v in r["distribution"]]
+        nz = [i for i, v in enumerate(vals) if v]
+        if nz and any(vals[i] == 0 for i in range(nz[0], nz[-1] + 1)):
+            gaps.append(r["mode"])
+    a(f"| No gaps in the win distribution (between the smallest and the largest win) | {'gaps in ' + ', '.join(gaps) if gaps else 'none'} | {ok(not gaps)} |")
+    a(f"| 1M sims base/ante, 250k–500k per buy | " + ", ".join(f"{SHORT[r['mode']]} {r['books']:,}" for r in reps) + f" | {ok(all((r['books'] >= 1_000_000) if r['mode'] in ('base','ante') else (250_000 <= r['books'] <= 500_000) for r in reps))} |")
+    a(f"| Every book replays to its LUT payout (100 %) | {sum(r['replayed_ok'] for r in reps):,} / {sum(r['books'] for r in reps):,} | {ok(all(r['replay_fail'] == 0 and r['replayed_ok'] == r['books'] for r in reps))} |")
+    a("")
     a("## 2. Win distribution (share of rounds, by payout in × bet)")
     a("")
     a("| Range | " + " | ".join(NAMES[r["mode"]] for r in reps) + " |")
@@ -111,6 +141,11 @@ def main():
     a("|---|" + "---|" * len(reps))
     for k, lim in LIMITS.items():
         a(f"| {k} (≤ {lim:g}) | " + " | ".join((f"{r['three_star'][k]:.4g}" + (" ✅" if r['three_star'][k] <= lim else " ❌")) for r in reps) + " |")
+    a("")
+    a("These are warnings in the SDK's upload verifier, not approval rules (REQUIREMENTS §3.3, D-009). `etl40b` and")
+    a("`etl10k` are not divided by the mode cost, so a 100× or 700× buy with a 25,000× cap exceeds them by construction.")
+    a("For SERPENT CALL, `etl40b` counts every win ≥ 100× (40 × 2.5), i.e. most Hunt results, which the ante makes 5× more")
+    a("frequent. Meeting it would need a low-volatility Hunt, against the brief's high-volatility target. Kept and documented.")
     a("")
     a("## 4. LUT weighting (SPEC 12.3, DECISIONS D-017)")
     a("")
