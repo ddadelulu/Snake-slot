@@ -1,7 +1,24 @@
 // The 7x7 board in "board units" (the board is 1000 x 1000 units, scaled to the DOM slot).
 // Presentation only: every symbol shown comes from a book event.
 
-import { Container, Graphics, Sprite, Text, BlurFilter } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+
+let dotTex: Texture | null = null;
+/** Shared radial soft dot (white, tinted per use). */
+export function softDot(): Texture {
+	if (dotTex) return dotTex;
+	const c = document.createElement('canvas');
+	c.width = c.height = 128;
+	const g = c.getContext('2d')!;
+	const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+	grd.addColorStop(0, 'rgba(255,255,255,1)');
+	grd.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+	grd.addColorStop(1, 'rgba(255,255,255,0)');
+	g.fillStyle = grd;
+	g.fillRect(0, 0, 128, 128);
+	dotTex = Texture.from(c);
+	return dotTex;
+}
 import type { Cell, SymbolCode } from '../model/bookTypes';
 import { PEARL_VALUE, isPearl } from '../model/bookTypes';
 import { clock, ease } from './clock';
@@ -187,8 +204,12 @@ export class BoardView extends Container {
 		if (!on) return;
 		for (const c of cells) {
 			const p = center(c);
-			const g = new Graphics().circle(p.x, p.y, CELL * 0.46).fill({ color: 0xd9b26f, alpha: 0.35 });
-			g.filters = [new BlurFilter({ strength: 12 })];
+			const g = new Sprite(softDot());
+			g.anchor.set(0.5);
+			g.position.set(p.x, p.y);
+			g.width = g.height = CELL * 1.25;
+			g.tint = 0xd9b26f;
+			g.alpha = 0.55;
 			this.keyGlows.addChild(g);
 		}
 	}
@@ -255,10 +276,11 @@ export class BoardView extends Container {
 				];
 				for (const [on, a, b, cc, d] of edges) if (on) g.moveTo(a, b).lineTo(cc, d);
 			}
-			g.stroke({ color: 0xd9b26f, width: 5, alpha: 0.95, cap: 'round' });
+			// glow from layered wide strokes of the same outline (no blur filter)
 			const glow = g.clone();
-			glow.filters = [new BlurFilter({ strength: 8 })];
+			for (const [w, a] of [[18, 0.04], [12, 0.06], [8, 0.1]] as const) glow.stroke({ color: 0xffffff, width: w, alpha: a, cap: 'round' });
 			glow.tint = GEM_COLOR[cl.symbol] ?? 0xd9b26f;
+			g.stroke({ color: 0xd9b26f, width: 5, alpha: 0.95, cap: 'round' });
 			this.winLayer.addChild(glow, g);
 			layers.push(g, glow);
 		}

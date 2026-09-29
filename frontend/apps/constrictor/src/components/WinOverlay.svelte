@@ -19,11 +19,11 @@
 	let card = $state<Card | null>(null);
 	let shown = $state(0); // count-up value (book hundredths)
 	let ouro = $state(0); // OUROBOROS title flash counter
-	let movesFlash = $state<{ n: number; id: number } | null>(null);
+	let pop = $state<{ amount: number; id: number } | null>(null);
 
 	const TIER_KEYS = ['', 'win.strike', 'win.constrict', 'win.devour', 'win.apex', 'win.vaultEmpty'];
 	const STINGERS = ['', 'stinger_strike', 'stinger_constrict', 'stinger_devour', 'stinger_apex', 'stinger_vault_empty'];
-	const COUNT_MS = [0, 1500, 2300, 3200, 4400, 5200];
+	const COUNT_MS = [0, 1200, 1900, 2800, 3800, 5200];
 
 	const money = (x: number) => formatMoney(bookToMoney(x, game.roundBet), game.currency);
 	const ms = (normal: number) => (clock.speed > 1 ? normal * 0.45 : normal);
@@ -39,8 +39,8 @@
 	async function tier(level: number, amount: number) {
 		card = { kind: 'tier', level, amount };
 		sound.play(STINGERS[level] ?? 'stinger_strike');
-		await countUp(amount, ms(COUNT_MS[level] ?? 1500));
-		await clock.wait(ms(900));
+		await countUp(amount, ms(COUNT_MS[level] ?? 1200));
+		await clock.wait(ms(700));
 		card = null;
 	}
 
@@ -76,8 +76,8 @@
 			await clock.wait(ms(2200));
 			card = null;
 		},
-		movesStart: (e) => {
-			movesFlash = { n: e.n, id: (movesFlash?.id ?? 0) + 1 };
+		spinWin: (e) => {
+			pop = { amount: e.amount, id: (pop?.id ?? 0) + 1 };
 		},
 	});
 </script>
@@ -121,9 +121,9 @@
 	{/if}
 {/key}
 
-{#if movesFlash}
-	{#key movesFlash.id}
-		<div class="moves" aria-hidden="true"><span class="num display">{movesFlash.n}</span> {t('hatch.moves')}</div>
+{#if pop}
+	{#key pop.id}
+		<div class="pop num" aria-hidden="true">{money(pop.amount)}</div>
 	{/key}
 {/if}
 
@@ -231,23 +231,35 @@
 		text-shadow: 0 0 30px rgba(61, 255, 138, 0.55);
 		animation: ouro 1900ms ease both;
 	}
-	.moves {
+	.pop {
 		position: fixed;
 		left: 50%;
-		top: 12%;
-		transform: translateX(-50%);
+		top: 42%;
+		transform: translate(-50%, -50%);
 		z-index: 28;
 		pointer-events: none;
 		font-weight: 800;
-		letter-spacing: 0.24em;
-		font-size: clamp(11px, 2vh, 16px);
+		font-size: clamp(22px, 6vmin, 56px);
 		color: var(--ivory);
-		animation: flash 1100ms ease both;
+		text-shadow:
+			0 2px 0 #000,
+			0 0 18px rgba(217, 178, 111, 0.6);
+		animation: popwin 1300ms ease both;
 	}
-	.moves .num {
-		font-size: 1.8em;
-		color: var(--brass-hi);
-		vertical-align: -0.12em;
+	@keyframes popwin {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -30%) scale(0.8);
+		}
+		15%,
+		70% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(-50%, -70%) scale(1);
+		}
 	}
 	@keyframes fade {
 		from {

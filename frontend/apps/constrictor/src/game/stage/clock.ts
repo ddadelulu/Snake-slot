@@ -27,7 +27,8 @@ class Clock {
 	private jobs = new Set<Job>();
 
 	attach(ticker: Ticker) {
-		ticker.add((tk) => this.tick(tk.deltaMS));
+		// Real elapsed time (Pixi caps deltaMS at minFPS), so slow devices keep the intended pacing.
+		ticker.add((tk) => this.tick(Math.min(250, tk.elapsedMS)));
 	}
 
 	tick(dtMs: number) {

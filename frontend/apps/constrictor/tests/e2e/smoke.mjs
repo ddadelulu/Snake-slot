@@ -10,11 +10,13 @@ const W = Number(process.argv[5] ?? 1200), H = Number(process.argv[6] ?? 675);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 const problems = [];
+const T0 = Date.now();
 page.on('console', (m) => problems.push(`console.${m.type()}: ${m.text()}`));
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('requestfailed', (r) => problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
 page.on('response', (r) => r.status() >= 400 && problems.push(`http ${r.status()}: ${r.url()}`));
 
+await fetch(`${base}/dev/state`, { method: 'POST', body: JSON.stringify({ activeRound: false, balance: 10_000_000_000, currency: 'USD' }) });
 await page.goto(`${base}/?sessionID=dev&rgs_url=${encodeURIComponent(base)}&currency=USD&lang=en`);
 await page.waitForSelector('button.tap', { timeout: 30000 });
 await page.screenshot({ path: `${out}/smoke_loading.png` });
@@ -30,18 +32,25 @@ for (let i = 0; i < Math.max(spins, forced.length); i++) {
 		const [mode, category] = forced[i].split(':');
 		await fetch(`${base}/dev/force`, { method: 'POST', body: JSON.stringify({ mode, category }) });
 	}
-	await page.keyboard.press('Space');
+	const mode = forced[i]?.split(':')[0] ?? 'base';
+	if (mode === 'hunt' || mode === 'venom') {
+		await page.click('.feat.buy');
+		await page.click(`.card:nth-child(${mode === 'hunt' ? 1 : 2}) .btn.primary`);
+		await page.click('.panel footer .btn.primary');
+	} else {
+		await page.keyboard.press('Space');
+	}
 	await page.waitForTimeout(900);
 	if (i === 0) await page.screenshot({ path: `${out}/smoke_spinning.png` });
 	let n = 0;
 	const t0 = Date.now();
 	while (await page.$('button.spin.busy')) {
-		if (Date.now() - t0 > 180000) throw new Error('round did not finish');
+		if (Date.now() - t0 > 400000) throw new Error('round did not finish');
 		if (shotEvery) await page.screenshot({ path: `${out}/seq_${i}_${String(n++).padStart(3, '0')}.png` });
 		await page.waitForTimeout(shotEvery || 250);
 	}
 	await page.waitForTimeout(300);
 }
 await page.screenshot({ path: `${out}/smoke_after.png` });
-console.log(JSON.stringify({ problems }, null, 1));
+console.log(JSON.stringify({ problems, ms: Date.now() - T0 }, null, 1));
 await browser.close();

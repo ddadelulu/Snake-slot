@@ -1,5 +1,5 @@
 {
-  "mathVersion": "v1-draft",
+  "mathVersion": "v1",
   "grid": {
     "cols": 7,
     "rows": 7
@@ -127,7 +127,7 @@
       "id": "base",
       "cost": 1.0,
       "kind": "base",
-      "rtp": 0.96,
+      "rtp": 0.9600000005064225,
       "maxWin": 25000,
       "huntTrigger": 0.003996003996003996
     },
@@ -135,7 +135,7 @@
       "id": "ante",
       "cost": 2.5,
       "kind": "base",
-      "rtp": 0.96,
+      "rtp": 0.960000000283672,
       "maxWin": 25000,
       "huntTrigger": 0.020724879677831275
     },
@@ -143,7 +143,7 @@
       "id": "hunt",
       "cost": 100.0,
       "kind": "hunt",
-      "rtp": 0.96,
+      "rtp": 0.9599999999969132,
       "maxWin": 25000,
       "huntTrigger": 1.0
     },
@@ -151,7 +151,7 @@
       "id": "venom",
       "cost": 700.0,
       "kind": "venom",
-      "rtp": 0.96,
+      "rtp": 0.9599999999979865,
       "maxWin": 25000,
       "huntTrigger": 1.0
     }

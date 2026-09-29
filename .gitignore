@@ -20,3 +20,5 @@ frontend/**/storybook-static/
 .DS_Store
 # scratch
 *.log
+# reassembled upload set (math/publish_parts.py join)
+math/games/*/publish/upload/

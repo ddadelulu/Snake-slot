@@ -3,7 +3,7 @@
 // scale shader (glossy black, oil-slick iridescence driven by angle, time and the blind-light slats).
 // It only animates what the book says: positions come from book cells, never from randomness.
 
-import { Container, Geometry, Graphics, Mesh, Shader, Sprite, Texture, BlurFilter } from 'pixi.js';
+import { Container, Geometry, Graphics, Mesh, Shader, Sprite, Texture } from 'pixi.js';
 import { clock, ease } from './clock';
 import { texture } from './assets';
 
@@ -153,11 +153,11 @@ export class SnakeView extends Container {
 		});
 		this.uni = shader.resources.snake;
 		this.mesh = new Mesh({ geometry: this.geom, shader });
-		this.shadow.filters = [new BlurFilter({ strength: 10, quality: 3 })];
-		this.shadow.alpha = 0.55;
+		// soft contact shadow from layered strokes (no blur filter: filters are costly on mobile GPUs)
+		this.shadow.alpha = 1;
 		this.addChild(this.shadow, this.mesh);
 		this.head = new Sprite(texture('snake_head'));
-		this.head.anchor.set(0.5, 0.42);
+		this.head.anchor.set(0.5, 0.34); // pivot between the eyes; the neck overlaps the body
 		this.tongue = new Sprite(texture('snake_tongue'));
 		this.tongue.anchor.set(0.5, 1);
 		this.tongue.scale.set(0);
@@ -347,7 +347,11 @@ export class SnakeView extends Container {
 		this.geom.getBuffer('aTan').update();
 		this.geom.getBuffer('aT').update();
 		this.shadow.clear();
-		if (shadowPts.length >= 4) this.shadow.poly(shadowPts, false).stroke({ width: W * 0.9, color: 0x000000, cap: 'round', join: 'round' });
+		if (shadowPts.length >= 4) {
+			for (const [k, a] of [[1.35, 0.1], [1.1, 0.12], [0.85, 0.16], [0.6, 0.2]] as const) {
+				this.shadow.poly(shadowPts, false).stroke({ width: W * k, color: 0x000000, alpha: a, cap: 'round', join: 'round' });
+			}
+		}
 		// head
 		const hp = poly[0];
 		const nextP = poly.length > 1 ? poly[1] : { x: hp.x, y: hp.y + 1 };
@@ -358,7 +362,9 @@ export class SnakeView extends Container {
 		this.headAngle += dA * Math.min(1, (dt / 1000) * 14 * clock.speed);
 		this.headRig.position.set(hp.x, hp.y);
 		this.headRig.rotation = this.headAngle + Math.PI / 2;
-		const hs = (c * 0.98) / Math.max(1, this.head.texture.width);
+		// the head texture's neck is ~31 % of its width; scale it so the neck matches the body width
+		const hs = (c * 1.8) / Math.max(1, this.head.texture.width);
+		this.tongue.y = -0.27 * this.head.texture.height;
 		this.headRig.scale.set(hs * (this.mouthOpen ? 1.06 : 1));
 		this.headRig.visible = this.enterClip > 0.02;
 		// idle tongue flick every 3-6 s (cosmetic timing)

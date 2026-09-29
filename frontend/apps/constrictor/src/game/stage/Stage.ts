@@ -1,7 +1,7 @@
 // PixiJS 8 stage: background, guardian, board, snake and effects. Exposes an async presentation API that
 // the book event handlers await. It animates book data only.
 
-import { Application, Container, Graphics, Sprite, Texture, TilingSprite, BlurFilter, Text } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Texture, TilingSprite, Text } from 'pixi.js';
 import type { Cell, SnakeStep, SymbolCode, ClusterWin, BookEventOuroboros } from '../model/bookTypes';
 import { isPearl, sameCell } from '../model/bookTypes';
 import { BoardView, BOARD, CELL, center, ORIGIN, INNER } from './BoardView';
@@ -103,7 +103,6 @@ export class Stage {
 		pushLine(m, L - 50, m, m + 140, 8);
 		coil.setPath(path.reverse());
 		coil.alpha = 0.92;
-		coil.head.scale.set(1.2);
 		this.guardian.addChild(coil);
 		this.guardianCoil = coil;
 		this.guardianEye = new Sprite(texture('guardian_eye'));
@@ -313,14 +312,14 @@ export class Stage {
 
 	async showWild(cells: Cell[]) {
 		this.snake.wild = 1;
-		const first = this.wildLabelShows < 3;
+		const first = this.wildLabelShows < 2;
 		if (first) {
 			const mid = center(cells[Math.floor(cells.length / 2)]);
 			this.wildLabel.position.set(mid.x, mid.y - CELL * 0.6);
 			this.wildLabelShows++;
 		}
 		await Promise.all([
-			this.snake.glintRun(this.speedMs(650, 250)),
+			this.snake.glintRun(this.speedMs(520, 220)),
 			first ? clock.tween(this.speedMs(900, 400), (t) => (this.wildLabel.alpha = Math.sin(t * Math.PI)), ease.linear) : Promise.resolve(),
 		]);
 	}
@@ -369,4 +368,3 @@ export class Stage {
 }
 
 export const INNER_SIZE = INNER;
-export const BlurFilterRef = BlurFilter;

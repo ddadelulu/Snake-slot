@@ -5,7 +5,7 @@ Every pay is a multiple of 0.1x. Tables are {value: weight}.
 
 from copy import deepcopy
 
-MATH_VERSION = "v1-draft"
+MATH_VERSION = "v1"  # frozen 2026-09-29 (SPEC 15); any change to a table below requires new books
 
 # Paytable bands: 5, 6, 7, 8, 9-10, 11-12, 13-15, 16+  (x bet). Deliberately flat at the top: a long
 # wild snake joins almost every neighbouring symbol into a cluster, so the multiplier (not the band)

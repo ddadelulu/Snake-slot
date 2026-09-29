@@ -19,6 +19,7 @@
 	import BetMenu from './BetMenu.svelte';
 	import ReplayPanel from './ReplayPanel.svelte';
 	import Modal from './Modal.svelte';
+	import Logo from './Logo.svelte';
 	import { game, modeCost, type ModeId } from '$game/state/game.svelte';
 	import { parseLaunchParams, type LaunchParams } from '$game/url';
 	import { configureI18n, t } from '$game/i18n';
@@ -263,6 +264,7 @@
 	const replayMode = $derived(!!params?.replay);
 	const showFeatures = $derived(!replayMode && !game.jurisdiction.disabledBuyFeature);
 	const anteCost = modeCost('ante');
+	const hudIdle = $derived(!game.fs && !(game.snakeLen > 0 && game.moves !== null));
 </script>
 
 <svelte:window bind:innerWidth={vw} bind:innerHeight={vh} onkeydown={onKey} onkeyup={onKeyUp} />
@@ -281,7 +283,7 @@
 	{#if entered}
 		{#if L.portrait}
 			<div class="top" style="height:{L.hudH}px">
-				<Hud layout="top" />
+				{#if hudIdle}<Logo size="sm" />{:else}<Hud layout="top" />{/if}
 			</div>
 			{#if showFeatures}
 				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
@@ -311,7 +313,7 @@
 				{/if}
 			</div>
 			<div class="side right" style="width:{L.side}px;bottom:{barH}px">
-				<Hud layout="side" showWin={L.compact} />
+				{#if hudIdle && !L.compact}<Logo />{:else}<Hud layout="side" showWin={L.compact} />{/if}
 			</div>
 		{/if}
 	{/if}
@@ -325,7 +327,7 @@
 				{winText}
 				layout={L.portrait ? 'portrait' : 'landscape'}
 				preset="noir"
-				dense={L.compact || vw < 360}
+				dense={L.compact}
 				{spinState}
 				{autoText}
 				turboOn={game.turbo}

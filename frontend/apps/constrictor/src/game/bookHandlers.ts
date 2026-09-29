@@ -91,8 +91,12 @@ export function createBookPlayer(stage: Stage) {
 		},
 		setWin: async (ev) => {
 			game.spinWin = ev.amount;
-			if (ev.winLevel >= 1 && ev.winLevel <= 4) {
+			// Free spins: only DEVOUR and above stop the feature for a full banner; smaller wins get a quick pop.
+			const minLevel = game.fs ? 3 : 1;
+			if (ev.winLevel >= minLevel && ev.winLevel <= 4) {
 				await eventEmitter.broadcastAsync({ type: 'tierWin', level: ev.winLevel, amount: ev.amount });
+			} else {
+				eventEmitter.broadcast({ type: 'spinWin', amount: ev.amount });
 			}
 		},
 		setTotalWin: async (ev) => {

@@ -238,11 +238,24 @@
 	}
 	.landscape {
 		grid-template-columns: 1fr auto 1fr;
+		grid-template-rows: minmax(0, 1fr);
 		height: var(--cb-h);
 		padding: 0 clamp(8px, 1.6vw, 22px);
 		background: var(--cb-bg);
 		border-top: 1px solid var(--cb-accent-dim);
 		box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.03) inset;
+	}
+	/* the round spin button rises above the bar instead of overflowing below the viewport */
+	.landscape .mid {
+		align-self: end;
+		padding-bottom: 5px;
+	}
+	.dense.landscape {
+		grid-template-columns: max-content 1fr max-content;
+	}
+	.dense.landscape .mid {
+		align-self: center;
+		padding-bottom: 0;
 	}
 	.portrait {
 		grid-template-columns: 1fr;

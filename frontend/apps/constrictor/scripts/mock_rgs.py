@@ -58,6 +58,7 @@ class World:
         self.active: dict | None = None
         self.forced: tuple[str, int] | None = None
         self.rng = random.Random()
+        self.last: dict | None = None
 
     def pick(self, mode: str) -> dict:
         if self.forced and self.forced[0] == mode and self.forced[1] in self.books[mode]:
@@ -121,6 +122,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"payoutMultiplier": book["payoutMultiplier"] / 100, "costMultiplier": w.costs[mode], "state": book["events"]})
         if path == "/dev/showcase":
             return self._json(200, w.showcase)
+        if path == "/dev/last":
+            return self._json(200, {"last": w.last, "balance": w.balance, "active": bool(w.active)})
         return super().do_GET()
 
     def do_POST(self):
@@ -172,6 +175,7 @@ class Handler(SimpleHTTPRequestHandler):
             }
             if rnd["active"]:
                 w.active = rnd
+            w.last = {"mode": mode, "id": book["id"], "payoutMultiplier": book["payoutMultiplier"], "amount": amount, "cost": cost}
             return self._json(200, {"balance": {"amount": w.balance, "currency": w.currency}, "round": rnd})
         if path == "/wallet/end-round":
             if w.active:

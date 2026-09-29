@@ -349,68 +349,106 @@ def key():
 
 
 def snake_head(open_mouth=False):
-    """Top-down snake head pointing up: spade outline, glossy black, iridescent grazing rim, head plates."""
+    """Top-down viper head pointing up. Analytic height field (smooth float shading, no banding), broad jaw,
+    brow ridges, diamond scales continuous with the body strip, amber slit-pupil eyes, oil-slick rim."""
     W = 512
-    size = W * S
-    cx = size / 2
-    # outline as a polygon (spade): wide jaw at the back, rounded snout at the top, neck at the bottom
-    pts = []
-    for i in range(0, 181):
-        a = math.radians(i)  # 0..180 across the top half from right to left
-        # superellipse-ish snout
-        rx, ry = 118 * S, 205 * S
-        x = rx * math.cos(a)
-        y = -ry * math.sin(a) ** 0.85
-        # widen the back of the jaw
-        k = 1 + 0.18 * math.exp(-((math.sin(a) - 0.35) / 0.25) ** 2)
-        pts.append((cx + x * k, 300 * S + y))
-    pts += [(cx - 86 * S, 470 * S), (cx - 70 * S, size), (cx + 70 * S, size), (cx + 86 * S, 470 * S)]
-    pts = pts[:181] + [(cx - 118 * S, 300 * S), (cx - 96 * S, 410 * S), (cx - 70 * S, size), (cx + 70 * S, size), (cx + 96 * S, 410 * S), (cx + 118 * S, 300 * S)]
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).polygon(pts, fill=255)
-    if open_mouth:
-        md = ImageDraw.Draw(mask)
-        md.polygon([(cx - 10 * S, 250 * S), (cx + 10 * S, 250 * S), (cx + 70 * S, 85 * S), (cx - 70 * S, 85 * S)], fill=0)
-    m = np.array(mask.filter(ImageFilter.GaussianBlur(1.5 * S)), float) / 255
-    # fake height field from distance-to-edge for shading
-    dist = np.array(mask.filter(ImageFilter.GaussianBlur(40 * S)), float) / 255
-    gy, gx = np.gradient(dist)
-    nz = np.ones_like(dist) * 0.004
-    nrm = np.stack([-gx, -gy, nz], -1)
+    SS = 2
+    n = W * SS
+    yy, xx = np.mgrid[0:n, 0:n].astype(float)
+    u = (xx - n / 2) / n  # -0.5..0.5 across
+    v = yy / n  # 0 top (snout) .. 1 bottom (neck)
+
+    def smooth(a, b, x):
+        t = np.clip((x - a) / (b - a), 0, 1)
+        return t * t * (3 - 2 * t)
+
+    # half-width profile: rounded snout, broad jaw, taper into a neck as wide as the body
+    tip, snout_end, jaw, neck = 0.07, 0.20, 0.50, 0.72
+    w_snout = 0.14 * np.sqrt(np.clip(1 - ((snout_end - v) / (snout_end - tip)) ** 2, 0, 1))
+    w_mid = 0.14 + (0.25 - 0.14) * smooth(snout_end, jaw, v)
+    w_back = 0.25 + (0.165 - 0.25) * smooth(jaw, neck, v)
+    w = np.where(v < snout_end, w_snout, np.where(v < jaw, w_mid, w_back))
+    w = np.maximum(w, 1e-4)
+    inside = (np.abs(u) < w) & (v > tip)
+    ux = np.clip(u / w, -1, 1)
+    # height: rounded cross-section, flattened crown, low snout, brow ridges over the eyes
+    h = np.sqrt(np.clip(1 - ux ** 2, 0, 1)) ** 0.8 * (0.55 + 0.45 * smooth(tip, 0.34, v))
+    eye_v, eye_u = 0.31, 0.135
+    for sgn in (-1, 1):
+        h += 0.22 * np.exp(-(((u - sgn * (eye_u - 0.02)) / 0.05) ** 2 + ((v - (eye_v - 0.035)) / 0.045) ** 2))
+    h *= inside
+    hz = h * 0.09 * n  # height in pixels
+    gy, gx = np.gradient(hz)
+    nrm = np.stack([-gx, -gy, np.ones_like(hz)], -1)
     nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+    # scales: diamond lattice in head space (small on the sides, larger plates on the crown)
+    crown_k = np.exp(-((u / 0.07) ** 2)) * np.exp(-(((v - 0.27) / 0.12) ** 2))
+    cell = (0.042 + 0.05 * crown_k + 0.012 * (np.abs(ux) < 0.55)) * (0.8 + 0.4 * smooth(tip, neck, v))
+    a = (u + v) / cell
+    b = (v - u) / cell
+    fa, fb = a - np.floor(a), b - np.floor(b)
+    edge = np.minimum(np.minimum(fa, 1 - fa), np.minimum(fb, 1 - fb))  # 0 at the seams
+    seam = 1 - smooth(0.0, 0.12, edge)
+    dome = smooth(0.0, 0.5, edge)  # each scale bulges a little
+    # a central seam down the crown (paired head shields)
+    seam = np.maximum(seam, np.exp(-((u / 0.0035) ** 2)) * (v > 0.12) * (v < 0.46) * 0.8)
     lam = np.clip(nrm @ LIGHT, 0, 1)
     half = LIGHT + np.array([0, 0, 1.0])
     half /= np.linalg.norm(half)
-    spec = np.clip(nrm @ half, 0, 1) ** 30
-    col = np.stack([6 + 22 * lam, 7 + 23 * lam, 9 + 27 * lam], -1)
-    yy, xx = np.mgrid[0:size, 0:size].astype(float)
-    hue = (yy / size) * 5 + (xx / size) * 2
+    spec = np.clip(nrm @ half, 0, 1) ** 60
+    graze = np.clip(1 - nrm[..., 2], 0, 1) ** 0.9
+    hue = 6.0 * v + 3.0 * ux + 2.0 * graze
     irid = np.stack([np.sin(hue) * 0.5 + 0.5, np.sin(hue + 2.1) * 0.5 + 0.5, np.sin(hue + 4.2) * 0.5 + 0.5], -1)
-    graze = np.clip(1 - nrm[..., 2], 0, 1) ** 1.5
-    col = col + irid * 120 * (graze * lam)[..., None] * 0.6 + 255 * spec[..., None] * 0.6
-    rgba = np.zeros((size, size, 4))
+    base = np.array([15.0, 16.0, 20.0])
+    col = base[None, None, :] * (0.55 + 0.9 * lam[..., None]) + 34 * lam[..., None] * dome[..., None]
+    col += irid * (70 * graze * (0.35 + 0.65 * lam))[..., None] * (0.6 + 0.4 * dome[..., None])
+    col += 255 * (spec * (0.35 + 0.65 * dome))[..., None] * 0.55
+    col *= (1 - 0.65 * seam)[..., None]
+    # rim light from the moon side (upper left)
+    rim = np.clip(-ux, 0, 1) ** 6 * inside
+    col += np.array([90, 96, 110])[None, None, :] * rim[..., None] * 0.5
+    alpha = inside.astype(float) * (1 - smooth(0.66, 0.97, v))  # the neck fades into the body mesh
+    # soften the silhouette
+    am = Image.fromarray((alpha * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.2 * SS))
+    rgba = np.zeros((n, n, 4))
     rgba[..., :3] = np.clip(col, 0, 255)
-    rgba[..., 3] = 255 * m
+    rgba[..., 3] = np.array(am, float)
     im = Image.fromarray(rgba.astype(np.uint8), "RGBA")
     d = ImageDraw.Draw(im)
-    # head plates (subtle lines)
-    for off in (-34, 34):
-        d.line([(cx + off * S, 150 * S), (cx + off * 1.6 * S, 300 * S)], fill=(40, 42, 48, 140), width=2 * S)
-    d.line([(cx - 60 * S, 190 * S), (cx + 60 * S, 190 * S)], fill=(40, 42, 48, 110), width=2 * S)
-    # eyes on the sides, glassy
-    for ex in (-1, 1):
-        x, y = cx + ex * 84 * S, 205 * S
-        d.ellipse([x - 17 * S, y - 13 * S, x + 17 * S, y + 13 * S], fill=(3, 3, 5, 255), outline=(70, 72, 80, 255), width=2 * S)
-        d.ellipse([x - 9 * S, y - 8 * S, x - 2 * S, y - 2 * S], fill=(235, 225, 200, 230))
+    cx = n / 2
+    # eyes: amber iris, vertical slit, glossy highlight, dark socket ring
+    for sgn in (-1, 1):
+        ex, ey = cx + sgn * eye_u * n, eye_v * n
+        R = 0.038 * n
+        d.ellipse([ex - R * 1.25, ey - R * 1.15, ex + R * 1.25, ey + R * 1.15], fill=(4, 4, 6, 255))
+        iris = Image.new("RGBA", (int(R * 2 + 4), int(R * 2 + 4)), (0, 0, 0, 0))
+        iy, ix = np.mgrid[0 : iris.height, 0 : iris.width].astype(float)
+        rr = np.hypot(ix - iris.width / 2, iy - iris.height / 2) / R
+        ring = np.clip(1 - rr, 0, 1)
+        icol = np.stack([217 * (0.55 + 0.45 * ring), 150 * (0.45 + 0.55 * ring), 50 * (0.4 + 0.6 * ring)], -1)
+        ia = (rr < 1).astype(float) * 255
+        iris_px = np.dstack([icol, ia]).astype(np.uint8)
+        iris = Image.fromarray(iris_px, "RGBA")
+        im.alpha_composite(iris, (int(ex - iris.width / 2), int(ey - iris.height / 2)))
+        d = ImageDraw.Draw(im)
+        d.ellipse([ex - R * 0.22, ey - R * 0.95, ex + R * 0.22, ey + R * 0.95], fill=(2, 2, 3, 255))
+        d.ellipse([ex - R * 0.62, ey - R * 0.7, ex - R * 0.18, ey - R * 0.3], fill=(255, 246, 225, 210))
     # nostrils
-    for ex in (-1, 1):
-        d.ellipse([cx + ex * 18 * S - 4 * S, 110 * S, cx + ex * 18 * S + 4 * S, 118 * S], fill=(2, 2, 3, 255))
+    for sgn in (-1, 1):
+        nx_, ny_ = cx + sgn * 0.045 * n, 0.115 * n
+        d.ellipse([nx_ - 0.009 * n, ny_ - 0.006 * n, nx_ + 0.009 * n, ny_ + 0.006 * n], fill=(2, 2, 3, 255))
     if open_mouth:
-        inner = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        ImageDraw.Draw(inner).polygon([(cx - 8 * S, 245 * S), (cx + 8 * S, 245 * S), (cx + 60 * S, 95 * S), (cx - 60 * S, 95 * S)], fill=(120, 44, 56, 255))
-        inner.alpha_composite(im)
-        im = inner
-    return drop_shadow(finish(im, W, W), (6, 10), 12, 150)
+        # jaws parting at the snout: dark red gape inside the silhouette, two pale fangs
+        mouth = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+        md = ImageDraw.Draw(mouth)
+        md.polygon([(cx - 0.085 * n, 0.085 * n), (cx + 0.085 * n, 0.085 * n), (cx + 0.035 * n, 0.2 * n), (cx - 0.035 * n, 0.2 * n)], fill=(88, 18, 30, 255))
+        md.polygon([(cx - 0.05 * n, 0.1 * n), (cx + 0.05 * n, 0.1 * n), (cx + 0.02 * n, 0.17 * n), (cx - 0.02 * n, 0.17 * n)], fill=(140, 40, 56, 255))
+        for sgn in (-1, 1):
+            md.polygon([(cx + sgn * 0.07 * n, 0.09 * n), (cx + sgn * 0.052 * n, 0.09 * n), (cx + sgn * 0.058 * n, 0.15 * n)], fill=(236, 228, 210, 255))
+        m_a = np.array(mouth.split()[-1], float) * (np.array(am, float) / 255)
+        mouth.putalpha(Image.fromarray(m_a.astype(np.uint8), "L"))
+        im.alpha_composite(mouth)
+    return drop_shadow(im.resize((W, W), Image.LANCZOS), (6, 10), 12, 150)
 
 
 def tongue():

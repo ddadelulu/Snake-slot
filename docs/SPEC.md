@@ -1,10 +1,10 @@
 # CONSTRICTOR: Game Specification (canonical)
 
 > **This file is canonical.** If code and SPEC disagree, find out which one is wrong, fix it, and log
-> the fix in DECISIONS.md. Numeric parameters marked **[P3]** are set during optimisation and frozen at
-> **math v1** (see §15).
+> the fix in DECISIONS.md. Numeric parameters marked **[P3]** were set during optimisation and are frozen
+> at **math v1** (values in §15).
 
-- Studio: **Studio 12** · Working title: **CONSTRICTOR** · Math version: **v1 (draft until frozen)**
+- Studio: **Studio 12** · Working title: **CONSTRICTOR** · Math version: **v1 (frozen 2026-09-29, §15)**
 - Engine: Stake Engine math-sdk `a6dccd8` (vendored in `/math`), web-sdk `1843d60`.
 
 ---
@@ -98,7 +98,7 @@ The round starts directly in THE HUNT (`enterBonus`, reason `hunt`). The number 
 
 ### 4.3 VENOM HUNT (super buy)
 The round starts directly in VENOM HUNT (`enterBonus`, reason `venom`): **12 free spins**, snake starts at
-**length 8** with a **×5** multiplier (final values [P3], §8.2). No base spin is played.
+**length 8** with a **×2** multiplier (§8.2). No base spin is played.
 
 ---
 
@@ -218,7 +218,7 @@ Consequences (stated in the rules):
 - A group made **only** of wild cells does not pay.
 - Two groups of the same symbol joined through wild cells form **one** cluster.
 
-### 7.3 Paytable (× bet) **[P3]**
+### 7.3 Paytable (× bet): values in §15.1
 Size bands: **5, 6, 7, 8, 9–10, 11–12, 13–15, 16+**. Every value is a multiple of 0.1× (REQUIREMENTS §3.2).
 
 ### 7.4 Spin win
@@ -274,9 +274,9 @@ The same as THE HUNT except:
 | Mode id | Name | Cost | What it does |
 |---|---|---|---|
 | `base` | BASE | 1× | Normal play. |
-| `ante` | SERPENT CALL | **[P3]** (target ~2.5–3×) | Same as BASE, but the KEY chance is raised (≈ 5× the Hunt frequency; exact factor [P3]). EGG chance unchanged. |
-| `hunt` | THE HUNT | **[P3]** (~100×) | Starts THE HUNT immediately; 3/4/5-key start weighted by the math. |
-| `venom` | VENOM HUNT | **[P3]** (~400×) | Starts VENOM HUNT immediately. |
+| `ante` | SERPENT CALL | **2.5×** | Same as BASE, but the KEY chance is raised: THE HUNT triggers ×5.19 as often (1 in 48.25 vs 1 in 250.25). EGG chance unchanged. |
+| `hunt` | THE HUNT | **100×** | Starts THE HUNT immediately; 3/4/5-key start weighted 3.4 : 0.5 : 0.1. |
+| `venom` | VENOM HUNT | **700×** | Starts VENOM HUNT immediately (brief ~400×; cost follows the math, D-015). |
 
 - RTP target **96.00 % in every mode** (hard limits 90–98 %, spread ≤ 0.5 %; aim ±0.05 %).
 - Max win **25,000×** in every mode.
@@ -414,6 +414,66 @@ the UI guide, and the disclaimer.
 
 ---
 
-## 15. Parameters (math v1): filled and frozen in P3
+## 15. Parameters (math v1): frozen 2026-09-29
 
-_Pending P3 optimisation._
+Source of truth: `math/games/constrictor/params.py` (`MATH_VERSION = "v1"`). Changing any value below
+requires new books, new LUTs and a new verification run. Measured results (RTP, hit rates, feature
+frequencies, distribution, SDK metrics) are in `docs/MATH_REPORT.md`, generated from the verifier output.
+
+### 15.1 Paytable (× bet), size bands 5 · 6 · 7 · 8 · 9–10 · 11–12 · 13–15 · 16+
+
+| Sym | 5 | 6 | 7 | 8 | 9–10 | 11–12 | 13–15 | 16+ |
+|---|---|---|---|---|---|---|---|---|
+| H1 | 2.2 | 2.7 | 3.2 | 3.8 | 4.4 | 5.4 | 6.5 | 8.6 |
+| H2 | 1.6 | 2.0 | 2.4 | 2.8 | 3.2 | 3.9 | 4.9 | 6.5 |
+| H3 | 1.3 | 1.5 | 1.8 | 2.2 | 2.6 | 3.0 | 3.8 | 4.9 |
+| H4 | 1.1 | 1.3 | 1.5 | 1.7 | 2.2 | 2.6 | 3.2 | 4.3 |
+| L1 | 0.9 | 1.0 | 1.1 | 1.3 | 1.6 | 1.9 | 2.4 | 3.2 |
+| L2 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.5 | 1.9 | 2.7 |
+| L3 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.6 | 2.2 |
+| L4 | 0.4 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.7 |
+
+Flat top end on purpose: a long wild snake joins nearly every neighbour into one cluster, so the
+multiplier, not the size band, drives the big wins (D-013).
+
+### 15.2 Cell draws
+- Regular symbol weights (every mode, every game type): H1 6 · H2 7 · H3 8 · H4 9 · L1 11 · L2 12 · L3 13 · L4 14.
+- KEY count {0,1,2,3,4,5}: base 900 · 85 · 12 · 3.4 · 0.5 · 0.1 (P(≥3) = 4.0/1001.0 = 1 in 250.25);
+  SERPENT CALL 900 · 85 · 12 · 18.0 · 2.6 · 0.5 (P(≥3) = 21.1/1018.1 = 1 in 48.25, ×5.19);
+  free spins 800 · 150 · 30 · 3 · 0.5 · 0.1 (retrigger P(≥3) = 3.6/984.1 per spin).
+- EGG (base and ante): p = 1/16 per spin.
+- Base pearls (only with an EGG), count {0..4}: 25 · 35 · 25 · 10 · 5; values {1,2,3,5}: 50 · 25 · 15 · 10.
+- MOVES: base {4..10}: 10 · 15 · 18 · 18 · 15 · 12 · 10; free spins {4..12}: 8 · 10 · 12 · 13 · 13 · 12 · 11 · 10 · 11.
+
+### 15.3 Pearl tiers (hidden, drawn once per base egg spin / once per feature)
+
+| Where | Tier (weight) | Pearl count | Pearl values | Other |
+|---|---|---|---|---|
+| Base egg spin | lean (98) | as 15.2 | as 15.2 | |
+| | rich (2) | {4..7}: 20 · 35 · 30 · 15 | {1,2,3,5}: 70 · 20 · 7 · 3 | moves {8,9,10}: 20 · 30 · 50; biasPearl 8, biasSeek 5 |
+| THE HUNT | lean (85.5) | {0,1,2}: 85 · 14 · 1 | {1,2,3,5}: 55 · 30 · 12 · 3 | |
+| | normal (12) | {0..3}: 65 · 28 · 6 · 1 | {1,2,3,5,10}: 50 · 30 · 12 · 6 · 2 | |
+| | rich (2.5) | {0..4}: 15 · 35 · 30 · 15 · 5 | {1,2,3,5,10}: 70 · 18 · 7 · 3 · 2 | biasPearl 4, biasSeek 2.5 |
+| VENOM HUNT | single | {0,1,2}: 80 · 17 · 3 | {1,2,3,5,10,25}: 60 · 25 · 10 · 3 · 1.5 · 0.5 | biasTail 1.5, seekTail 1.5, pBite 0.5 |
+
+### 15.4 Snake walk (math-internal, §5.5)
+biasStraight 1.5 · biasPearl 4.0 · biasSeek 2.0 · biasTail 4.0 · seekTail 3.0 · pBite 0.9 (tier and mode
+overrides above). Pearl-proof lookahead 12 → 8 → 4 → none. LCAP 20, minimum bite length 8.
+
+### 15.5 Features and modes
+- THE HUNT: 3/4/5 KEYs → 10/12/15 spins; retrigger +5; max 30 spins; snake enters at length 3, ×1.
+- VENOM HUNT: 12 spins; snake enters at length 8, ×2; retrigger as THE HUNT.
+- Hunt buy start keys {3,4,5}: 3.4 · 0.5 · 0.1 (the same relative odds as a natural trigger).
+- Costs: BASE 1× · SERPENT CALL 2.5× · THE HUNT 100× · VENOM HUNT 700× (the brief's ~400× did not pay
+  back at ×2 with length 8; the cost follows the math, D-015).
+
+### 15.6 Simulation and weighting
+- Books: base 1,000,000 · ante 1,000,000 · hunt 250,000 · venom 250,000.
+- Simulation criteria quotas (book counts only, not probabilities): base wincap 0.05 % / freegame 5 %;
+  ante wincap 0.05 % / freegame 10 %; hunt wincap 0.2 %; venom wincap 0.4 %. Max-win books are searched
+  under boosted draws (same rules).
+- LUT weighting (D-017): exact bucket probabilities: P(freegame) = the KEY-table trigger probability
+  (1 for buys), P(max win) = 1 in 4,000,000 (base), 1 in 1,000,000 (ante), 1 in 50,000 (hunt),
+  1 in 10,000 (venom). Natural weights within buckets, one power tilt (1 + payout)^θ on the freegame
+  bucket, solved for RTP = 96.00 %. Integer weights summing to ≈ 2⁵³. θ: base −0.0010, ante −0.0157,
+  hunt +0.0356, venom −0.0193.

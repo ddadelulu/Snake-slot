@@ -11,10 +11,14 @@
 
 	let slam = $state(0);
 	let big = $state(false);
+	let movesPop = $state(0);
 	eventEmitter.subscribeOnMount({
 		multSlam: (e) => {
 			big = e.big;
 			slam++;
+		},
+		movesStart: () => {
+			movesPop++;
 		},
 	});
 
@@ -33,7 +37,9 @@
 		<div class="stats">
 			<div class="stat">
 				<span class="lbl">{t('hud.moves')}</span>
-				<span class="val num display">{game.moves ? game.moves.left : '–'}</span>
+				{#key movesPop}
+					<span class="val num display mv" class:pop={movesPop > 0}>{game.moves ? game.moves.left : '–'}</span>
+				{/key}
 			</div>
 			<div class="stat">
 				<span class="lbl">{t('hud.length')}</span>
@@ -123,6 +129,10 @@
 	.val {
 		font-size: clamp(16px, 3.4vh, 30px);
 		line-height: 1.05;
+	}
+	.mv.pop {
+		display: inline-block;
+		animation: pop 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
 	}
 	.m {
 		color: var(--brass-hi);

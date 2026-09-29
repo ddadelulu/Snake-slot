@@ -9,6 +9,7 @@ export type EmitterEvent =
 	| { type: 'ouroborosTitle' }
 	| { type: 'multSlam'; value: number; big: boolean }
 	| { type: 'maxWin'; amount: number }
-	| { type: 'movesStart'; n: number };
+	| { type: 'movesStart'; n: number }
+	| { type: 'spinWin'; amount: number };
 
 export const { eventEmitter } = createEventEmitter<EmitterEvent>();
