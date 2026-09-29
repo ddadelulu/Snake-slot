@@ -27,8 +27,8 @@ const heap = async () => page.evaluate(() => { globalThis.gc?.(); return Math.ro
 const t0 = Date.now();
 for (let i = 0; i < rounds; i++) {
 	let mode = 'base';
-	if (i % 25 === 12 && modes.includes('hunt')) mode = 'hunt';
-	else if (i % 50 === 37 && modes.includes('venom')) mode = 'venom';
+	if (i % 50 === 37 && modes.includes('venom')) mode = 'venom';
+	else if (i % 25 === 12 && modes.includes('hunt')) mode = 'hunt';
 	else if (i % 10 === 5 && modes.includes('ante')) mode = 'ante';
 	// every 7th round: a showcase book (big wins, triggers, max win) instead of a natural draw
 	if (i % 7 === 3) {
@@ -71,6 +71,7 @@ for (let i = 0; i < rounds; i++) {
 	if (err) { problems.push(`round ${i}: dialog open: ${(await err.innerText()).slice(0, 80)}`); await page.keyboard.press('Escape'); }
 	stats.rounds++;
 	if (i === 49) stats.heapMB.afterWarmup = await heap();
+	if (i > 49 && i % 100 === 99) stats.heapMB[`r${i + 1}`] = await heap();
 	if (i === rounds - 1) stats.heapMB.end = await heap();
 	stats.byMode[mode] = (stats.byMode[mode] ?? 0) + 1;
 	if (st.last.payoutMultiplier > 0) stats.wins++;

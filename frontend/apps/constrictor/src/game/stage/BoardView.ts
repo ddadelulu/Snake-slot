@@ -1,7 +1,18 @@
 // The 7x7 board in "board units" (the board is 1000 x 1000 units, scaled to the DOM slot).
 // Presentation only: every symbol shown comes from a book event.
 
-import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { Container, Graphics, GraphicsContext, Sprite, Text, Texture } from 'pixi.js';
+
+const shardCtx = new Map<number, GraphicsContext>();
+/** Shared (never destroyed) shard shape per colour: shards reuse it instead of owning a context each. */
+function shardContext(col: number): GraphicsContext {
+	let c = shardCtx.get(col);
+	if (!c) {
+		c = new GraphicsContext().poly([0, -8, 7, 6, -7, 5]).fill({ color: col });
+		shardCtx.set(col, c);
+	}
+	return c;
+}
 
 let dotTex: Texture | null = null;
 /** Shared radial soft dot (white, tinted per use). */
@@ -58,10 +69,7 @@ class CellView extends Container {
 	set(code: SymbolCode | 'EMPTY' | null) {
 		this.code = code;
 		this.empty.visible = code === 'EMPTY';
-		if (this.tag) {
-			this.tag.destroy({ children: true });
-			this.tag = null;
-		}
+		if (this.tag) this.tag.visible = false;
 		if (!code || code === 'EMPTY') {
 			this.sym.visible = false;
 			return;
@@ -73,24 +81,36 @@ class CellView extends Container {
 		this.sym.scale.set(k);
 		this.sym.position.set(0, 0);
 		this.sym.rotation = 0;
-		if (isPearl(code)) this.addTag(PEARL_VALUE[code], code === 'P10' || code === 'P25');
+		if (isPearl(code)) this.showTag(PEARL_VALUE[code], code === 'P10' || code === 'P25');
 	}
-	private addTag(v: number, venom: boolean) {
-		const c = new Container();
-		const label = new Text({
-			text: `+${v}`,
-			style: { fontFamily: 'Archivo', fontWeight: '800', fontSize: CELL * 0.2, fill: venom ? 0x07130c : 0x1a1208 },
-		});
-		label.anchor.set(0.5);
-		const w = label.width + CELL * 0.12, h = CELL * 0.24;
-		const bg = new Graphics()
-			.roundRect(-w / 2, -h / 2, w, h, h * 0.35)
-			.fill({ color: venom ? 0x3dff8a : 0xd9b26f })
-			.stroke({ color: venom ? 0x0c4a24 : 0x6b4e22, width: 2 });
-		c.addChild(bg, label);
-		c.position.set(CELL * 0.24, CELL * 0.28);
-		this.tag = c;
-		this.addChild(c);
+	// One tag per cell, created once and updated in place (no per-spin Text/Graphics allocations).
+	private tagLabel: Text | null = null;
+	private tagBg: Graphics | null = null;
+	private tagKey = '';
+	private showTag(v: number, venom: boolean) {
+		if (!this.tag) {
+			this.tag = new Container();
+			this.tagBg = new Graphics();
+			this.tagLabel = new Text({ text: '', style: { fontFamily: 'Archivo', fontWeight: '800', fontSize: CELL * 0.2, fill: 0x1a1208 } });
+			this.tagLabel.anchor.set(0.5);
+			this.tag.addChild(this.tagBg, this.tagLabel);
+			this.tag.position.set(CELL * 0.24, CELL * 0.28);
+			this.addChild(this.tag);
+		}
+		const key = `${v}:${venom}`;
+		if (key !== this.tagKey) {
+			this.tagKey = key;
+			this.tagLabel!.text = `+${v}`;
+			this.tagLabel!.style.fill = venom ? 0x07130c : 0x1a1208;
+			const w = this.tagLabel!.width + CELL * 0.12, h = CELL * 0.24;
+			this.tagBg!
+				.clear()
+				.roundRect(-w / 2, -h / 2, w, h, h * 0.35)
+				.fill({ color: venom ? 0x3dff8a : 0xd9b26f })
+				.stroke({ color: venom ? 0x0c4a24 : 0x6b4e22, width: 2 });
+		}
+		this.tag.visible = true;
+		this.tag.alpha = 1;
 	}
 }
 
@@ -265,7 +285,8 @@ export class BoardView extends Container {
 	}
 
 	clearWins() {
-		this.winLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
+		// destroy() without options also frees each Graphics' own GraphicsContext (Pixi 8)
+		this.winLayer.removeChildren().forEach((c) => c.destroy());
 		for (const cv of this.cells) cv.scale.set(1);
 	}
 
@@ -276,6 +297,7 @@ export class BoardView extends Container {
 		for (const cl of clusters) {
 			const set = new Set(cl.positions.map((c) => idx(c)));
 			const g = new Graphics();
+			const glow = new Graphics();
 			for (const c of cl.positions) {
 				const x0 = ORIGIN + c[0] * CELL, y0 = ORIGIN + c[1] * CELL;
 				const edges: [boolean, number, number, number, number][] = [
@@ -284,10 +306,12 @@ export class BoardView extends Container {
 					[!set.has(idx([c[0] - 1, c[1]])) || c[0] === 0, x0, y0, x0, y0 + CELL],
 					[!set.has(idx([c[0] + 1, c[1]])) || c[0] === 6, x0 + CELL, y0, x0 + CELL, y0 + CELL],
 				];
-				for (const [on, a, b, cc, d] of edges) if (on) g.moveTo(a, b).lineTo(cc, d);
+				for (const [on, a, b, cc, d] of edges) if (on) {
+					g.moveTo(a, b).lineTo(cc, d);
+					glow.moveTo(a, b).lineTo(cc, d);
+				}
 			}
-			// glow from layered wide strokes of the same outline (no blur filter)
-			const glow = g.clone();
+			// glow from layered wide strokes of the same outline (no blur filter; each Graphics owns its context)
 			for (const [w, a] of [[18, 0.04], [12, 0.06], [8, 0.1]] as const) glow.stroke({ color: 0xffffff, width: w, alpha: a, cap: 'round' });
 			glow.tint = GEM_COLOR[cl.symbol] ?? 0xd9b26f;
 			g.stroke({ color: 0xd9b26f, width: 5, alpha: 0.95, cap: 'round' });
@@ -317,7 +341,7 @@ export class BoardView extends Container {
 			if (cv.tag) cv.tag.visible = false;
 			const p = center(c);
 			for (let k = 0; k < 9; k++) {
-				const g = new Graphics().poly([0, -8, 7, 6, -7, 5]).fill({ color: col });
+				const g = new Graphics(shardContext(col));
 				g.position.set(p.x, p.y);
 				shards.addChild(g);
 				const a = rnd() * Math.PI * 2;
