@@ -47,6 +47,6 @@ describe.skipIf(!modes.length)('book soak', () => {
 				expect(b.payoutMultiplier).toBeLessThanOrEqual(2_500_000);
 				if (s.fs) expect(s.fs.total).toBeLessThanOrEqual(30);
 			}
-		});
+		}, 60_000); // venom books are large; the default 5 s is too tight on a loaded machine
 	}
 });
