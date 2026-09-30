@@ -490,14 +490,58 @@ def snake_head(open_mouth=False):
 
 
 def tongue():
+    """Thin forked tongue, base at the bottom centre (the game anchors it there). A tapered round stem splits into
+    two tines that curve outwards to fine points; dark charcoal with a red tint, lit from the upper left, with a
+    wet specular line (HIGGSFIELD_PROMPTS SNAKE_TONGUE)."""
     W = 256
-    im = canvas(W, W)
-    d = ImageDraw.Draw(im)
-    c = (120, 24, 34, 255)
-    d.line([(128 * S, 250 * S), (128 * S, 90 * S)], fill=c, width=7 * S)
-    d.line([(128 * S, 92 * S), (104 * S, 18 * S)], fill=c, width=6 * S)
-    d.line([(128 * S, 92 * S), (152 * S, 18 * S)], fill=c, width=6 * S)
-    return finish(im, W, W)
+    size = W * S
+    yy, xx = np.mgrid[0:size, 0:size].astype(float) / S
+    fork = 100.0
+    # centre lines as (x, y, radius) samples, in 256-px units
+    t = np.linspace(0, 1, 48)
+    stem = np.stack([128 + 0 * t, 254 - (254 - fork) * t, 7.5 - 2.0 * t], -1)
+    tines = []
+    for side in (-1, 1):
+        tines.append(np.stack([128 + side * (4 + 30 * t ** 1.5), fork - 88 * t, 5.2 * (1 - t) ** 0.7 + 0.6], -1))
+    field = np.full((size, size), 1e9)
+    lat = np.zeros((size, size))  # signed lateral offset / radius at the nearest segment (for the tube normal)
+    along = np.zeros((size, size))  # 0 at the base, 1 at the tips
+    for li, line in enumerate([stem] + tines):
+        for i in range(len(line) - 1):
+            (x0, y0, r0), (x1, y1, r1) = line[i], line[i + 1]
+            pad = max(r0, r1) + 2
+            bx0, bx1 = int(max(0, (min(x0, x1) - pad) * S)), int(min(size, (max(x0, x1) + pad) * S) + 1)
+            by0, by1 = int(max(0, (min(y0, y1) - pad) * S)), int(min(size, (max(y0, y1) + pad) * S) + 1)
+            px, py = xx[by0:by1, bx0:bx1], yy[by0:by1, bx0:bx1]
+            dx, dy = x1 - x0, y1 - y0
+            ll = dx * dx + dy * dy
+            u = np.clip(((px - x0) * dx + (py - y0) * dy) / ll, 0, 1)
+            qx, qy = px - (x0 + u * dx), py - (y0 + u * dy)
+            dist = np.hypot(qx, qy)
+            r = r0 + (r1 - r0) * u
+            f = dist - r
+            sub = field[by0:by1, bx0:bx1]
+            better = f < sub
+            sub[better] = f[better]
+            ln = math.sqrt(ll)
+            side_off = (qx * -dy + qy * dx) / ln / np.maximum(r, 0.3)  # cross product sign: which side of the line
+            lat[by0:by1, bx0:bx1][better] = np.clip(side_off, -1, 1)[better]
+            a = (i + u) / (len(line) - 1)
+            along[by0:by1, bx0:bx1][better] = (0.55 * a if li == 0 else 0.55 + 0.45 * a)[better]
+    inside = np.clip(0.5 - field * S / 2, 0, 1)
+    nx = -lat  # +x of the tube normal points left, towards the light
+    nz = np.sqrt(np.clip(1 - nx ** 2, 0, 1))
+    lam = np.clip(0.62 * nx + 0.25 + 0.6 * nz, 0, 1)  # light from the upper left (tube normal in x only)
+    base = np.array([138.0, 38.0, 52.0])
+    tip = np.array([74.0, 28.0, 38.0])
+    col = base[None, None] * (1 - along[..., None]) + tip[None, None] * along[..., None]
+    col = col * (0.45 + 0.75 * lam[..., None])
+    spec = np.clip(1 - np.abs(nx - 0.45) / 0.22, 0, 1) ** 2 * (1 - 0.6 * along)
+    col = col + spec[..., None] * np.array([150.0, 118.0, 110.0])
+    rgba = np.zeros((size, size, 4))
+    rgba[..., :3] = np.clip(col, 0, 255)
+    rgba[..., 3] = 255 * inside
+    return finish(Image.fromarray(rgba.astype(np.uint8), "RGBA"), W, W)
 
 
 def tail():

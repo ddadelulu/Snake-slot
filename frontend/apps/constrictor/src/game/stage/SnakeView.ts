@@ -251,11 +251,17 @@ export class SnakeView extends Container {
 	}
 
 	flick() {
+		// shoot out, waggle the fork twice, draw back in
 		const tg = this.tongue;
-		void clock.tween(260, (t) => {
-			const k = t < 0.5 ? t * 2 : (1 - t) * 2;
-			tg.scale.set(0.5 * k, 0.9 * k);
-		}, ease.linear);
+		void clock.tween(420, (t) => {
+			const out = t < 0.25 ? ease.out(t / 0.25) : t > 0.75 ? 1 - ease.inOut((t - 0.75) / 0.25) : 1;
+			const w = t > 0.2 && t < 0.8 ? Math.sin(((t - 0.2) / 0.6) * Math.PI * 4) : 0;
+			tg.scale.set(0.5 * out * (1 + 0.12 * w), 0.9 * out * (1 - 0.06 * Math.abs(w)));
+			tg.rotation = 0.07 * w;
+		}, ease.linear).then(() => {
+			tg.scale.set(0);
+			tg.rotation = 0;
+		});
 	}
 
 	async glintRun(ms: number) {

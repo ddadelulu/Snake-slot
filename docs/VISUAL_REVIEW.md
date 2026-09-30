@@ -41,6 +41,9 @@ and Storybook. Every problem below was seen in a screenshot, fixed, and re-check
   target filenames are ready in `art/HIGGSFIELD_PROMPTS.md`, and the manifest swaps finals in without code changes.
 - **Hero moments 1 and 3** are now in-engine sequences (#22, #23). The photographic versions the bible
   imagines (a real vault door swinging open; the serpent coiled on a mountain of jewels) need the final art or the
-  videos listed in `art/HIGGSFIELD_PROMPTS.md`.
-- The **tongue** is a simple forked sprite (placeholder).
+  videos listed in `art/HIGGSFIELD_PROMPTS.md`. The game already plays those clips when they are present
+  (`src/game/video.ts`, D-026: intro, THE HUNT, max win, OUROBOROS overlay; checked by `tests/e2e/video.mjs`),
+  so this gap closes by dropping the files into `art/final/` with no code change.
+- The **tongue** is a procedural placeholder (tapered, wet, forked; it shoots out, waggles and draws back); the
+  photoreal final is `SNAKE_TONGUE` in `art/HIGGSFIELD_PROMPTS.md`.
 - **Audio** is synthesized placeholder audio (D-021); `art/AUDIO_SPEC.md` is the brief for the finals.
