@@ -21,6 +21,7 @@
 	import StatusPlaque from './StatusPlaque.svelte';
 	import Taskbar from './Taskbar.svelte';
 	import BonusButton from './BonusButton.svelte';
+	import Readouts from './Readouts.svelte';
 	import { game, modeCost, type ModeId } from '$game/state/game.svelte';
 	import { parseLaunchParams, type LaunchParams } from '$game/url';
 	import { configureI18n, t } from '$game/i18n';
@@ -262,8 +263,6 @@
 	const betIdx = $derived(game.betLevels.indexOf(game.bet));
 	const onOff = (on: boolean) => t(on ? 'menu.on' : 'menu.off');
 	const tbLabels = $derived({
-		balance: t('hud.balance'),
-		win: t('hud.win'),
 		bet: t('hud.bet'),
 		spin: t('button.spin'),
 		skip: t('button.skip'),
@@ -284,6 +283,13 @@
 	const anteCost = modeCost('ante');
 	// wide: one row; compact: slim row (mini-player and narrow landscape); stacked: phones
 	const tbLayout = $derived<'wide' | 'stacked' | 'compact'>(L.portrait ? 'stacked' : L.compact || vw < 700 ? 'compact' : 'wide');
+	const readoutProps = $derived({
+		balanceLabel: t('hud.balance'),
+		winLabel: t('hud.win'),
+		balanceText: money(game.balance),
+		winText,
+		showBalance: !replayMode,
+	});
 	const bonusProps = $derived({
 		label: t('button.buyBonus'),
 		items: (['hunt', 'venom'] as ModeId[]).map((id) => ({ id, label: t(`mode.${id}`), price: money(Math.round(game.bet * modeCost(id))) })),
@@ -293,7 +299,7 @@
 		anteChip: t('bonus.anteChip'),
 		disabled: !canPlay,
 		anteDisabled: game.busy || !!game.autoplay,
-		compact: L.compact,
+		compact: L.compact || vw < 360,
 		onPick: (id: string) => canPlay && pickBuy(id as ModeId),
 		onAnte: toggleAnte,
 	});
@@ -322,6 +328,12 @@
 			{#if showFeatures}
 				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
 					<BonusButton {...bonusProps} />
+					<Readouts {...readoutProps} compact={vw < 360} />
+				</div>
+			{:else}
+				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
+					<span></span>
+					<Readouts {...readoutProps} compact={vw < 360} />
 				</div>
 			{/if}
 		{:else}
@@ -329,7 +341,10 @@
 				{#if showFeatures}<BonusButton {...bonusProps} />{/if}
 			</div>
 			<div class="side right" style="width:{L.side}px;bottom:{barH}px">
-				{#if game.fs || L.compact}<Hud layout="side" showWin={L.compact} showStats={L.compact} />{:else}<Logo />{/if}
+				<div class="side-main">
+					{#if game.fs || L.compact}<Hud layout="side" showWin={false} showStats={L.compact} />{:else}<Logo />{/if}
+				</div>
+				<Readouts {...readoutProps} stack={L.compact || L.side < 250} compact={L.compact} />
 			</div>
 			{#if snakeOn && !L.compact}
 				<!-- MOVES + snake status on the board's top rail (above the board) -->
@@ -345,15 +360,11 @@
 			<Taskbar
 				labels={tbLabels}
 				layout={tbLayout}
-				balanceText={replayMode ? '' : money(game.balance)}
 				betText={money(game.bet)}
-				{winText}
 				{spinState}
 				{autoText}
-				showBalance={!replayMode}
 				showBet={!replayMode}
 				showSpin={!replayMode}
-				showWin={!L.compact}
 				showAuto={!replayMode && !game.jurisdiction.disabledAutoplay}
 				showSpeed={!game.jurisdiction.disabledTurbo}
 				canBetDown={betIdx > 0}
@@ -478,6 +489,17 @@
 	}
 	.side.right {
 		right: 0;
+		justify-content: flex-end;
+		padding-bottom: clamp(8px, 2vh, 18px);
+	}
+	.side-main {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: stretch;
+		width: 100%;
+		min-height: 0;
 	}
 	.featrow {
 		position: absolute;
@@ -485,7 +507,9 @@
 		right: 0;
 		display: flex;
 		align-items: center;
-		padding: 0 20px;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 0 12px;
 	}
 	.compact .side {
 		padding: 4px;

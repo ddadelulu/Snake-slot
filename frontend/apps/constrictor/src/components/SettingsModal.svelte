@@ -47,12 +47,12 @@
 		border-top: 1px solid var(--rule);
 	}
 	input[type='checkbox'] {
-		accent-color: #d9b26f;
+		accent-color: #e0b64a;
 		width: 18px;
 		height: 18px;
 	}
 	input[type='range'] {
-		accent-color: #d9b26f;
+		accent-color: #e0b64a;
 		width: min(50%, 200px);
 	}
 	.hint {

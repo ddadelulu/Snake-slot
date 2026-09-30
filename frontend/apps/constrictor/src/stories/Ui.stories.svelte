@@ -3,17 +3,18 @@
 	import { LoadingScreen } from 'ui-loading';
 	import Taskbar from '$components/Taskbar.svelte';
 	import BonusButton from '$components/BonusButton.svelte';
+	import Readouts from '$components/Readouts.svelte';
 	import HudStory from './HudStory.svelte';
 	import ModalStory from './ModalStory.svelte';
 
 	const noop = () => {};
 	const labels = {
-		balance: 'BALANCE', win: 'WIN', bet: 'BET', spin: 'SPIN', skip: 'SKIP', stop: 'STOP',
+		bet: 'BET', spin: 'SPIN', skip: 'SKIP', stop: 'STOP',
 		betDown: 'Decrease bet', betUp: 'Increase bet', menu: 'Menu',
 		auto: 'AUTO SPIN: OFF', speed: 'SPEED: ×1', sound: 'SOUND: ON', rules: 'GAME RULES', settings: 'SETTINGS',
 	};
 	const bar = {
-		labels, layout: 'wide' as const, balanceText: '$10,000.00', betText: '$1.00', winText: '$12.40', spinState: 'idle' as const,
+		labels, layout: 'wide' as const, betText: '$1.00', spinState: 'idle' as const,
 		onSpin: noop, onStop: noop, onBetDown: noop, onBetUp: noop, onBetOpen: noop, onAuto: noop, onSpeed: noop, onSound: noop, onRules: noop, onSettings: noop,
 	};
 	const bonus = {
@@ -28,8 +29,11 @@
 <Story name="Taskbar: busy" args={{ ...bar, spinState: 'busy' }} />
 <Story name="Taskbar: autoplay" args={{ ...bar, spinState: 'auto', autoText: 'AUTO 24', labels: { ...labels, auto: 'AUTO SPIN: ON' } }} />
 <Story name="Taskbar: phone (stacked)" args={{ ...bar, layout: 'stacked' }} />
-<Story name="Taskbar: mini-player (compact)" args={{ ...bar, layout: 'compact', showWin: false }} />
-<Story name="Taskbar: social" args={{ ...bar, labels: { ...labels, bet: 'PLAY', betDown: 'Decrease play amount', betUp: 'Increase play amount' }, balanceText: '10,000.00 SC', betText: '1.00 SC', winText: '12.40 SC' }} />
+<Story name="Taskbar: mini-player (compact)" args={{ ...bar, layout: 'compact' }} />
+<Story name="Taskbar: social" args={{ ...bar, labels: { ...labels, bet: 'PLAY', betDown: 'Decrease play amount', betUp: 'Increase play amount' }, betText: '1.00 SC' }} />
+<Story name="Balance and win card">
+	{#snippet template()}<div style="padding:24px;display:flex;gap:24px;align-items:flex-start"><Readouts balanceLabel="BALANCE" winLabel="WIN" balanceText="$10,000.00" winText="$12.40" /><Readouts balanceLabel="BALANCE" winLabel="WIN" balanceText="$10,000.00" winText="$12.40" stack /></div>{/snippet}
+</Story>
 <Story name="Buy Bonus: closed">
 	{#snippet template()}<div style="padding:220px 24px 24px"><BonusButton {...bonus} /></div>{/snippet}
 </Story>

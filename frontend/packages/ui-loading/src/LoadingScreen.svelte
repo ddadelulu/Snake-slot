@@ -177,23 +177,23 @@
 		font-size: clamp(34px, 9vw, 86px);
 		letter-spacing: 0.08em;
 		line-height: 1;
-		color: #d9b26f;
-		background: rgba(18, 19, 23, 0.9);
+		color: #e0b64a;
+		background: rgba(8, 8, 9, 0.9);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #cfa865;
+		border: 3px solid #d4af37;
 		border-radius: 28px;
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 		padding: 0.18em 0.5em;
 	}
-	/* glass dock style: dark smoked glass, brass outline, round corners (matches the game UI) */
+	/* glass dock style: black glass, gold outline, round corners (matches the game UI) */
 	.bar {
 		width: min(100%, 360px);
 		height: 16px;
 		padding: 3px;
-		border: 3px solid #cfa865;
+		border: 3px solid #d4af37;
 		border-radius: 999px;
-		background: rgba(18, 19, 23, 0.85);
+		background: rgba(8, 8, 9, 0.85);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
 		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -202,7 +202,7 @@
 	.fill {
 		height: 100%;
 		border-radius: 999px;
-		background: #d9b26f;
+		background: #e0b64a;
 		transform-origin: left;
 		transition: transform 0.25s ease;
 	}
@@ -212,8 +212,8 @@
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
 		color: #ede6d6;
-		background: rgba(18, 19, 23, 0.85);
-		border: 2px solid #cfa865;
+		background: rgba(8, 8, 9, 0.85);
+		border: 2px solid #d4af37;
 		border-radius: 999px;
 		padding: 6px 16px;
 		font-variant-numeric: tabular-nums;
@@ -224,11 +224,11 @@
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #ede6d6;
-		background: rgba(18, 19, 23, 0.92);
+		color: #e6c46b;
+		background: rgba(8, 8, 9, 0.92);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #cfa865;
+		border: 3px solid #d4af37;
 		border-radius: 24px;
 		box-shadow:
 			inset 0 0 0 2px rgba(0, 0, 0, 0.35),
@@ -252,7 +252,7 @@
 	}
 	@media (hover: hover) {
 		.tap:hover {
-			background: #d9b26f;
+			background: #e0b64a;
 			color: #121317;
 		}
 	}
@@ -266,7 +266,7 @@
 			box-shadow:
 				inset 0 0 0 2px rgba(0, 0, 0, 0.35),
 				0 4px 15px rgba(0, 0, 0, 0.35),
-				0 0 0 7px rgba(217, 178, 111, 0.3);
+				0 0 0 7px rgba(224, 182, 74, 0.3);
 		}
 	}
 	.reduced * {

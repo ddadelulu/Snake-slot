@@ -10,18 +10,19 @@
 	--ruby: #b0122e;
 	--font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--font-display: 'Big Shoulders Display', 'Archivo', sans-serif;
-	/* glass dock style (owner's taskbar shapes, D-031/D-034): dark smoked glass, brass outlines, ivory text,
-	   brass fills for SPIN and active buttons, round corners */
-	--glass: rgba(18, 19, 23, 0.82);
-	--glass-strong: rgba(18, 19, 23, 0.94);
-	--ink: #ede6d6;
+	/* glass dock style (owner's taskbar, D-031/D-036): black glass, gold outlines and gold text,
+	   gold fills for SPIN and active buttons, round corners */
+	--glass: rgba(8, 8, 9, 0.9);
+	--glass-strong: rgba(8, 8, 9, 0.96);
+	--ink: #f2ead7;
 	--ink-dim: #a39c8c;
-	--paper: #121317;
-	--edge: #cfa865;
-	--accent: #d9b26f;
-	--rule: rgba(237, 230, 214, 0.18);
-	--hover: rgba(217, 178, 111, 0.14);
-	--glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.45);
+	--gold-text: #e6c46b;
+	--paper: #0a0a0b;
+	--edge: #d4af37;
+	--accent: #e0b64a;
+	--rule: rgba(212, 175, 55, 0.3);
+	--hover: rgba(224, 182, 74, 0.16);
+	--glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 	color-scheme: dark;
 }
 /* anything on a glass surface: text in ivory, dividers light */

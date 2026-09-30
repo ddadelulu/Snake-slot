@@ -66,7 +66,7 @@
 	.bonus {
 		position: relative;
 		font-family: var(--font-ui);
-		color: var(--ink);
+		color: var(--gold-text);
 		pointer-events: auto;
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
@@ -79,7 +79,7 @@
 	}
 	button {
 		font-family: var(--font-ui);
-		color: var(--ink);
+		color: var(--gold-text);
 		cursor: pointer;
 	}
 	button:disabled {
@@ -114,7 +114,7 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		background: var(--glass);
-		color: var(--ink);
+		color: var(--gold-text);
 		border: 2px solid var(--edge);
 		border-radius: 999px;
 		padding: 4px 10px;

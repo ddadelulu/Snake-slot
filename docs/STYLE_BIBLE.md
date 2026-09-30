@@ -79,18 +79,20 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 | UI | **Archivo** (OFL, variable) | also used for the Studio 12 wordmark |
 | Counters | Archivo with **tabular numerals** (`font-variant-numeric: tabular-nums`) | wins, balance, moves, multiplier |
 
-## 7. UI (glass dock style, owner's direction, D-031 / D-034)
-- Every UI surface follows the owner's taskbar shapes: **dark smoked glass** (`rgba(18,19,23,0.82–0.94)`, 6 px blur),
-  a **brass outline** (`#CFA865`; 3 px panels, 2 px controls), **round corners** (panels 20–30 px, buttons 14 px,
-  pills fully round), a soft drop shadow. Text on glass is ivory `#EDE6D6`, titles brass `#D9B26F`.
-- Buttons: brass-outlined buttons that fill brass on hover; the primary action (SPIN, CONFIRM) is filled brass with
-  a dark inset ring. Amounts in win cards sit in the same brass pill.
-- SPIN is always in the exact centre of the screen (phones: menu | − SPIN + with balance, bet and win above).
+## 7. UI (the owner's taskbar layout in black and gold, D-031 / D-034 / D-036)
+- The taskbar is the owner's layout on every screen: menu left, SPIN in the middle, − BET + right, a floating
+  dashed Buy Bonus button above it on the left and a matching BALANCE / WIN card on the right.
+- Colours: **black glass** (`rgba(8,8,9,0.9–0.96)`, 6 px blur) with **gold outlines** (`#D4AF37`; 3 px panels,
+  2 px controls) and **gold text** (`#E6C46B`); amounts in ivory `#F2EAD7`. Round corners (panels 20–30 px,
+  buttons 14 px, pills fully round), soft drop shadow. Every other UI surface (dialogs, HUD, plaque, logo, win
+  cards, loading screen) uses the same tokens.
+- Buttons: gold-outlined; they fill gold on hover. SPIN (and CONFIRM) is filled gold with a black inset ring, the
+  owner's double-border button in these colours.
+- SPIN sits exactly in the screen centre whenever − BET + fits beside it; on very narrow phones or with long
+  amounts the dock spreads out, as the owner's file does on small screens.
 - Fonts stay the game's: Archivo for UI and numbers, Big Shoulders Display for titles and SPIN, Limelight for
-  the max-win title. Venom green appears only on venom elements.
-- Readability beats decoration: ivory on dark glass, contrast ≥ 7:1 for body text.
-- Motion: short and purposeful (120–300 ms UI transitions). Restraint everywhere except the three hero
-  moments (Hunt trigger, OUROBOROS, max win).
+  the max-win title.
+- Motion: short and purposeful (120–300 ms UI transitions); restraint except the three hero moments.
 
 ## 8. Realism rules: reject and regenerate if any of these appear
 Plastic sheen · random sparkles or bokeh orbs · glowing auras (except venom) · fantasy filigree ·

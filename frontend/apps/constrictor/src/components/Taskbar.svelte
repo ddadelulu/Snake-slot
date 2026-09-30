@@ -1,15 +1,12 @@
 <!--
-	The game's taskbar: a floating glass dock (menu | SPIN | bet), after the owner's layout (slot_layout.html),
-	set in the game's own fonts. The menu button opens a small popup (auto spin, speed, sound, rules, settings).
-	BALANCE and WIN stay on the dock at all times (Stake requirement). Layouts:
-	  wide     one row: menu + balance | SPIN | win + bet
-	  stacked  phones: balance | bet | win on top, then menu | − SPIN + with SPIN in the exact centre
-	  compact  mini-player: one slim row, no win (the side HUD shows it)
+	The game's taskbar, laid out exactly as the owner's design (slot_layout.html): a floating glass dock with the
+	menu button on the left, SPIN in the middle and − BET + on the right, in black with gold outlines and the game's
+	fonts. The menu opens a popup (auto spin, speed, sound, rules, settings). BALANCE and WIN are shown by
+	Readouts.svelte beside the dock (Stake requirement), so the dock itself stays as designed.
+	Layouts only change sizes: wide (desktop), compact (mini-player / narrow landscape), stacked (phones).
 -->
 <script lang="ts">
 	type Labels = {
-		balance: string;
-		win: string;
 		bet: string;
 		spin: string;
 		skip: string;
@@ -27,15 +24,11 @@
 	type Props = {
 		labels: Labels;
 		layout: 'wide' | 'stacked' | 'compact';
-		balanceText: string;
 		betText: string;
-		winText: string;
 		spinState: 'idle' | 'busy' | 'auto' | 'disabled';
 		autoText?: string | null;
-		showBalance?: boolean;
 		showBet?: boolean;
 		showSpin?: boolean;
-		showWin?: boolean;
 		showAuto?: boolean;
 		showSpeed?: boolean;
 		canBetDown?: boolean;
@@ -55,15 +48,11 @@
 	let {
 		labels,
 		layout,
-		balanceText,
 		betText,
-		winText,
 		spinState,
 		autoText = null,
-		showBalance = true,
 		showBet = true,
 		showSpin = true,
-		showWin = true,
 		showAuto = true,
 		showSpeed = true,
 		canBetDown = true,
@@ -103,6 +92,32 @@
 		};
 	});
 
+	// SPIN sits exactly in the middle whenever − BET + fits beside it; otherwise (tiny phones, long amounts) the
+	// dock falls back to the owner's small-screen rule and spreads the three groups out
+	let dockEl: HTMLDivElement | undefined = $state();
+	let spinEl: HTMLButtonElement | undefined = $state();
+	let betEl: HTMLDivElement | undefined = $state();
+	let tight = $state(false);
+	function measure() {
+		if (!dockEl || !betEl) return void (tight = false);
+		const cs = getComputedStyle(dockEl);
+		const inner = dockEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+		const gap = parseFloat(cs.columnGap) || 0;
+		const side = (inner - (spinEl?.offsetWidth ?? 0) - 2 * gap) / 2;
+		tight = betEl.offsetWidth > side;
+	}
+	$effect(() => {
+		void betText;
+		void layout;
+		measure();
+	});
+	$effect(() => {
+		if (!dockEl || typeof ResizeObserver === 'undefined') return;
+		const ro = new ResizeObserver(() => measure());
+		ro.observe(dockEl);
+		return () => ro.disconnect();
+	});
+
 	function pick(fn: () => void, keepOpen = false) {
 		fn();
 		if (!keepOpen) menuOpen = false;
@@ -122,88 +137,51 @@
 		<button class="btn" role="menuitem" data-act="settings" onclick={() => pick(onSettings)}>{labels.settings}</button>
 	</div>
 
-	<div class="dock" role="toolbar" aria-label="Game controls">
-		{#if layout === 'stacked' && (showBalance || showWin || showBet)}
-			<!-- phones: balance | bet | win on one line, so the button row can keep SPIN in the exact centre -->
-			<div class="info">
-				<div class="cell">
-					{#if showBalance}
-						<div class="readout" aria-live="polite"><span class="lbl">{labels.balance}</span><span class="val num">{balanceText}</span></div>
-					{/if}
-				</div>
-				<div class="cell mid">
-					{#if showBet}
-						<button class="betval" aria-label={labels.bet} disabled={locked} onclick={onBetOpen}>
-							<span class="lbl">{labels.bet}</span>
-							<span class="val num">{betText}</span>
-						</button>
-					{/if}
-				</div>
-				<div class="cell end">
-					{#if showWin}
-						<div class="readout win" aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
-					{/if}
-				</div>
-			</div>
-		{/if}
-		<div class="row">
-			<div class="side left">
-				<button class="menu-btn" class:open={menuOpen} aria-label={labels.menu} aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
-					<span></span><span></span><span></span>
+	<div class="dock" class:tight bind:this={dockEl} role="toolbar" aria-label="Game controls">
+		<div class="side left">
+			<button class="menu-btn" class:open={menuOpen} aria-label={labels.menu} aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
+				<span></span><span></span><span></span>
+			</button>
+		</div>
+
+		<div class="center">
+			{#if showSpin}
+				<button
+					bind:this={spinEl}
+					class="spin"
+					class:busy
+					class:auto
+					disabled={spinState === 'disabled'}
+					aria-label={auto ? labels.stop : busy ? labels.skip : labels.spin}
+					onclick={() => (auto ? onStop() : onSpin())}
+				>
+					{auto ? (autoText ?? labels.stop) : labels.spin}
 				</button>
-				{#if layout !== 'stacked' && showBalance}
-					<div class="readout" aria-live="polite"><span class="lbl">{labels.balance}</span><span class="val num">{balanceText}</span></div>
-				{/if}
-			</div>
+			{/if}
+		</div>
 
-			<div class="center">
-				{#if layout === 'stacked' && showBet}
+		<div class="side right">
+			{#if showBet}
+				<div class="bet" bind:this={betEl}>
 					<button class="adjust" aria-label={labels.betDown} disabled={!canBetDown || locked} onclick={onBetDown}>&minus;</button>
-				{/if}
-				{#if showSpin}
-					<button
-						class="spin"
-						class:busy
-						class:auto
-						disabled={spinState === 'disabled'}
-						aria-label={auto ? labels.stop : busy ? labels.skip : labels.spin}
-						onclick={() => (auto ? onStop() : onSpin())}
-					>
-						{auto ? (autoText ?? labels.stop) : labels.spin}
+					<button class="betval" aria-label={labels.bet} disabled={locked} onclick={onBetOpen}>
+						<span class="lbl">{labels.bet}</span>
+						<span class="val num">{betText}</span>
 					</button>
-				{/if}
-				{#if layout === 'stacked' && showBet}
 					<button class="adjust" aria-label={labels.betUp} disabled={!canBetUp || locked} onclick={onBetUp}>&plus;</button>
-				{/if}
-			</div>
-
-			<div class="side right">
-				{#if layout !== 'stacked' && showWin}
-					<div class="readout win" aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
-				{/if}
-				{#if layout !== 'stacked' && showBet}
-					<div class="bet">
-						<button class="adjust" aria-label={labels.betDown} disabled={!canBetDown || locked} onclick={onBetDown}>&minus;</button>
-						<button class="betval" aria-label={labels.bet} disabled={locked} onclick={onBetOpen}>
-							<span class="lbl">{labels.bet}</span>
-							<span class="val num">{betText}</span>
-						</button>
-						<button class="adjust" aria-label={labels.betUp} disabled={!canBetUp || locked} onclick={onBetUp}>&plus;</button>
-					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
 
 <style>
 	.tb-wrap {
-		/* owner's palette: beige glass, black ink, ivory */
-		--dock-radius: 30px;
 		--spin-font: clamp(20px, 3.8vh, 28px);
 		--spin-pad: clamp(8px, 1.5vh, 14px) clamp(28px, 4vw, 45px);
 		--adj: 40px;
 		--amount: 24px;
+		--dock-radius: 30px;
 		position: relative;
 		width: 100%;
 		max-width: 900px;
@@ -211,90 +189,44 @@
 		padding: 0 16px 12px;
 		box-sizing: border-box;
 		font-family: var(--font-ui);
-		color: var(--ink);
+		color: var(--gold-text);
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
 	}
+	/* the owner's dock: glass, heavy outline, round corners; equal sides keep SPIN exactly in the middle */
 	.dock {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		align-items: center;
+		gap: 10px;
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
 		border: 3px solid var(--edge);
 		border-radius: var(--dock-radius);
 		padding: 10px 20px;
-		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.45);
 	}
-	.row {
+	.dock.tight {
 		display: flex;
-		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
 	}
-	/* equal flexible sides keep SPIN exactly centred */
 	.side {
-		flex: 1;
 		display: flex;
 		align-items: center;
-		gap: 14px;
 		min-width: 0;
 	}
 	.side.right {
 		justify-content: flex-end;
 	}
 	.center {
-		flex: 0 0 auto;
 		display: flex;
 		justify-content: center;
 	}
-	.info {
-		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 0 6px 6px;
-		border-bottom: 1px solid var(--rule);
-	}
-	.info .readout {
-		flex-direction: row;
-		align-items: baseline;
-		gap: 6px;
-	}
 
-	/* readouts */
-	.readout {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		line-height: 1.1;
-		min-width: 0;
-	}
-	.readout.win {
-		align-items: flex-end;
-	}
-	.lbl {
-		font-size: 11px;
-		font-weight: 800;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-	}
-	.val {
-		font-size: clamp(14px, 2.3vh, 18px);
-		font-weight: 800;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 100%;
-	}
-	.num {
-		font-variant-numeric: tabular-nums;
-	}
-
-	/* buttons (owner's styles) */
 	button {
 		font-family: var(--font-ui);
-		color: var(--ink);
+		color: var(--gold-text);
 		cursor: pointer;
 	}
 	button:disabled {
@@ -335,12 +267,13 @@
 		display: block;
 		width: 100%;
 		height: 3px;
-		background: var(--ink);
+		background: var(--edge);
 		border-radius: 4px;
 	}
 	.menu-btn.open {
 		border-color: var(--edge);
 	}
+	/* SPIN: the owner's filled button with a double border, in gold on black */
 	.spin {
 		font-family: var(--font-display);
 		font-size: var(--spin-font);
@@ -361,13 +294,13 @@
 	}
 	.spin.busy {
 		background: transparent;
-		color: var(--ink);
+		color: var(--gold-text);
 		box-shadow: none;
 	}
 	.spin.auto {
 		font-size: calc(var(--spin-font) * 0.72);
 		background: var(--paper);
-		color: var(--ink);
+		color: var(--gold-text);
 	}
 	.bet {
 		display: flex;
@@ -398,13 +331,23 @@
 		background: none;
 		border: 0;
 		padding: 0;
+		line-height: 1.1;
 	}
-	.betval .lbl {
+	.lbl {
+		font-size: 12px;
+		font-weight: 800;
 		letter-spacing: 2px;
+		text-transform: uppercase;
 		margin-bottom: 2px;
 	}
-	.betval .val {
+	.val {
 		font-size: var(--amount);
+		font-weight: 800;
+		color: var(--ink);
+		white-space: nowrap;
+	}
+	.num {
+		font-variant-numeric: tabular-nums;
 	}
 	@media (hover: hover) {
 		.btn:hover,
@@ -417,12 +360,12 @@
 		}
 		.spin:hover:not(:disabled):not(.busy) {
 			background: transparent;
-			color: var(--ink);
+			color: var(--gold-text);
 			box-shadow: none;
 		}
 	}
 
-	/* settings popup (opens above the menu button) */
+	/* menu popup (opens above the menu button) */
 	.popup {
 		position: absolute;
 		left: 16px;
@@ -437,7 +380,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
 		opacity: 0;
 		pointer-events: none;
 		transform: translateY(10px);
@@ -450,98 +393,59 @@
 		transform: translateY(0);
 	}
 
-	/* phones: readout row above the buttons */
+	/* phones: the owner's small-screen sizes */
 	.stacked {
-		--spin-font: 22px;
-		--spin-pad: 10px 26px;
-		--adj: 36px;
-		--amount: 20px;
+		--spin-font: 20px;
+		--spin-pad: 10px 15px;
+		--adj: 32px;
+		--amount: 17px;
 		--dock-radius: 26px;
 		padding: 0 10px calc(8px + env(safe-area-inset-bottom));
 	}
 	.stacked .dock {
-		padding: 8px 12px 10px;
+		padding: 10px 8px;
+		gap: 4px;
 	}
-	.stacked .row,
-	.stacked .info {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		gap: 8px;
+	.stacked .bet {
+		gap: 4px;
 	}
-	.stacked .side {
-		flex: none;
+	.stacked .betval {
+		min-width: 50px;
 	}
-	.stacked .center {
-		gap: 10px;
-		align-items: center;
-	}
-	.stacked .cell {
-		display: flex;
-		min-width: 0;
-	}
-	.stacked .cell.mid {
-		justify-content: center;
-	}
-	.stacked .cell.end {
-		justify-content: flex-end;
-	}
-	.stacked .info .betval {
-		min-width: 0;
-		padding: 3px 12px;
-		border: 2px solid var(--edge);
-		border-radius: 999px;
-	}
-	.stacked .info .val,
-	.stacked .info .betval .val {
-		font-size: 15px;
-	}
-	.stacked .info .readout {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0;
-	}
-	.stacked .info .readout.win {
-		align-items: flex-end;
-	}
-	@media (max-width: 359px) {
-		.stacked .info .val,
-		.stacked .info .betval .val {
-			font-size: 13px;
-		}
+	.stacked .lbl {
+		font-size: 10px;
+		letter-spacing: 1.5px;
 	}
 	.stacked .popup {
 		left: 10px;
 	}
+	/* very small phones: as in the owner's file, the strict centring gives way so everything fits */
 	@media (max-width: 359px) {
 		.stacked {
-			--spin-pad: 9px 18px;
-			--adj: 32px;
-			--amount: 17px;
+			--spin-pad: 9px 13px;
+			--adj: 30px;
+			--amount: 15px;
 		}
 		.stacked .menu-btn {
 			width: 38px;
 		}
 		.stacked .betval {
-			min-width: 60px;
+			min-width: 50px;
 		}
 	}
 
 	/* mini-player: one slim row */
 	.compact {
 		--spin-font: 16px;
-		--spin-pad: 6px 16px;
+		--spin-pad: 6px 18px;
 		--adj: 28px;
-		--amount: 13px;
+		--amount: 14px;
 		--dock-radius: 20px;
 		padding: 0 6px 5px;
 	}
 	.compact .dock {
 		padding: 4px 10px;
 		border-width: 2px;
-	}
-	.compact .row,
-	.compact .side {
 		gap: 6px;
 	}
 	.compact .menu-btn {
@@ -558,9 +462,7 @@
 	}
 	.compact .lbl {
 		font-size: 8px;
-	}
-	.compact .val {
-		font-size: 12px;
+		margin-bottom: 0;
 	}
 	.compact .bet {
 		gap: 4px;

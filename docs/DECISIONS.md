@@ -266,3 +266,13 @@ The high symbols now each carry a snake detail; the EGG and KEY glow green; the 
 Direct download from the Higgsfield image host is refused by this environment's network policy, so the files came
 in as chat attachments. Background, frame, snake parts and audio are still placeholders.
 
+### D-036: The owner's layout, in black with gold outlines
+The owner re-sent the taskbar design: keep that layout, black with golden outlines. The dock is now exactly the
+design on every screen (menu | SPIN | − BET +); the phone variant with bet above SPIN is gone. BALANCE and WIN
+(required on screen by Stake) moved out of the dock into a small card in the same style that mirrors Buy Bonus
+(`Readouts.svelte`: beside Buy Bonus on phones, bottom of the right panel on wider screens). SPIN is measured
+into the exact centre whenever − BET + fits beside it (a ResizeObserver compares the bet group with the free side
+width); otherwise the dock spreads out like the owner's file does below 650 px. Colours: black glass, gold
+outlines #D4AF37, gold text #E6C46B, gold SPIN with a black inset ring. Checks: SPIN 0 px off centre at 1200, 1024,
+800, 400×225, 425 and 375 px at a $1 bet; no overlap at 320 px even at $1,000; soak 100 rounds 0 mismatches.
+
