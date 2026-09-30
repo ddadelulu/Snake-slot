@@ -125,7 +125,7 @@
 	}
 	.tabs button {
 		background: none;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		color: var(--ink);
 		font-family: var(--font-ui);
@@ -141,7 +141,7 @@
 		outline-offset: 2px;
 	}
 	.tabs button.on {
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
 	}
 	h3 {
@@ -168,7 +168,7 @@
 	.pt td {
 		padding: 4px 6px;
 		text-align: right;
-		border-bottom: 1px solid rgba(17, 17, 17, 0.18);
+		border-bottom: 1px solid var(--rule);
 		white-space: nowrap;
 	}
 	.pt thead th {

@@ -91,7 +91,7 @@
 	.chip {
 		min-width: 46px;
 		height: 34px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 12px;
 		background: none;
 		color: var(--ink);
@@ -100,7 +100,7 @@
 		cursor: pointer;
 	}
 	.chip.on {
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
 	}
 	.chip:focus-visible {
@@ -113,18 +113,18 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 7px 0;
-		border-top: 1px solid rgba(17, 17, 17, 0.2);
+		border-top: 1px solid var(--rule);
 	}
 	input[type='checkbox'] {
-		accent-color: #111;
+		accent-color: #d9b26f;
 		width: 18px;
 		height: 18px;
 		order: 2;
 	}
 	select {
-		background: rgba(255, 255, 255, 0.55);
+		background: rgba(255, 255, 255, 0.06);
 		color: var(--ink);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 10px;
 		padding: 6px 8px;
 		font: inherit;

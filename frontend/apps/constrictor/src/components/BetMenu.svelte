@@ -25,7 +25,7 @@
 	}
 	.lvl {
 		min-height: 38px;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 12px;
 		background: transparent;
 		color: var(--ink);
@@ -36,11 +36,11 @@
 	}
 	.lvl:hover,
 	.lvl:focus-visible {
-		background: rgba(17, 17, 17, 0.1);
+		background: var(--hover);
 		outline: none;
 	}
 	.lvl.on {
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
 		box-shadow: inset 0 0 0 2px var(--paper);
 	}

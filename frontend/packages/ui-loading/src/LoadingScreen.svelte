@@ -177,23 +177,23 @@
 		font-size: clamp(34px, 9vw, 86px);
 		letter-spacing: 0.08em;
 		line-height: 1;
-		color: #111;
-		background: rgba(239, 235, 224, 0.9);
+		color: #d9b26f;
+		background: rgba(18, 19, 23, 0.9);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #111;
+		border: 3px solid #cfa865;
 		border-radius: 28px;
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 		padding: 0.18em 0.5em;
 	}
-	/* glass dock style (beige glass, heavy black outline, round corners) */
+	/* glass dock style: dark smoked glass, brass outline, round corners (matches the game UI) */
 	.bar {
 		width: min(100%, 360px);
 		height: 16px;
 		padding: 3px;
-		border: 3px solid #111;
+		border: 3px solid #cfa865;
 		border-radius: 999px;
-		background: rgba(239, 235, 224, 0.85);
+		background: rgba(18, 19, 23, 0.85);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
 		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -202,7 +202,7 @@
 	.fill {
 		height: 100%;
 		border-radius: 999px;
-		background: #111;
+		background: #d9b26f;
 		transform-origin: left;
 		transition: transform 0.25s ease;
 	}
@@ -211,9 +211,9 @@
 		font-weight: 800;
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
-		color: #111;
-		background: rgba(239, 235, 224, 0.85);
-		border: 2px solid #111;
+		color: #ede6d6;
+		background: rgba(18, 19, 23, 0.85);
+		border: 2px solid #cfa865;
 		border-radius: 999px;
 		padding: 6px 16px;
 		font-variant-numeric: tabular-nums;
@@ -224,14 +224,14 @@
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: #111;
-		background: rgba(239, 235, 224, 0.92);
+		color: #ede6d6;
+		background: rgba(18, 19, 23, 0.92);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #111;
+		border: 3px solid #cfa865;
 		border-radius: 24px;
 		box-shadow:
-			inset 0 0 0 2px rgba(239, 235, 224, 0.9),
+			inset 0 0 0 2px rgba(0, 0, 0, 0.35),
 			0 4px 15px rgba(0, 0, 0, 0.35);
 		padding: 14px 36px;
 		cursor: pointer;
@@ -252,8 +252,8 @@
 	}
 	@media (hover: hover) {
 		.tap:hover {
-			background: #111;
-			color: #efebe0;
+			background: #d9b26f;
+			color: #121317;
 		}
 	}
 	@keyframes fadein {
@@ -264,9 +264,9 @@
 	@keyframes pulse {
 		50% {
 			box-shadow:
-				inset 0 0 0 2px rgba(239, 235, 224, 0.9),
+				inset 0 0 0 2px rgba(0, 0, 0, 0.35),
 				0 4px 15px rgba(0, 0, 0, 0.35),
-				0 0 0 7px rgba(239, 235, 224, 0.28);
+				0 0 0 7px rgba(217, 178, 111, 0.3);
 		}
 	}
 	.reduced * {

@@ -10,27 +10,25 @@
 	--ruby: #b0122e;
 	--font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--font-display: 'Big Shoulders Display', 'Archivo', sans-serif;
-	/* glass dock style (owner's taskbar): beige glass, black ink, ivory, round corners */
-	--glass: rgba(239, 235, 224, 0.88);
-	--glass-strong: rgba(239, 235, 224, 0.95);
-	--ink: #111;
-	--ink-dim: #5b5548;
-	--paper: #efebe0;
-	--venom-ink: #0a7d3c;
-	--glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+	/* glass dock style (owner's taskbar shapes, D-031/D-034): dark smoked glass, brass outlines, ivory text,
+	   brass fills for SPIN and active buttons, round corners */
+	--glass: rgba(18, 19, 23, 0.82);
+	--glass-strong: rgba(18, 19, 23, 0.94);
+	--ink: #ede6d6;
+	--ink-dim: #a39c8c;
+	--paper: #121317;
+	--edge: #cfa865;
+	--accent: #d9b26f;
+	--rule: rgba(237, 230, 214, 0.18);
+	--hover: rgba(217, 178, 111, 0.14);
+	--glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.45);
 	color-scheme: dark;
 }
-/* anything on a glass surface: the shared colour tokens switch to ink */
+/* anything on a glass surface: text in ivory, dividers light */
 .on-glass {
-	--ivory: var(--ink);
-	--ivory-dim: var(--ink-dim);
-	--brass-hi: var(--ink);
-	--brass: var(--ink);
-	--gunmetal: rgba(17, 17, 17, 0.3);
-	--charcoal: rgba(17, 17, 17, 0.06);
-	--venom: var(--venom-ink);
+	--gunmetal: rgba(237, 230, 214, 0.25);
 	color: var(--ink);
-	color-scheme: light;
+	color-scheme: dark;
 }
 html, body {
 	margin: 0;
@@ -53,7 +51,7 @@ button { font-family: var(--font-ui); }
 .btn {
 	min-height: 40px;
 	padding: 0 18px;
-	border: 2px solid var(--ink);
+	border: 2px solid var(--edge);
 	border-radius: 14px;
 	background: transparent;
 	color: var(--ink);
@@ -69,13 +67,15 @@ button { font-family: var(--font-ui); }
 	outline-offset: 3px;
 }
 .btn.primary {
-	background: var(--ink);
+	background: var(--accent);
+	border-color: var(--accent);
 	color: var(--paper);
 	box-shadow: inset 0 0 0 2px var(--paper);
 }
 @media (hover: hover) {
 	.btn:hover:not(:disabled) {
-		background: var(--ink);
+		background: var(--accent);
+		border-color: var(--accent);
 		color: var(--paper);
 	}
 	.btn.primary:hover:not(:disabled) {

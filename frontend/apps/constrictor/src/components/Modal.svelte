@@ -65,7 +65,7 @@
 		background: var(--glass-strong);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 24px;
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 		overflow: hidden;
@@ -84,14 +84,14 @@
 	h2 {
 		margin: 0;
 		font-size: clamp(18px, 3.6vh, 28px);
-		color: var(--ink);
+		color: var(--accent);
 		letter-spacing: 0.1em;
 	}
 	.x {
 		width: 34px;
 		height: 34px;
 		border-radius: 50%;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: none;
 		color: var(--ink);
 		flex: none;
@@ -102,7 +102,7 @@
 	}
 	.x:hover,
 	.x:focus-visible {
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
 		outline: none;
 	}

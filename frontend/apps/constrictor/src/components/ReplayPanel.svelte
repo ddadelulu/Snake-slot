@@ -52,7 +52,7 @@
 		background: var(--glass-strong);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 24px;
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 		display: flex;

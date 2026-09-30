@@ -26,7 +26,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 24px;
 		box-shadow: var(--glass-shadow);
 	}
@@ -34,7 +34,7 @@
 		font-size: clamp(22px, 4.6vh, 44px);
 		letter-spacing: 0.12em;
 		line-height: 1;
-		color: var(--ink);
+		color: var(--accent);
 	}
 	.sm .word {
 		font-size: clamp(18px, 3.2vh, 30px);
@@ -48,7 +48,7 @@
 		font-weight: 800;
 		letter-spacing: 0.24em;
 		color: var(--paper);
-		background: var(--ink);
+		background: var(--accent);
 		border-radius: 999px;
 		padding: 4px 12px;
 	}

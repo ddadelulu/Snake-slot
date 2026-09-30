@@ -3,7 +3,7 @@
 	set in the game's own fonts. The menu button opens a small popup (auto spin, speed, sound, rules, settings).
 	BALANCE and WIN stay on the dock at all times (Stake requirement). Layouts:
 	  wide     one row: menu + balance | SPIN | win + bet
-	  stacked  phones: a readout row (balance, win) above the button row
+	  stacked  phones: balance | bet | win on top, then menu | − SPIN + with SPIN in the exact centre
 	  compact  mini-player: one slim row, no win (the side HUD shows it)
 -->
 <script lang="ts">
@@ -123,14 +123,27 @@
 	</div>
 
 	<div class="dock" role="toolbar" aria-label="Game controls">
-		{#if layout === 'stacked' && (showBalance || showWin)}
+		{#if layout === 'stacked' && (showBalance || showWin || showBet)}
+			<!-- phones: balance | bet | win on one line, so the button row can keep SPIN in the exact centre -->
 			<div class="info">
-				{#if showBalance}
-					<div class="readout" aria-live="polite"><span class="lbl">{labels.balance}</span><span class="val num">{balanceText}</span></div>
-				{/if}
-				{#if showWin}
-					<div class="readout win" aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
-				{/if}
+				<div class="cell">
+					{#if showBalance}
+						<div class="readout" aria-live="polite"><span class="lbl">{labels.balance}</span><span class="val num">{balanceText}</span></div>
+					{/if}
+				</div>
+				<div class="cell mid">
+					{#if showBet}
+						<button class="betval" aria-label={labels.bet} disabled={locked} onclick={onBetOpen}>
+							<span class="lbl">{labels.bet}</span>
+							<span class="val num">{betText}</span>
+						</button>
+					{/if}
+				</div>
+				<div class="cell end">
+					{#if showWin}
+						<div class="readout win" aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 		<div class="row">
@@ -144,6 +157,9 @@
 			</div>
 
 			<div class="center">
+				{#if layout === 'stacked' && showBet}
+					<button class="adjust" aria-label={labels.betDown} disabled={!canBetDown || locked} onclick={onBetDown}>&minus;</button>
+				{/if}
 				{#if showSpin}
 					<button
 						class="spin"
@@ -156,13 +172,16 @@
 						{auto ? (autoText ?? labels.stop) : labels.spin}
 					</button>
 				{/if}
+				{#if layout === 'stacked' && showBet}
+					<button class="adjust" aria-label={labels.betUp} disabled={!canBetUp || locked} onclick={onBetUp}>&plus;</button>
+				{/if}
 			</div>
 
 			<div class="side right">
 				{#if layout !== 'stacked' && showWin}
 					<div class="readout win" aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
 				{/if}
-				{#if showBet}
+				{#if layout !== 'stacked' && showBet}
 					<div class="bet">
 						<button class="adjust" aria-label={labels.betDown} disabled={!canBetDown || locked} onclick={onBetDown}>&minus;</button>
 						<button class="betval" aria-label={labels.bet} disabled={locked} onclick={onBetOpen}>
@@ -180,10 +199,6 @@
 <style>
 	.tb-wrap {
 		/* owner's palette: beige glass, black ink, ivory */
-		--glass: rgba(239, 235, 224, 0.85);
-		--glass-menu: rgba(239, 235, 224, 0.92);
-		--ink: #111;
-		--paper: #efebe0;
 		--dock-radius: 30px;
 		--spin-font: clamp(20px, 3.8vh, 28px);
 		--spin-pad: clamp(8px, 1.5vh, 14px) clamp(28px, 4vw, 45px);
@@ -204,7 +219,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: var(--dock-radius);
 		padding: 10px 20px;
 		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -239,7 +254,7 @@
 		justify-content: space-between;
 		gap: 12px;
 		padding: 0 6px 6px;
-		border-bottom: 1px solid rgba(17, 17, 17, 0.25);
+		border-bottom: 1px solid var(--rule);
 	}
 	.info .readout {
 		flex-direction: row;
@@ -292,7 +307,7 @@
 	}
 	.btn {
 		background: transparent;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 14px;
 		padding: 8px 16px;
 		font-weight: 800;
@@ -324,7 +339,7 @@
 		border-radius: 4px;
 	}
 	.menu-btn.open {
-		border-color: var(--ink);
+		border-color: var(--edge);
 	}
 	.spin {
 		font-family: var(--font-display);
@@ -333,9 +348,9 @@
 		letter-spacing: 0.08em;
 		line-height: 1;
 		padding: var(--spin-pad);
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 24px;
 		box-shadow: inset 0 0 0 2px var(--paper);
 		white-space: nowrap;
@@ -365,7 +380,7 @@
 		height: var(--adj);
 		flex: 0 0 auto;
 		border-radius: 50%;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		background: transparent;
 		padding: 0;
 		display: grid;
@@ -394,11 +409,11 @@
 	@media (hover: hover) {
 		.btn:hover,
 		.adjust:hover:not(:disabled) {
-			background: var(--ink);
+			background: var(--accent);
 			color: var(--paper);
 		}
 		.menu-btn:hover {
-			border-color: var(--ink);
+			border-color: var(--edge);
 		}
 		.spin:hover:not(:disabled):not(.busy) {
 			background: transparent;
@@ -413,10 +428,10 @@
 		left: 16px;
 		bottom: calc(100% + 6px);
 		min-width: 190px;
-		background: var(--glass-menu);
+		background: var(--glass-strong);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 20px;
 		padding: 12px;
 		display: flex;
@@ -447,23 +462,53 @@
 	.stacked .dock {
 		padding: 8px 12px 10px;
 	}
-	.stacked .row {
+	.stacked .row,
+	.stacked .info {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
 		gap: 8px;
 	}
 	.stacked .side {
 		flex: none;
 	}
-	.stacked .bet {
-		gap: 6px;
+	.stacked .center {
+		gap: 10px;
+		align-items: center;
 	}
-	.stacked .betval {
-		min-width: 72px;
+	.stacked .cell {
+		display: flex;
+		min-width: 0;
 	}
-	.stacked .val {
+	.stacked .cell.mid {
+		justify-content: center;
+	}
+	.stacked .cell.end {
+		justify-content: flex-end;
+	}
+	.stacked .info .betval {
+		min-width: 0;
+		padding: 3px 12px;
+		border: 2px solid var(--edge);
+		border-radius: 999px;
+	}
+	.stacked .info .val,
+	.stacked .info .betval .val {
 		font-size: 15px;
 	}
-	.stacked .betval .val {
-		font-size: var(--amount);
+	.stacked .info .readout {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0;
+	}
+	.stacked .info .readout.win {
+		align-items: flex-end;
+	}
+	@media (max-width: 359px) {
+		.stacked .info .val,
+		.stacked .info .betval .val {
+			font-size: 13px;
+		}
 	}
 	.stacked .popup {
 		left: 10px;

@@ -64,10 +64,6 @@
 
 <style>
 	.bonus {
-		--glass: rgba(239, 235, 224, 0.95);
-		--glass-menu: rgba(239, 235, 224, 0.92);
-		--ink: #111;
-		--paper: #efebe0;
 		position: relative;
 		font-family: var(--font-ui);
 		color: var(--ink);
@@ -91,12 +87,12 @@
 		cursor: default;
 	}
 	button:focus-visible {
-		outline: 2px solid var(--paper);
+		outline: 2px solid var(--ink);
 		outline-offset: 3px;
 	}
 	.btn {
 		background: transparent;
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 14px;
 		padding: 8px 16px;
 		font-weight: 800;
@@ -119,7 +115,7 @@
 		text-transform: uppercase;
 		background: var(--glass);
 		color: var(--ink);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		padding: 4px 10px;
 		white-space: nowrap;
@@ -129,10 +125,10 @@
 		left: 0;
 		bottom: calc(100% + 10px);
 		width: 270px;
-		background: var(--glass-menu);
+		background: var(--glass-strong);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 20px;
 		padding: 12px;
 		display: flex;
@@ -169,12 +165,12 @@
 	}
 	.item.ante.on {
 		border-style: solid;
-		background: var(--ink);
+		background: var(--accent);
 		color: var(--paper);
 	}
 	@media (hover: hover) {
 		.btn:hover:not(:disabled) {
-			background: var(--ink);
+			background: var(--accent);
 			color: var(--paper);
 		}
 		.buy-bonus:hover:not(:disabled) {

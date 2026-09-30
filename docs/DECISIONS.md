@@ -250,3 +250,11 @@ until loading is done, then hands over to the key art with the title and TAP TO 
 which browsers require). The wordmark is about a third of the screen width, capped on large screens. It lives in
 the shared `ui-loading` package; the Archivo 800 file is preloaded so the wordmark never shows a fallback font.
 
+### D-034: Taskbar colour to dark glass and brass; SPIN in the exact centre (owner's go-ahead)
+The owner allowed the taskbar colour to change and asked for SPIN in the middle. The beige glass clashed with the
+noir scene, so every UI surface moved to dark smoked glass with brass outlines, ivory text and brass fills (SPIN,
+primary and active buttons); the shapes stay the owner's (rounded, outlined). SPIN was already centred on desktop
+but not on phones, where the bet controls pushed it aside: the phone taskbar now has balance | bet | win on top and
+menu | − SPIN + below, measured 0 px from the screen centre at all 7 viewports. In the 400×225 mini-player the WIN
+card in the side panel is now always shown (it used to appear only after a win).
+

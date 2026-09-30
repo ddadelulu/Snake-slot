@@ -40,7 +40,7 @@ The owner's taskbar design replaced the brass control bar, and every UI surface 
 floating Buy Bonus popup, loading screen (TAP TO ENTER, progress bar, title card), dialogs (rules, bet,
 autoplay, settings, confirm, error, resume), replay panel, HUD cards, the status plaque, the logo card and
 the win cards. Checked in screenshots at all 7 viewports: no overflow, SPIN centred, BALANCE and WIN always
-on the dock. The scene art (board, frame, snake, background) is unchanged and still the noir set.
+visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel). The scene art (board, frame, snake, background) is unchanged and still the noir set.
 
 ## What still falls short of the bible (and why)
 

@@ -41,7 +41,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 999px;
 		box-shadow: var(--glass-shadow);
 		pointer-events: none;
@@ -76,7 +76,7 @@
 	.sep {
 		width: 1px;
 		align-self: stretch;
-		background: rgba(17, 17, 17, 0.35);
+		background: var(--rule);
 	}
 	.pop {
 		animation: pop 380ms cubic-bezier(0.2, 1.6, 0.4, 1) both;

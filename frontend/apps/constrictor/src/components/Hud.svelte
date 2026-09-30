@@ -53,7 +53,7 @@
 			</div>
 		</div>
 	{/if}
-	{#if showWin && game.totalWin > 0}
+	{#if showWin}
 		<div class="win">
 			<span class="lbl">{t('hud.win')}</span>
 			<span class="val num">{money(game.totalWin)}</span>
@@ -87,7 +87,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--ink);
+		border: 3px solid var(--edge);
 		border-radius: 20px;
 		box-shadow: var(--glass-shadow);
 	}
@@ -125,7 +125,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 14px;
 		box-shadow: var(--glass-shadow);
 	}
@@ -162,7 +162,7 @@
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--ink);
+		border: 2px solid var(--edge);
 		border-radius: 14px;
 		box-shadow: var(--glass-shadow);
 	}
