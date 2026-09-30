@@ -31,9 +31,11 @@
 	import { sound } from '$game/sound';
 	import { clock } from '$game/stage/clock';
 	import { createBookPlayer } from '$game/bookHandlers';
+	import { playVideo, preloadIntro, preloadHeroVideos } from '$game/video';
 	import type { AuthResponse } from '$game/rgs';
 	import {
 		setupRound,
+		onRoundFinished,
 		authenticate,
 		resumeRound,
 		playRound,
@@ -58,6 +60,7 @@
 	let vw = $state(1280);
 	let vh = $state(720);
 	let barH = $state(0);
+	let introPlaying = false;
 
 	// ------------------------------------------------------------------------------------------ layout
 	const L = $derived.by(() => {
@@ -128,10 +131,19 @@
 		game.phase = 'loading';
 		const st = new Stage();
 		setupRound(p, createBookPlayer(st));
+		// hero clips are lazy: they start loading after the first round (brief §7)
+		let heroLoaded = false;
+		onRoundFinished(() => {
+			if (!heroLoaded) {
+				heroLoaded = true;
+				preloadHeroVideos();
+			}
+		});
 		const serverP: Promise<unknown> = p.replay ? loadReplay() : authenticate();
 		try {
 			const m = await loadManifest();
 			keyArt = imageUrl('keyart');
+			preloadIntro();
 			for (const id of Object.keys(m.audio)) {
 				const u = audioUrl(id);
 				if (u) sound.register(id, u);
@@ -165,6 +177,9 @@
 		await unlocked;
 		sound.loop('music_base', { music: true, volume: 0.7, fade: 2 });
 		sound.loop('amb_vault', { volume: 0.35, fade: 2 });
+		introPlaying = true;
+		await playVideo('intro', { requireReady: true }); // only if already loaded; skippable
+		introPlaying = false;
 		if (params?.replay) return;
 		if (game.phase === 'loading') game.phase = 'idle';
 		const r = auth?.round;
@@ -220,6 +235,11 @@
 
 	function onKey(e: KeyboardEvent) {
 		if (e.code !== 'Space') return;
+		if (introPlaying) {
+			e.preventDefault();
+			clock.flush(); // skips the intro clip
+			return;
+		}
 		const el = e.target as HTMLElement | null;
 		if (el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
 		if (!entered || game.modal) return;

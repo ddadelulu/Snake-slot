@@ -25,6 +25,13 @@ class Clock {
 	reducedMotion = false;
 	time = 0; // seconds, free-running (for idle loops)
 	private jobs = new Set<Job>();
+	private flushListeners = new Set<() => void>();
+
+	/** Called whenever a skip flushes the clock (e.g. to stop a video). Returns an unsubscribe function. */
+	onFlush(cb: () => void): () => void {
+		this.flushListeners.add(cb);
+		return () => this.flushListeners.delete(cb);
+	}
 
 	attach(ticker: Ticker) {
 		// Real elapsed time (Pixi caps deltaMS at minFPS), so slow devices keep the intended pacing.
@@ -70,6 +77,7 @@ class Clock {
 			this.jobs.delete(j);
 			j.resolve();
 		}
+		for (const cb of [...this.flushListeners]) cb();
 	}
 }
 

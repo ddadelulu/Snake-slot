@@ -94,6 +94,7 @@ times in these runs are not representative of real devices.
 | Viewports | `node tests/e2e/viewports.mjs` | 7/7 sizes, 0 overflow, 0 console problems |
 | Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible and the 24 fixes it led to in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
 | Audio QA | `node tests/e2e/audio.mjs` | 33 files decoded with WebAudio: peak ≤ −1 dBFS, none silent, loops seamless, all AUDIO_SPEC ids present; placeholder length differences listed in `art/AUDIO_SPEC.md` |
+| Hero-video layer | `node tests/e2e/video.mjs` against a build whose manifest has test clips | 7/7: intro plays when loaded, Hunt clip plays, spacebar skips, round completes, turbo never shows a clip, no page errors (the shipped build has no clips yet, D-026) |
 | Storybook | `npx storybook build` + `node tests/e2e/storybook.mjs` | 44 stories render without page errors (UI states, every modal, 21 real-book scenarios incl. small win, hatch, long snake, OUROBOROS once and twice, Hunt trigger, retrigger, Venom Hunt, max win, turbo, social); the only network miss is Chromium's automatic `/favicon.ico` probe inside Storybook |
 
 ## 7. Compliance checklist (brief §3, verified against `docs/REQUIREMENTS.md`)

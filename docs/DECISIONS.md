@@ -188,7 +188,13 @@ and not guaranteed byte-identical, so the LUT hashes would not match what was ve
 The brief's videos (intro, Hunt trigger, Ouroboros accent, max win) can't be imported (D-020). The Hunt/Venom
 intro follows STYLE_BIBLE §9 in-engine: a brass key turns in the hub, the wheel spins, the door swings open on its
 left hinge (CSS 3D), a black veil falls, the title rises out of it, then the board. At the max win, every jewel
-left on the board is drawn into the serpent's mouth before the title, so the vault is literally empty. OUROBOROS is slow motion,
+left on the board is drawn into the serpent's mouth before the title, so the vault is literally empty.
+**Video layer (`src/game/video.ts`):** when final clips exist (`art/final/vid_*.webm|mp4` → manifest), they play
+with no code change: the Hunt clip before the in-engine title, the max-win clip after the vault empties, the
+OUROBOROS clip as a screen-blended overlay while the board animation runs, and the intro after the loading
+screen only if it has already loaded. Hero clips lazy-load after the first spin; every clip is skippable
+(tap/space) and skipped in turbo and under reduced motion. Checked with a generated test clip:
+`node tests/e2e/video.mjs` (7/7). OUROBOROS is slow motion,
 camera push, ring ignition, green shards and a ×2 slam. Max win is a gold shower, a shake and the
 Limelight-set "THE VAULT IS EMPTY". The manifest already has video slots (`vid_*`); when finals exist they can
 play as lazy-loaded overlays without replacing the board animation.

@@ -63,6 +63,10 @@ square canvas (visual centering), export `512×512` (@2x) and `256×256` (@1x) W
 
 ## 4. Videos (silent, no text, center-safe; compress to WebM/MP4 ≤ ~3 MB each)
 
+Drop them into `art/final/` as `<id>.webm` or `<id>.mp4` and run `art/pipeline/build_assets.py`; the game's video
+layer plays them with no code change (D-026).
+
+
 | ID | Target filename | Model | Settings | Prompt |
 |---|---|---|---|---|
 | INTRO | `vid_intro_16x9.mp4`, `vid_intro_9x16.mp4` | `veo3_1` (or `kling3_0`) | 6–8 s, sound off | Slow push-in through a heavy round vault door into a dark 1940s jeweler's strongroom at night, a single beam of venetian-blind light sweeps across black velvet trays of jewels, a glossy black iridescent serpent slides silently across the velvet and out of frame, film noir, deep blacks, photoreal, no people, no text |

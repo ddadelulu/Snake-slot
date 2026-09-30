@@ -9,6 +9,7 @@ import { eventEmitter } from './emitter';
 import type { Stage } from './stage/Stage';
 import { clock } from './stage/clock';
 import { sound } from './sound';
+import { playVideo, withOverlay } from './video';
 
 type Ctx = { bookEvents: BookEvent[] };
 type Handler<T extends BookEvent['type']> = (ev: BookEventOfType<T>, ctx: Ctx) => Promise<void>;
@@ -40,6 +41,7 @@ export function createBookPlayer(stage: Stage) {
 			const feature = game.feature ?? 'hunt';
 			game.feature = feature;
 			sound.play('vault_door');
+			await playVideo('hunt'); // final Hunt-trigger clip when present (skippable; skipped in turbo)
 			await eventEmitter.broadcastAsync({ type: 'featureIntro', feature, spins: ev.totalFs, keys: ev.keys });
 			game.fs = { current: 0, total: ev.totalFs };
 			game.featureWin = 0;
@@ -77,10 +79,12 @@ export function createBookPlayer(stage: Stage) {
 		},
 		ouroboros: async (ev) => {
 			eventEmitter.broadcast({ type: 'ouroborosTitle' });
-			await stage.ouroboros(ev, () => {
-				game.snakeMult = ev.mult;
-				eventEmitter.broadcast({ type: 'multSlam', value: ev.mult, big: true });
-			});
+			await withOverlay('ouroboros_loop', () =>
+				stage.ouroboros(ev, () => {
+					game.snakeMult = ev.mult;
+					eventEmitter.broadcast({ type: 'multSlam', value: ev.mult, big: true });
+				}),
+			);
 		},
 		snakeWild: async (ev) => {
 			game.snakeLen = ev.cells.length;
@@ -109,6 +113,7 @@ export function createBookPlayer(stage: Stage) {
 			game.totalWin = ev.amount;
 			// THE VAULT IS EMPTY: the serpent swallows what is left on the board, then the title
 			await stage.emptyVault();
+			await playVideo('maxwin'); // final max-win clip when present
 			stage.celebrate(5);
 			await eventEmitter.broadcastAsync({ type: 'maxWin', amount: ev.amount });
 		},

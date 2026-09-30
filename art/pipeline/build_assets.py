@@ -114,11 +114,15 @@ def main():
         shutil.copyfile(src, os.path.join(OUT, out))
         manifest["audio"][aid] = {"file": out, "source": origin}
     for aid, fname in VIDEO.items():
-        src = os.path.join(FINAL, fname)
-        if os.path.exists(src):
-            out = f"video/{fname}"
-            shutil.copyfile(src, os.path.join(OUT, out))
-            manifest["video"][aid] = {"file": out, "source": "final"}
+        # brief §7: WebM or MP4 (<= ~3 MB each); the first one found wins
+        stem = os.path.splitext(fname)[0]
+        for cand in (f"{stem}.webm", f"{stem}.mp4"):
+            src = os.path.join(FINAL, cand)
+            if os.path.exists(src):
+                out = f"video/{cand}"
+                shutil.copyfile(src, os.path.join(OUT, out))
+                manifest["video"][aid] = {"file": out, "source": "final"}
+                break
     with open(os.path.join(OUT, "manifest.json"), "w", encoding="UTF-8") as f:
         json.dump(manifest, f, indent=1)
     total = sum(os.path.getsize(os.path.join(dp, fn)) for dp, _, fns in os.walk(OUT) for fn in fns)
