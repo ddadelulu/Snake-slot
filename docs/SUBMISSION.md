@@ -85,7 +85,7 @@ times in these runs are not representative of real devices.
 | Math unit tests | `cd math && env/bin/pytest tests -q` | 72 passed |
 | Independent verification of every book | `cd math && env/bin/python verify_constrictor.py` | see MATH_REPORT (all modes PASS, 0 failures) |
 | JSON schema of every book | part of the verifier (fastjsonschema, `math/games/constrictor/schema/book.schema.json`) | 2,500,000 / 2,500,000 valid |
-| Frontend unit tests | `npx vitest run` | 27 passed (money/currencies, bet levels, social wording, launch params, rules content, model soak over 3,981 real books); 1 skipped = the `EXPORT_RULES` export step |
+| Frontend unit tests | `npx vitest run` | 30 passed (money/currencies, bet levels, social wording, launch params, rules content, round settlement incl. a failing animation, model soak over the real-book sample); 1 skipped = the `EXPORT_RULES` export step |
 | Type check | `npx svelte-check` | 0 errors, 0 warnings |
 | Browser soak (real handlers, skip on) | `node tests/e2e/soak.mjs http://localhost:8080 1200` | 1,200 rounds (base 1,032 · ante 120 · hunt 24 · venom 24): **0 WIN/BALANCE mismatches**, 0 console/network problems, no round left open |
 | Memory over time | same soak (heap after forced GC) | 11.4 MB after 50 rounds → 13.8 MB at 500 → 15.2 MB at 1,200, flattening. Heap-snapshot diff over 300 rounds (`tests/e2e/heapdiff.mjs`): JS objects grow < 50 KB; the rest is JIT code (≈ 0.5 MB) and Pixi buffer pools (≈ 0.4 MB) warming up. An earlier real leak (Pixi 8 GraphicsContext retention, 11.9 → 105 MB) was found by this soak and fixed |

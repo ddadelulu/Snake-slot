@@ -64,7 +64,7 @@ export async function resumeRound(round: NonNullable<AuthResponse['round']>) {
 	game.roundMode = (round.mode as ModeId) ?? 'base';
 	game.roundBet = typeof round.amount === 'number' ? round.amount : game.bet;
 	game.totalWin = 0;
-	await player.play(events);
+	await animate(events, events.find((e) => e.type === 'finalWin') as BookEventOfType<'finalWin'> | undefined);
 	try {
 		// An active round is only left open by the RGS when it pays, so it always needs end-round.
 		const r = await rgs.endRound(params.rgsUrl, params.sessionID);
@@ -87,6 +87,20 @@ export function stepBet(dir: -1 | 1) {
 	setBet(game.betLevels[j]);
 }
 
+/**
+ * Animate a book. A presentation failure must never strand a round: the result is already decided by the RGS,
+ * so on error the animation is flushed and the book's final win is shown, and the caller still settles the round.
+ */
+async function animate(events: BookEvent[], fin?: BookEventOfType<'finalWin'>) {
+	try {
+		await player.play(events);
+	} catch {
+		clock.skipping = true;
+		clock.flush();
+		if (fin) game.totalWin = fin.amount;
+	}
+}
+
 /** Play one round in `mode`. Returns the raw payout or null on error. */
 export async function playRound(mode: ModeId = game.activeMode): Promise<number | null> {
 	if (game.busy || params.replay) return null;
@@ -107,27 +121,36 @@ export async function playRound(mode: ModeId = game.activeMode): Promise<number 
 	game.lastFeatureTriggered = false;
 	sound.play('ui_click');
 	let payoutRaw = 0;
+	let res: Awaited<ReturnType<typeof rgs.play>>;
 	try {
-		const res = await rgs.play(params.rgsUrl, params.sessionID, game.bet, mode, game.currency);
-		game.balance = res.balance.amount;
-		const events = eventsFromState(res.round.state);
-		const payoutX = Number(res.round.payoutMultiplier ?? 0);
-		// The book's finalWin (hundredths of the bet) is the authoritative payout; the RGS float is a fallback.
-		const fin = events.find((e) => e.type === 'finalWin') as BookEventOfType<'finalWin'> | undefined;
-		payoutRaw = fin ? bookToMoney(fin.amount, game.bet) : Math.round(game.bet * payoutX);
-		await player.play(events);
-		game.phase = 'ending';
-		if (payoutX > 0) {
-			const end = await rgs.endRound(params.rgsUrl, params.sessionID);
-			game.balance = end.balance.amount;
-		}
-		game.lastPayoutRaw = payoutRaw;
+		res = await rgs.play(params.rgsUrl, params.sessionID, game.bet, mode, game.currency);
 	} catch (e) {
 		fail(e);
 		game.phase = 'idle';
 		clock.skipping = false;
 		return null;
 	}
+	game.balance = res.balance.amount;
+	const events = eventsFromState(res.round.state);
+	const payoutX = Number(res.round.payoutMultiplier ?? 0);
+	// The book's finalWin (hundredths of the bet) is the authoritative payout; the RGS float is a fallback.
+	const fin = events.find((e) => e.type === 'finalWin') as BookEventOfType<'finalWin'> | undefined;
+	payoutRaw = fin ? bookToMoney(fin.amount, game.bet) : Math.round(game.bet * payoutX);
+	await animate(events, fin);
+	game.phase = 'ending';
+	// A paying round stays open on the RGS until end-round (REQUIREMENTS §4); never leave one open.
+	if (payoutRaw > 0 || payoutX > 0 || res.round.active === true) {
+		try {
+			const end = await rgs.endRound(params.rgsUrl, params.sessionID);
+			game.balance = end.balance.amount;
+		} catch (e) {
+			fail(e);
+			game.phase = 'idle';
+			clock.skipping = false;
+			return null;
+		}
+	}
+	game.lastPayoutRaw = payoutRaw;
 	clock.skipping = false;
 	game.phase = 'idle';
 	onRoundEnd?.();
@@ -207,7 +230,7 @@ export async function playReplay() {
 	game.totalWin = 0;
 	game.spinWin = 0;
 	clock.skipping = false;
-	await player.play(replayEvents);
+	await animate(replayEvents, replayEvents.find((e) => e.type === 'finalWin') as BookEventOfType<'finalWin'> | undefined);
 	clock.skipping = false;
 	game.phase = 'replayDone';
 }
