@@ -69,31 +69,31 @@
   },
   "pearl_gold": {
    "file": "img/pearl_gold.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "pearl_rose": {
    "file": "img/pearl_rose.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "pearl_black": {
    "file": "img/pearl_black.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "pearl_venom": {
    "file": "img/pearl_venom.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "pearl_venom_grand": {
    "file": "img/pearl_venom_grand.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
