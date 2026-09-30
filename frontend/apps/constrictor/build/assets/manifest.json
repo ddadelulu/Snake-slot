@@ -156,6 +156,12 @@
    "source": "placeholder",
    "w": 1024,
    "h": 1024
+  },
+  "keyart": {
+   "file": "img/keyart.jpg",
+   "source": "placeholder",
+   "w": 1920,
+   "h": 1080
   }
  },
  "audio": {

@@ -21,6 +21,9 @@
 		gap: 4px;
 		pointer-events: none;
 		user-select: none;
+		/* soft dark pool so the wordmark reads over any background (vault door, blind light) */
+		padding: clamp(10px, 3vh, 26px) clamp(18px, 3vw, 40px);
+		background: radial-gradient(ellipse at center, rgba(7, 8, 10, 0.82) 0%, rgba(7, 8, 10, 0.6) 45%, rgba(7, 8, 10, 0) 72%);
 	}
 	.word {
 		font-size: clamp(22px, 4.6vh, 44px);
