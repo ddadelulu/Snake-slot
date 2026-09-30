@@ -324,27 +324,64 @@ def egg():
     return drop_shadow(finish(im, W, W))
 
 
+def brass_shade(mask: Image.Image, relief=26.0, base=(176, 136, 70)) -> Image.Image:
+    """Shade a mask as polished brass lit from the upper left (height from a blurred mask, dithered)."""
+    n = mask.width
+    m = np.array(mask, float) / 255
+    hgt = np.array(mask.filter(ImageFilter.GaussianBlur(n / 90)), float) / 255
+    hgt = hgt + rng.normal(0, 0.004, hgt.shape)  # dither: no banding
+    gy, gx = np.gradient(hgt * relief)
+    nrm = np.stack([-gx, -gy, np.ones_like(hgt)], -1)
+    nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+    lam = np.clip(nrm @ LIGHT, 0, 1)
+    half = LIGHT + np.array([0, 0, 1.0])
+    half /= np.linalg.norm(half)
+    spec = np.clip(nrm @ half, 0, 1) ** 40
+    b = np.array(base, float)
+    col = b * (0.35 + 0.85 * lam[..., None]) + np.array([255, 236, 190]) * spec[..., None] * 0.7
+    rgba = np.dstack([np.clip(col, 0, 255), m * 255]).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
+
+
 def key():
+    """Antique brass vault key; the bow is a serpent head with a ring hole (STYLE_BIBLE §5)."""
     W = 512
-    im = canvas(W, W)
-    d = ImageDraw.Draw(im)
-    s = S
-    brass, dark, hi = (176, 136, 70), (96, 70, 34), (232, 196, 128)
-    # diagonal: bow lower-left, bit upper-right
-    def P(x, y):
-        return (x * s, y * s)
-    d.line([P(170, 350), P(420, 100)], fill=dark, width=34 * s)
-    d.line([P(170, 350), P(420, 100)], fill=brass, width=24 * s)
-    d.line([P(176, 336), P(414, 98)], fill=hi, width=5 * s)
-    # bit teeth
-    d.polygon([P(372, 148), P(412, 188), P(392, 208), P(352, 168)], fill=brass, outline=dark)
-    d.polygon([P(338, 182), P(372, 216), P(356, 232), P(322, 198)], fill=brass, outline=dark)
-    # snake-head bow
-    d.ellipse([P(70, 300), P(220, 450)], fill=dark)
-    d.ellipse([P(80, 310), P(210, 440)], fill=brass)
-    d.ellipse([P(112, 342), P(178, 408)], fill=(0, 0, 0, 0))
-    d.polygon([P(70, 380), P(28, 360), P(40, 420)], fill=brass, outline=dark)
-    d.ellipse([P(92, 330), P(108, 346)], fill=(20, 18, 14, 255))
+    n = W * S
+    P = lambda x, y: (x * S, y * S)
+    mask = Image.new("L", (n, n), 0)
+    d = ImageDraw.Draw(mask)
+    # shaft (diagonal: bow lower-left, bit upper-right) with two collar rings
+    d.line([P(205, 312), P(420, 97)], fill=255, width=26 * S)
+    for t in (0.1, 0.18):
+        cx, cy = 205 + (420 - 205) * t, 312 + (97 - 312) * t
+        d.line([P(cx - 17, cy - 17), P(cx + 17, cy + 17)], fill=255, width=11 * S)
+    # stepped bit
+    d.polygon([P(376, 140), P(418, 182), P(398, 202), P(356, 160)], fill=255)
+    d.polygon([P(344, 172), P(380, 208), P(364, 224), P(328, 188)], fill=255)
+    d.polygon([P(318, 198), P(342, 222), P(330, 234), P(306, 210)], fill=255)
+    # serpent-head bow (viper seen from above): snout down-left, wide jaw, neck flowing into the shaft
+    import math as _m
+    ang = _m.radians(135)  # snout direction: down-left, continuing the shaft (image y points down)
+    K = 1.15
+    cxh, cyh = 205 + 62 * K * _m.cos(ang), 312 + 62 * K * _m.sin(ang)
+    def L(x, y):  # local head coords (x toward the snout) -> canvas
+        return P(cxh + K * (x * _m.cos(ang) - y * _m.sin(ang)), cyh + K * (x * _m.sin(ang) + y * _m.cos(ang)))
+    half = [(98, 0), (90, 10), (72, 22), (48, 34), (22, 44), (0, 48), (-22, 44), (-42, 30), (-56, 18), (-64, 12)]
+    outline = [L(x, y) for x, y in half] + [L(x, -y) for x, y in reversed(half)]
+    d.polygon(outline, fill=255)
+    hole = Image.new("L", (n, n), 0)
+    hx, hy = L(-6, 0)
+    ImageDraw.Draw(hole).ellipse([hx - 20 * K * S, hy - 20 * K * S, hx + 20 * K * S, hy + 20 * K * S], fill=255)
+    mask = Image.fromarray(np.clip(np.array(mask, int) - np.array(hole, int), 0, 255).astype(np.uint8), "L")
+    im = brass_shade(mask)
+    dd = ImageDraw.Draw(im)
+    # engraved centre ridge along the snout and brow ridges over small recessed eyes
+    dd.line([L(92, 0), L(26, 0)], fill=(110, 80, 38, 200), width=2 * S)
+    for sgn in (-1, 1):
+        dd.line([L(62, 18 * sgn), L(40, 30 * sgn)], fill=(236, 204, 140, 220), width=3 * S)  # brow catch-light
+        ex, ey = L(50, 22 * sgn)
+        r = 4.5 * K * S
+        dd.ellipse([ex - r, ey - r, ex + r, ey + r], fill=(18, 13, 8, 255))
     return drop_shadow(finish(im, W, W))
 
 

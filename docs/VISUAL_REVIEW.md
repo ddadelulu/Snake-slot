@@ -32,6 +32,7 @@ and Storybook. Every problem below was seen in a screenshot, fixed, and re-check
 | 21 | Board (popout L) | "WILD" label drawn above a top-row snake, hidden under the frame and plaque | Label clamped inside the board; it goes below the body when the body is on the top row |
 | 22 | Hunt / Venom trigger | Only a spinning wheel; §9 asks for "the key turns, the door swings open, blackness, then the board" | In-engine sequence: a brass key turns in the hub, the wheel spins, the door swings open on its left hinge (CSS 3D), a black veil falls, the title rises out of it, then the board; one duration drives it all (turbo/skip/reduced motion) |
 | 23 | Max win | Gold shower + title only; §9's "THE VAULT IS EMPTY" should read literally | On the cap, every jewel left on the board is drawn into the serpent's mouth (nearest first, rising gulps), leaving empty velvet; then the gold shower and the title (frames: `node tests/e2e/hero.mjs`) |
+| 24 | KEY symbol | Plain ring bow; §5 asks for a bow shaped as a snake head | Brass key with a viper-head bow (tapered snout, wide jaw, ring hole, engraved ridge, recessed eyes), shared brass shading lit from the upper left |
 
 ## What still falls short of the bible (and why)
 
@@ -41,5 +42,5 @@ and Storybook. Every problem below was seen in a screenshot, fixed, and re-check
 - **Hero moments 1 and 3** are now in-engine sequences (#22, #23). The photographic versions the bible
   imagines (a real vault door swinging open; the serpent coiled on a mountain of jewels) need the final art or the
   videos listed in `art/HIGGSFIELD_PROMPTS.md`.
-- **KEY bow** is a plain ring, not a snake head, and the **tongue** is a simple forked sprite (placeholders).
+- The **tongue** is a simple forked sprite (placeholder).
 - **Audio** is synthesized placeholder audio (D-021); `art/AUDIO_SPEC.md` is the brief for the finals.
