@@ -33,7 +33,7 @@
   },
   "sym_L2": {
    "file": "img/sym_L2.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
@@ -45,25 +45,25 @@
   },
   "sym_L4": {
    "file": "img/sym_L4.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "sym_EGG": {
    "file": "img/sym_EGG.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "sym_KEY": {
    "file": "img/sym_KEY.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "pearl_white": {
    "file": "img/pearl_white.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
