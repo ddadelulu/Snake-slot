@@ -92,7 +92,7 @@ times in these runs are not representative of real devices.
 | Compliance flows | `node tests/e2e/compliance.mjs` | 14/14: resume + settle after refresh, bet kept, balance matches; replay shows mode/bet/cost multiplier/real cost, plays, shows win, PLAY AGAIN, **no wallet calls**; insufficient balance → error; console clean |
 | Social mode scan | `node tests/e2e/social.mjs` | 0 restricted words and no `$` on every screen/popup (main, rules tabs, feature menu + confirm, ante confirm, autoplay, settings, bet menu, error, replay) |
 | Viewports | `node tests/e2e/viewports.mjs` | 7/7 sizes, 0 overflow, 0 console problems |
-| Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible and the 20 fixes it led to in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
+| Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible and the 21 fixes it led to in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
 | Storybook | `npx storybook build` + `node tests/e2e/storybook.mjs` | 44 stories render without page errors (UI states, every modal, 21 real-book scenarios incl. small win, hatch, long snake, OUROBOROS once and twice, Hunt trigger, retrigger, Venom Hunt, max win, turbo, social); the only network miss is Chromium's automatic `/favicon.ico` probe inside Storybook |
 
 ## 7. Compliance checklist (brief §3, verified against `docs/REQUIREMENTS.md`)

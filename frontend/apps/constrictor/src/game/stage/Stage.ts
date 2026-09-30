@@ -331,7 +331,12 @@ export class Stage {
 		const first = this.wildLabelShows < 2;
 		if (first) {
 			const mid = center(cells[Math.floor(cells.length / 2)]);
-			this.wildLabel.position.set(mid.x, mid.y - CELL * 0.6);
+			// above the body, or below it when the body is on the top row (never under the frame or the plaque)
+			const above = mid.y - CELL * 0.6;
+			this.wildLabel.position.set(
+				Math.min(ORIGIN + INNER - CELL * 0.7, Math.max(ORIGIN + CELL * 0.7, mid.x)),
+				above < ORIGIN + CELL * 0.45 ? mid.y + CELL * 0.6 : above,
+			);
 			this.wildLabelShows++;
 		}
 		await Promise.all([

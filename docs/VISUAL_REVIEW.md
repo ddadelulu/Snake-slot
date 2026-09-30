@@ -29,6 +29,7 @@ and Storybook. Every problem below was seen in a screenshot, fixed, and re-check
 | 18 | Right panel | Wordmark over the busy vault-door wheel | Soft dark backing behind the wordmark |
 | 19 | Frame | Flat dark slab (§1/§7) | Bevelled brushed steel, brass lip lit from the upper left, stepped Deco corner plates |
 | 20 | Tile | Floating head above the gem | Serpent coiled around the Black Opal, head rising from the coil; background bright with no dark edges (§10) |
+| 21 | Board (popout L) | "WILD" label drawn above a top-row snake, hidden under the frame and plaque | Label clamped inside the board; it goes below the body when the body is on the top row |
 
 ## What still falls short of the bible (and why)
 
