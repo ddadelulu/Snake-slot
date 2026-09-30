@@ -1,6 +1,6 @@
 # CONSTRICTOR: Submission pack
 
-Studio **Studio 12** · Game id `constrictor` · Math **v1** (frozen 2026-09-29) · Upload-ready web build `frontend/apps/constrictor/build/` (static, 3.9 MB, 76 files; `pnpm build`) · Math upload set `math/games/constrictor/publish/` (`publish_parts.py join`)
+Studio **Studio 12** · Game id `constrictor` · Math **v2** (2026-09-30: trail refills, D-038) · Upload-ready web build `frontend/apps/constrictor/build/` (static, 3.9 MB, 76 files; `pnpm build`) · Math upload set `math/games/constrictor/publish/` (`publish_parts.py join`)
 
 ## 1. Promo blurb
 
@@ -29,41 +29,42 @@ From `docs/MATH_REPORT.md` (exact LUT RTP; `cd math && env/bin/python verify_con
 
 | Mode | Stake mode id | Cost | What it does | RTP | Max win | Max-win frequency |
 |---|---|---|---|---|---|---|
-| BASE | `base` | 1× | Normal play | 96.00 % | 25,000× | 1 in 1,241,198 rounds |
-| SERPENT CALL (ante) | `ante` | 2.5× | THE HUNT triggers ×5.19 as often (1 in 48.25 vs 1 in 250.25); EGG unchanged | 96.00 % | 25,000× | 1 in 239,236 rounds |
-| THE HUNT (buy) | `hunt` | 100× | Starts THE HUNT (10/12/15 spins) | 96.00 % | 25,000× | 1 in 6,190 rounds |
-| VENOM HUNT (buy) | `venom` | 700× | Starts VENOM HUNT (12 spins, length-8 snake at ×2, Venom +10/+25) | 96.00 % | 25,000× | 1 in 1,366 rounds |
+| BASE | `base` | 1× | Normal play | 96.00 % | 25,000× | 1 in 1,215,637 rounds |
+| SERPENT CALL (ante) | `ante` | 2.5× | THE HUNT triggers ×4.90 as often (1 in 51.05 vs 1 in 250.25); EGG unchanged | 96.00 % | 25,000× | 1 in 294,090 rounds |
+| THE HUNT (buy) | `hunt` | 100× | Starts THE HUNT (10/12/15 spins) | 96.00 % | 25,000× | 1 in 10,308 rounds |
+| VENOM HUNT (buy) | `venom` | 700× | Starts VENOM HUNT (12 spins, length-8 snake at ×2, Venom +10/+25) | 96.00 % | 25,000× | 1 in 1,570 rounds |
 
 When a round reaches 25,000× the win is capped, a `wincap` event is shown, the round ends immediately and any remaining free spins or moves are forfeited (stated in the rules).
 
 ## 4. Replay event IDs
 
-Book ids from the published books (`math/games/constrictor/publish/`), one per category and mode. Replay URL:
+Book ids from the published books (`math/games/constrictor/publish/`), one per category and mode (picked by
+`math/replay_examples.py`). Replay URL:
 `?replay=true&game=<game>&version=<published version>&mode=<mode>&event=<id>&rgs_url=<rgs>` (the version is the one
 the dashboard assigns on upload). Payouts are × base bet.
 
 | Mode | Category | Event id | Payout | Shows |
 |---|---|---|---|---|
-| base | loss | 303 | 0.0× | — |
-| base | normal win | 1090 | 3.3× | EGG/snake |
-| base | big win | 161426 | 609.4× | Hunt |
-| base | bonus trigger | 46180 | 96.4× | Hunt |
-| base | win cap | 74605 | 25,000.0× | OUROBOROS, Hunt, wincap event |
-| ante | loss | 2724 | 0.0× | — |
-| ante | normal win | 432 | 2.2× | EGG/snake |
-| ante | big win | 166211 | 1,763.0× | Hunt |
-| ante | bonus trigger | 1146 | 112.6× | EGG/snake, Hunt |
-| ante | win cap | 74974 | 25,000.0× | OUROBOROS, Hunt, retrigger, wincap event |
-| hunt | loss (pays below the 100× cost) | 1768 | 7.6× | — |
-| hunt | normal win | 705 | 102.6× | — |
-| hunt | big win | 10823 | 1,423.0× | — |
-| hunt | retrigger | 4245 | 559.7× | retrigger |
-| hunt | win cap | 39209 | 25,000.0× | OUROBOROS, retrigger, wincap event |
-| venom | loss (pays below the 700× cost) | 10824 | 204.4× | — |
-| venom | normal win | 704 | 848.9× | OUROBOROS |
-| venom | big win | 193028 | 6,456.0× | OUROBOROS |
-| venom | retrigger | 3376 | 430.8× | retrigger |
-| venom | win cap | 6100 | 25,000.0× | OUROBOROS, wincap event |
+| base | loss | 0 | 0.0× | — |
+| base | normal win | 21 | 1.5× | EGG/snake |
+| base | big win | 718 | 1,104.5× | Hunt |
+| base | bonus trigger | 15 | 140.0× | EGG/snake, Hunt |
+| base | win cap | 4 | 25,000.0× | Hunt, OUROBOROS, wincap event |
+| ante | loss | 1 | 0.0× | — |
+| ante | normal win | 22 | 1.6× | EGG/snake |
+| ante | big win | 1036 | 823.3× | EGG/snake, Hunt |
+| ante | bonus trigger | 8 | 162.0× | EGG/snake, Hunt |
+| ante | win cap | 260 | 25,000.0× | EGG/snake, Hunt, OUROBOROS, wincap event |
+| hunt | loss (pays below the 100× cost) | 2 | 15.1× | — |
+| hunt | normal win | 8 | 104.4× | — |
+| hunt | big win | 1250 | 1,390.7× | OUROBOROS |
+| hunt | retrigger | 18 | 27.3× | retrigger |
+| hunt | win cap | 942 | 25,000.0× | OUROBOROS, wincap event |
+| venom | loss (pays below the 700× cost) | 3 | 216.2× | — |
+| venom | normal win | 6 | 813.1× | OUROBOROS |
+| venom | big win | 11 | 8,000.9× | OUROBOROS |
+| venom | retrigger | 34 | 615.4× | retrigger |
+| venom | win cap | 331 | 25,000.0× | OUROBOROS, wincap event |
 
 ## 5. Game tile layers
 
@@ -112,7 +113,7 @@ unless noted. The mock serves real books from the published math (D-024).
 | Strictly stateless: no jackpots, gamble, carry-over, early cashout | ✅ | SPEC §1/§4; the base-game snake exits each spin; free spins live inside one round |
 | Original work, no web-sdk sample assets, no Stake branding | ✅ | The 10 symbols and 6 pearls are the owner's own Higgsfield art made for this game (`art/final/`, D-035); the rest of the art is procedural (`art/pipeline/placeholders.py`), all audio synthesized (`art/audio/synth.py`); sample apps not shipped; no Stake names/logos in UI or art |
 | Nothing appealing to minors | ✅ | Noir jeweler's vault, realistic serpent, no characters |
-| Math final before submission | ✅ | Math v1 frozen (SPEC §15); upload set + checksums in `math/games/constrictor/publish/` |
+| Math final before submission | ✅ | Math v2 (SPEC §15); upload set + checksums in `math/games/constrictor/publish/` |
 
 ### Math
 | Item | Status | Evidence |
@@ -137,7 +138,7 @@ unless noted. The mock serves real books from the published math (D-024).
 | Spacebar spins (and skips) | ✅ | `Game.svelte` `onKey`; used by smoke/soak tests |
 | Mute | ✅ | sound button in the bar + Settings (music/SFX volumes) |
 | Autoplay needs explicit confirmation | ✅ | AUTO opens the settings dialog; only START AUTOPLAY begins; stop conditions; STOP always available |
-| Turbo keeps wins/popups legible | ✅ | turbo = 2.2× animation speed; count-ups keep ≥ 45 % of their duration; banners and amounts unchanged |
+| Turbo keeps wins/popups legible | ✅ | turbo = 2× animation speed; count-ups keep ≥ 45 % of their duration; banners and amounts unchanged |
 | Bet levels from authenticate, stepBet, min and max | ✅ | `tests/unit/bets.test.ts`; bet menu lists every level |
 | Balance and final win shown; counter reaches the exact payout | ✅ | browser soak: displayed WIN == book payout for every round (`tests/e2e/soak.mjs`, see §6) |
 | Money formatting incl. XGC/XSC without `$` | ✅ | `tests/unit/money.test.ts`; screenshots `desktop_social_XSC`, `desktop_currency_XGC`, `_JPY`, `_EUR`, `_BRL` |

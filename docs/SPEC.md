@@ -283,7 +283,7 @@ The same as THE HUNT except:
 | Mode id | Name | Cost | What it does |
 |---|---|---|---|
 | `base` | BASE | 1× | Normal play. |
-| `ante` | SERPENT CALL | **2.5×** | Same as BASE, but the KEY chance is raised: THE HUNT triggers ×5.19 as often (1 in 48.25 vs 1 in 250.25). EGG chance unchanged. |
+| `ante` | SERPENT CALL | **2.5×** | Same as BASE, but the KEY chance is raised: THE HUNT triggers ×4.90 as often (1 in 51.05 vs 1 in 250.25). EGG chance unchanged. |
 | `hunt` | THE HUNT | **100×** | Starts THE HUNT immediately; 3/4/5-key start weighted 3.4 : 0.5 : 0.1. |
 | `venom` | VENOM HUNT | **700×** | Starts VENOM HUNT immediately (brief ~400×; cost follows the math, D-015). |
 
@@ -423,9 +423,10 @@ the UI guide, and the disclaimer.
 
 ---
 
-## 15. Parameters (math v1): frozen 2026-09-29
+## 15. Parameters (math v2): 2026-09-30
 
-Source of truth: `math/games/constrictor/params.py` (`MATH_VERSION = "v1"`). Changing any value below
+Source of truth: `math/games/constrictor/params.py` (`MATH_VERSION = "v2"`). v2 = v1 plus the trail refills
+(§5.4, §5.6; D-038), paid for by the paytable × 0.83 and a slightly lower SERPENT CALL KEY chance. Changing any value below
 requires new books, new LUTs and a new verification run. Measured results (RTP, hit rates, feature
 frequencies, distribution, SDK metrics) are in `docs/MATH_REPORT.md`, generated from the verifier output.
 
@@ -433,22 +434,24 @@ frequencies, distribution, SDK metrics) are in `docs/MATH_REPORT.md`, generated 
 
 | Sym | 5 | 6 | 7 | 8 | 9–10 | 11–12 | 13–15 | 16+ |
 |---|---|---|---|---|---|---|---|---|
-| H1 | 2.2 | 2.7 | 3.2 | 3.8 | 4.4 | 5.4 | 6.5 | 8.6 |
-| H2 | 1.6 | 2.0 | 2.4 | 2.8 | 3.2 | 3.9 | 4.9 | 6.5 |
-| H3 | 1.3 | 1.5 | 1.8 | 2.2 | 2.6 | 3.0 | 3.8 | 4.9 |
-| H4 | 1.1 | 1.3 | 1.5 | 1.7 | 2.2 | 2.6 | 3.2 | 4.3 |
-| L1 | 0.9 | 1.0 | 1.1 | 1.3 | 1.6 | 1.9 | 2.4 | 3.2 |
-| L2 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.5 | 1.9 | 2.7 |
-| L3 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.6 | 2.2 |
-| L4 | 0.4 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.7 |
+| H1 | 1.8 | 2.2 | 2.7 | 3.2 | 3.7 | 4.5 | 5.4 | 7.1 |
+| H2 | 1.3 | 1.7 | 2.0 | 2.3 | 2.7 | 3.2 | 4.1 | 5.4 |
+| H3 | 1.1 | 1.2 | 1.5 | 1.8 | 2.2 | 2.5 | 3.2 | 4.1 |
+| H4 | 0.9 | 1.1 | 1.2 | 1.4 | 1.8 | 2.2 | 2.7 | 3.6 |
+| L1 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.6 | 2.0 | 2.7 |
+| L2 | 0.6 | 0.7 | 0.8 | 0.9 | 1.1 | 1.2 | 1.6 | 2.2 |
+| L3 | 0.4 | 0.5 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.8 |
+| L4 | 0.3 | 0.4 | 0.5 | 0.7 | 0.8 | 0.9 | 1.1 | 1.4 |
 
 Flat top end on purpose: a long wild snake joins nearly every neighbour into one cluster, so the
 multiplier, not the size band, drives the big wins (D-013).
 
 ### 15.2 Cell draws
 - Regular symbol weights (every mode, every game type): H1 6 · H2 7 · H3 8 · H4 9 · L1 11 · L2 12 · L3 13 · L4 14.
+- Fresh gems (trail and exit refills, `fill`): the same weights (exit refills redraw any gem that matches a
+  neighbour, §5.6).
 - KEY count {0,1,2,3,4,5}: base 900 · 85 · 12 · 3.4 · 0.5 · 0.1 (P(≥3) = 4.0/1001.0 = 1 in 250.25);
-  SERPENT CALL 900 · 85 · 12 · 18.0 · 2.6 · 0.5 (P(≥3) = 21.1/1018.1 = 1 in 48.25, ×5.19);
+  SERPENT CALL 900 · 85 · 12 · 17.0 · 2.45 · 0.47 (P(≥3) = 19.92/1016.92 = 1 in 51.05, ×4.90);
   free spins 800 · 150 · 30 · 3 · 0.5 · 0.1 (retrigger P(≥3) = 3.6/984.1 per spin).
 - EGG (base and ante): p = 1/16 per spin.
 - Base pearls (only with an EGG), count {0..4}: 25 · 35 · 25 · 10 · 5; values {1,2,3,5}: 50 · 25 · 15 · 10.
@@ -484,5 +487,5 @@ overrides above). Pearl-proof lookahead 12 → 8 → 4 → none. LCAP 20, minimu
 - LUT weighting (D-017): exact bucket probabilities: P(freegame) = the KEY-table trigger probability
   (1 for buys), P(max win) = 1 in 4,000,000 (base), 1 in 1,000,000 (ante), 1 in 50,000 (hunt),
   1 in 10,000 (venom). Natural weights within buckets, one power tilt (1 + payout)^θ on the freegame
-  bucket, solved for RTP = 96.00 %. Integer weights summing to ≈ 2⁵³. θ: base −0.0010, ante −0.0157,
-  hunt +0.0356, venom −0.0193.
+  bucket, solved for RTP = 96.00 %. Integer weights summing to ≈ 2⁵³. θ (v2): base −0.0175, ante −0.0320,
+  hunt −0.0063, venom −0.0257 (v1: −0.0010, −0.0157, +0.0356, −0.0193).

@@ -290,6 +290,23 @@ pearl sheen instead of the oil-slick rainbow, and wild, glint and the OUROBOROS 
 add light (added light is invisible on white). The guardian coil is the same snake at 84 % brightness so the
 hunting snake leads. Style bible §1/§3/§4, the Higgsfield snake prompts and the placeholder key art follow.
 
+### D-038: Math v2: fresh gems refill the snake's trail
+The owner asked that gems fall in as soon as the snake eats, instead of leaving holes. In v1 every cell the tail
+left stayed EMPTY (a blocker) until the next spin. v2: **the moment the tail leaves a cell, a fresh regular gem
+(H1–L4, same weights as the board draw, never a KEY/PEARL/EGG) drops into it** and counts for this spin's
+evaluation (`snakeMoves.steps[i].fill`). When a base-game hatchling slithers off after the win is counted, its
+cells refill too (`snakeExit.fill`, tail first); those gems are drawn so that none matches a neighbour, so the
+board never shows an unpaid cluster (none after a max win: the vault stays empty). Not a tumble: nothing is
+removed and re-evaluated. Pearls stay the only multiplier food, so the path generator is unchanged.
+**Cost:** the refills add paying cells next to the wild body, lifting natural RTP from ~96 % to ~122 % (base),
+~115 % (THE HUNT) and ~118 % (VENOM). Every mode moved by a similar factor, so one even cut was fairest: the whole
+paytable × 0.83 (rounded to 0.1×, rows kept increasing). SERPENT CALL's KEY chance was trimmed from ×5.19 to ×4.90
+(1 in 51.05) so its natural RTP lands near 96 % like the others; buy prices unchanged. Production books (2.5 M),
+LUT weighting to exactly 96.00000 % (θ base −0.0175, ante −0.0320, hunt −0.0063, venom −0.0257) and the
+independent verifier (taught the refills: every vacated tail cell must carry a regular `fill`, exit fills must
+cover the body and match no neighbour) all pass: 2,500,000 / 2,500,000 books replayed, 0 failures. Every brief
+§4.8 target still passes (base hit 29.96 %, EGG 1 in 16, Hunt 1 in 250, split 60.2 / 39.8 %). Math version v2.
+
 ### D-039: BALANCE and WIN inside the taskbar
 The owner asked for the balance "where it actually belongs". Their layout has no balance at all, and D-036 had
 put BALANCE and WIN in a separate card beside Buy Bonus / under the side panel, which read as floating. In slots

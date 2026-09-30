@@ -16,11 +16,11 @@ At most one EGG can land on a base game board. When it lands, a snake hatches on
 
 The MOVES counter shows how many moves the snake makes this spin (4 to 10 in the base game, 4 to 12 in free spins). Each move takes the head one cell up, down, left or right. The snake never leaves the grid and never crosses its own body.
 
-When the snake leaves a cell at its tail, that cell is left EMPTY. The snake eats whatever its head moves onto. Eaten symbols and KEYs are covered by the body. KEYs are counted when they land, before the snake moves.
+When the snake's tail leaves a cell, a fresh gem drops into it at once, so the board never has holes. Fresh gems are always one of the eight paying symbols (never a KEY, PEARL or EGG) and count for this spin's wins. The snake eats whatever its head moves onto, fresh gems included. Eaten symbols and KEYs are covered by the body. KEYs are counted when they land, before the snake moves.
 
-The snake's whole body is WILD. Wild cells substitute for every paying symbol and can be part of clusters of several different symbols in the same spin. A cluster must contain at least one real symbol; a group made only of wild cells does not pay. EMPTY cells, KEYs and uneaten PEARLs block clusters.
+The snake's whole body is WILD. Wild cells substitute for every paying symbol and can be part of clusters of several different symbols in the same spin. A cluster must contain at least one real symbol; a group made only of wild cells does not pay. KEYs and uneaten PEARLs block clusters.
 
-At the end of a base game spin the snake slithers off the board. Nothing carries over to the next spin.
+At the end of a base game spin the snake slithers off the board and fresh gems fill the cells it leaves (except after a max win). They arrive after the spin's win is counted: none of them matches a neighbouring symbol, so they never form or extend a cluster. Nothing carries over to the next spin.
 
 ## PEARLS AND THE MULTIPLIER
 
@@ -36,7 +36,7 @@ Base game values: +1, +2, +3, +5. THE HUNT: +1, +2, +3, +5, +10. VENOM HUNT: +1,
 
 When the snake is at least 8 long and is not still growing, its head can bite its own tail. If the closed ring encloses at least one cell, OUROBOROS happens.
 
-Every enclosed cell is constricted into the highest-paying symbol found inside the ring (H1 if there is none). Enclosed KEYs, PEARLs and EMPTY cells are changed too. Crushed PEARLs add nothing.
+Every enclosed cell is constricted into the highest-paying symbol found inside the ring (H1 if there is none). Enclosed KEYs and PEARLs are changed too. Crushed PEARLs add nothing.
 
 The multiplier is doubled. The ring is the snake's body, so it stays WILD for the win evaluation.
 
@@ -52,7 +52,7 @@ Each free spin, new symbols land in every cell the snake does not occupy, then t
 
 3 or more KEYs on a free spin award +5 free spins, up to 30 free spins in total.
 
-In the base game THE HUNT triggers on average once every 250 spins, and once every 48 spins with SERPENT CALL on.
+In the base game THE HUNT triggers on average once every 250 spins, and once every 51 spins with SERPENT CALL on.
 
 ## VENOM HUNT
 
@@ -71,7 +71,7 @@ The expected return is calculated over many plays. It is a long-term statistical
 ## MODES
 
 - **BASE GAME** (1×, RTP 96.00%, max win 25,000×): Normal play.
-- **SERPENT CALL** (2.5×, RTP 96.00%, max win 25,000×): Every spin costs 2.5× the bet. More KEYs land, so THE HUNT triggers about 5.2× as often. The EGG chance is unchanged.
+- **SERPENT CALL** (2.5×, RTP 96.00%, max win 25,000×): Every spin costs 2.5× the bet. More KEYs land, so THE HUNT triggers about 4.9× as often. The EGG chance is unchanged.
 - **THE HUNT** (100×, RTP 96.00%, max win 25,000×): Buy THE HUNT for 100× the bet: 10, 12 or 15 free spins start immediately.
 - **VENOM HUNT** (700×, RTP 96.00%, max win 25,000×): Buy VENOM HUNT for 700× the bet: 12 free spins with a length-8 snake at ×2 from the first spin. Venom pearls +10 and +25.
 
@@ -79,14 +79,14 @@ The expected return is calculated over many plays. It is a long-term statistical
 
 | Symbol | 5 | 6 | 7 | 8 | 9–10 | 11–12 | 13–15 | 16+ |
 |---|---|---|---|---|---|---|---|---|
-| H1 | 2.2 | 2.7 | 3.2 | 3.8 | 4.4 | 5.4 | 6.5 | 8.6 |
-| H2 | 1.6 | 2 | 2.4 | 2.8 | 3.2 | 3.9 | 4.9 | 6.5 |
-| H3 | 1.3 | 1.5 | 1.8 | 2.2 | 2.6 | 3 | 3.8 | 4.9 |
-| H4 | 1.1 | 1.3 | 1.5 | 1.7 | 2.2 | 2.6 | 3.2 | 4.3 |
-| L1 | 0.9 | 1 | 1.1 | 1.3 | 1.6 | 1.9 | 2.4 | 3.2 |
-| L2 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.5 | 1.9 | 2.7 |
-| L3 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.6 | 2.2 |
-| L4 | 0.4 | 0.5 | 0.6 | 0.8 | 0.9 | 1.1 | 1.3 | 1.7 |
+| H1 | 1.8 | 2.2 | 2.7 | 3.2 | 3.7 | 4.5 | 5.4 | 7.1 |
+| H2 | 1.3 | 1.7 | 2 | 2.3 | 2.7 | 3.2 | 4.1 | 5.4 |
+| H3 | 1.1 | 1.2 | 1.5 | 1.8 | 2.2 | 2.5 | 3.2 | 4.1 |
+| H4 | 0.9 | 1.1 | 1.2 | 1.4 | 1.8 | 2.2 | 2.7 | 3.6 |
+| L1 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.6 | 2 | 2.7 |
+| L2 | 0.6 | 0.7 | 0.8 | 0.9 | 1.1 | 1.2 | 1.6 | 2.2 |
+| L3 | 0.4 | 0.5 | 0.7 | 0.8 | 0.9 | 1.1 | 1.3 | 1.8 |
+| L4 | 0.3 | 0.4 | 0.5 | 0.7 | 0.8 | 0.9 | 1.1 | 1.4 |
 
 ## UI GUIDE
 

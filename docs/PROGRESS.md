@@ -117,6 +117,13 @@ Resume point for any session. Update after every phase.
   viewports 7/7, compliance 14/14, smoke clean, soak 40 rounds 0 mismatches, Storybook 44/44, frame-by-frame turns
   in a forced HUNT, `docs/screenshots` regenerated (36).
 
+## Owner round 2 (2026-09-30): refills, taskbar balance, polish
+- Math v2 (D-038): fresh gems refill the snake's trail; paytable × 0.83, SERPENT CALL keys trimmed; 2.5 M
+  production books, exact 96.00000 % in all modes, independent verification 2,500,000 / 2,500,000 OK,
+  pytest 132 passed. MATH_REPORT, SPEC §5/§7/§11/§15, RULES, SUBMISSION (RTP table, replay examples via
+  `math/replay_examples.py`), publish set and frontend config/books regenerated.
+- BALANCE and WIN inside the taskbar (D-039); polish pass (D-040).
+
 ## Next up
 - Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).
 - Dylan: review D-001/D-012 (Coba overlap) and D-015 (Venom 700×) before submission.
