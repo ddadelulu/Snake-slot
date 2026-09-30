@@ -3,13 +3,13 @@
  "images": {
   "sym_H1": {
    "file": "img/sym_H1.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "sym_H2": {
    "file": "img/sym_H2.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
@@ -21,13 +21,13 @@
   },
   "sym_H4": {
    "file": "img/sym_H4.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
   "sym_L1": {
    "file": "img/sym_L1.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
@@ -39,7 +39,7 @@
   },
   "sym_L3": {
    "file": "img/sym_L3.webp",
-   "source": "placeholder",
+   "source": "final",
    "w": 256,
    "h": 256
   },
