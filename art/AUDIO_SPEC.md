@@ -52,3 +52,14 @@ around 4–6 kHz.
 ## Placeholder generator
 `math/env/bin/python art/audio/synth.py` regenerates every placeholder into `art/placeholder/audio/`.
 Then `math/env/bin/python art/pipeline/build_assets.py` copies them into the game with the manifest.
+
+## QA check
+`node tests/e2e/audio.mjs http://localhost:8080` (in `frontend/apps/constrictor`, with any server of the build)
+decodes every shipped file with the browser's WebAudio decoder (the one the game uses) and checks: peak ≤ −1 dBFS,
+no near-silent file, loop seams, and every id in this spec present. Result for the placeholders: 33 files, 0 problems.
+The placeholders are normalised to −1.5 dBFS because MP3 encoding overshoots sharp transients (`gem_tick` hit
+−0.1 dBFS at −1.0). Chromium honours the encoder's gapless tag, so the loops start and end within 40 samples.
+
+Known placeholder differences from the lengths above (informational; the finals should follow the spec):
+reverb tails make `cluster_win`, `constrict_crunch`, `deep_boom`, `hatch_hiss`, `key_land`, `mult_slam`,
+`ouroboros_sting` and `stinger_strike` 2–4× longer, and `music_hunt` / `music_hunt_layer` loop at 20 s instead of 60 s.

@@ -127,7 +127,7 @@ def fade(x, fin=0.005, fout=0.02):
     return x
 
 
-def norm(x, peak=0.89):
+def norm(x, peak=0.84):  # -1.5 dBFS: headroom for MP3 encoder overshoot on transients (AUDIO_SPEC: peak <= -1 dBFS)
     m = np.max(np.abs(x)) or 1
     return x / m * peak
 
