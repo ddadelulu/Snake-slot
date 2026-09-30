@@ -11,7 +11,7 @@
 
 ## 1. Overview
 
-A 7×7 cluster-pays slot fused with arcade Snake. When an **EGG** lands, a black serpent hatches and
+A 7×7 cluster-pays slot fused with arcade Snake. When an **EGG** lands, a white serpent hatches and
 **slithers across the board cell by cell**, following classic Snake rules. It swallows **PEARLs** to
 grow and to raise a round **multiplier**, and its **whole body is WILD**. If it bites its own tail
 (**OUROBOROS**), the ring **constricts** every cell inside it into a single symbol and the multiplier

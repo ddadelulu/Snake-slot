@@ -23,6 +23,7 @@ VOID = (7, 8, 10)
 BRASS = (156, 122, 69)
 BRASS_HI = (217, 178, 111)
 IVORY = (237, 230, 214)
+SNAKE_WHITE = np.array([242.0, 241.0, 237.0])  # the serpent's scales (owner's call: a white snake)
 VENOM = (61, 255, 138)
 LIGHT = np.array([-0.62, -0.62, 0.48])  # from upper-left, towards viewer
 LIGHT = LIGHT / np.linalg.norm(LIGHT)
@@ -387,7 +388,8 @@ def key():
 
 def snake_head(open_mouth=False):
     """Top-down viper head pointing up. Analytic height field (smooth float shading, no banding), broad jaw,
-    brow ridges, diamond scales continuous with the body strip, amber slit-pupil eyes, oil-slick rim."""
+    brow ridges, white diamond scales continuous with the body strip (same light as the in-game body shader:
+    cool fill, warm tungsten key), small black glassy eyes, faint pearl sheen at the grazing edges."""
     W = 512
     SS = 2
     n = W * SS
@@ -436,14 +438,14 @@ def snake_head(open_mouth=False):
     graze = np.clip(1 - nrm[..., 2], 0, 1) ** 0.9
     hue = 6.0 * v + 3.0 * ux + 2.0 * graze
     irid = np.stack([np.sin(hue) * 0.5 + 0.5, np.sin(hue + 2.1) * 0.5 + 0.5, np.sin(hue + 4.2) * 0.5 + 0.5], -1)
-    base = np.array([15.0, 16.0, 20.0])
-    col = base[None, None, :] * (0.55 + 0.9 * lam[..., None]) + 34 * lam[..., None] * dome[..., None]
-    col += irid * (70 * graze * (0.35 + 0.65 * lam))[..., None] * (0.6 + 0.4 * dome[..., None])
-    col += 255 * (spec * (0.35 + 0.65 * dome))[..., None] * 0.55
-    col *= (1 - 0.65 * seam)[..., None]
+    albedo = SNAKE_WHITE[None, None, :] * (0.93 + 0.07 * dome[..., None]) * (1 - 0.14 * seam)[..., None]
+    fill, key_ = np.array([0.42, 0.44, 0.5]), np.array([1.0, 0.94, 0.84])
+    col = albedo * (fill[None, None, :] + key_[None, None, :] * lam[..., None])
+    col += irid * (26 * graze * (0.35 + 0.65 * lam))[..., None] * (0.6 + 0.4 * dome[..., None])
+    col += 255 * (spec * (0.35 + 0.65 * dome))[..., None] * 0.3
     # rim light from the moon side (upper left)
     rim = np.clip(-ux, 0, 1) ** 6 * inside
-    col += np.array([90, 96, 110])[None, None, :] * rim[..., None] * 0.5
+    col += np.array([90, 96, 110])[None, None, :] * rim[..., None] * 0.25
     alpha = inside.astype(float) * (1 - smooth(0.66, 0.97, v))  # the neck fades into the body mesh
     # soften the silhouette
     am = Image.fromarray((alpha * 255).astype(np.uint8), "L").filter(ImageFilter.GaussianBlur(1.2 * SS))
@@ -474,7 +476,7 @@ def snake_head(open_mouth=False):
     # nostrils
     for sgn in (-1, 1):
         nx_, ny_ = cx + sgn * 0.045 * n, 0.115 * n
-        d.ellipse([nx_ - 0.009 * n, ny_ - 0.006 * n, nx_ + 0.009 * n, ny_ + 0.006 * n], fill=(2, 2, 3, 255))
+        d.ellipse([nx_ - 0.009 * n, ny_ - 0.006 * n, nx_ + 0.009 * n, ny_ + 0.006 * n], fill=(58, 54, 52, 255))
     if open_mouth:
         # jaws parting at the snout: dark red gape inside the silhouette, two pale fangs
         mouth = Image.new("RGBA", (n, n), (0, 0, 0, 0))
@@ -555,7 +557,7 @@ def tail():
     nx = np.clip((xx - cx) / (halfw + 1e-6), -1, 1)
     nz = np.sqrt(np.clip(1 - nx ** 2, 0, 1))
     lam = np.clip(-0.55 * nx + 0.6 * nz, 0, 1)
-    col = np.stack([8 + 40 * lam, 9 + 42 * lam, 12 + 48 * lam], -1)
+    col = SNAKE_WHITE[None, None, :] * (np.array([0.42, 0.44, 0.5]) + np.array([1.0, 0.94, 0.84]) * lam[..., None])
     rgba = np.zeros((size, size, 4))
     rgba[..., :3] = col
     rgba[..., 3] = 255 * inside
@@ -563,11 +565,11 @@ def tail():
 
 
 def scale_strip(w=1024, h=128):
-    """Tileable dorsal scale strip (horizontal, seamless in x). Imbricated black scales; the iridescence
-    is a smooth sheen across the upper flank (the in-engine shader adds the moving highlights)."""
+    """Tileable dorsal scale strip (horizontal, seamless in x). Imbricated white scales with soft grey seams, a
+    faint pearl sheen across the upper flank; mostly albedo, since the in-engine shader does the lighting."""
     out = np.zeros((h, w, 3))
     across = np.abs(np.mgrid[0:h, 0:w][0] / (h - 1) - 0.5) * 2
-    out[:] = (10, 11, 14)
+    out[:] = (192, 191, 188)
     per = w / 32.0  # 32 scales per strip length: integer -> seamless
     rows = 7
     rh = h / rows
@@ -579,17 +581,17 @@ def scale_strip(w=1024, h=128):
         for k in range(-1, 34):
             x0 = k * per + shift
             flank = abs((y0 + rh / 2) / h - 0.5) * 2
-            lum = int(20 + 38 * (1 - flank ** 2))
+            lum = int(218 + 22 * (1 - flank ** 2))
             poly = [(x0 + per * 0.5, y0 - rh * 0.1), (x0 + per * 1.05, y0 + rh * 0.55), (x0 + per * 0.5, y0 + rh * 1.15), (x0 - per * 0.05, y0 + rh * 0.55)]
-            d.polygon(poly, fill=(lum, lum + 2, lum + 6), outline=(4, 4, 6))
-            d.line([poly[0], poly[1]], fill=(lum + 26, lum + 28, lum + 34), width=2)
+            d.polygon(poly, fill=(lum, lum - 1, lum - 4), outline=(176, 174, 171))
+            d.line([poly[0], poly[1]], fill=(min(255, lum + 12), min(255, lum + 12), min(255, lum + 10)), width=2)
     arr = np.array(img.filter(ImageFilter.GaussianBlur(0.7)), float)
     xx = np.mgrid[0:h, 0:w][1]
     hue = xx / w * 2 * np.pi * 2
     irid = np.stack([np.sin(hue) * 0.5 + 0.5, np.sin(hue + 2.1) * 0.5 + 0.5, np.sin(hue + 4.2) * 0.5 + 0.5], -1)
     band = np.exp(-((np.mgrid[0:h, 0:w][0] / h - 0.33) / 0.14) ** 2)
-    arr = arr + irid * 34 * band[..., None] * (arr.mean(-1, keepdims=True) / 60)
-    arr = arr * (1 - 0.45 * across[..., None] ** 3)
+    arr = arr + (irid - 0.5) * 16 * band[..., None]
+    arr = arr * (1 - 0.18 * across[..., None] ** 3)
     rgba = np.zeros((h, w, 4))
     rgba[..., :3] = np.clip(arr, 0, 255)
     rgba[..., 3] = 255
@@ -819,9 +821,9 @@ def tile_foreground(n=1024):
     v = (across * 0.5 + 0.5) * (sh - 1)
     tex = strip[v.astype(int).clip(0, sh - 1), u.astype(int) % sw]
     nz = np.sqrt(np.clip(1 - across ** 2, 0, 1))
-    lam = np.clip(0.35 + 0.65 * (nz * 0.8 - across * 0.45 * np.sign(ey + 1e-9) * -1), 0.15, 1.2)
+    lam = np.clip(0.35 + 0.65 * (nz * 0.8 - across * 0.45 * np.tanh(ey * 3) * -1), 0.15, 1.2)
     spec = np.clip(nz, 0, 1) ** 24 * np.clip(-ey, 0, 1) * 0.0 + np.exp(-((across + 0.35) / 0.12) ** 2) * 0.35
-    col = tex * lam[..., None] * 1.25 + 255 * spec[..., None] * 0.35
+    col = tex * lam[..., None] * 0.95 + 255 * spec[..., None] * 0.25
     rgba = np.zeros((n, n, 4))
     rgba[..., :3] = np.clip(col, 0, 255)
     rgba[..., 3] = 255 * band

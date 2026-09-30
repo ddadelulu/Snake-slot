@@ -146,7 +146,7 @@ export class BoardView extends Container {
 				this.cells.push(cv);
 				this.cellsLayer.addChild(cv);
 			}
-		// warm pool of light on the velvet (the lamp above the table): lifts the black snake off the cloth
+		// warm pool of light on the velvet (the lamp above the table): gives the velvet depth under the snake
 		const pool = new Sprite(softDot());
 		pool.anchor.set(0.5);
 		pool.position.set(BOARD / 2, BOARD / 2 - CELL * 0.4);

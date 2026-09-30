@@ -40,7 +40,15 @@ The owner's taskbar design replaced the brass control bar, and every UI surface 
 floating Buy Bonus popup, loading screen (TAP TO ENTER, progress bar, title card), dialogs (rules, bet,
 autoplay, settings, confirm, error, resume), replay panel, HUD cards, the status plaque, the logo card and
 the win cards. Checked in screenshots at all 7 viewports: no overflow, SPIN centred, BALANCE and WIN always
-visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel). The scene art (board, frame, snake, background) is unchanged and still the noir set.
+visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel). The scene art (board, frame, background) is unchanged and still the noir set; the snake turned white later (D-037).
+
+## Owner-directed snake changes (D-037)
+
+| # | Where | Problem | Change |
+|---|---|---|---|
+| 25 | Snake on turns | A straight stub of neck stuck out across the body's curve: the head was a rigid sprite with about a cell of neck, turned to the new direction as soon as a step began | Head is a strip mesh on the body's spine: rigid to the jaw, then the neck bends into the curve; the heading follows the curve as the head moves (checked frame by frame through a forced HUNT) |
+| 26 | Snake colour | Owner asked for a white snake | Leucistic white head and scales, black glassy eyes, shader lit with cool fill and warm key and a faint pearl sheen; wild, glint and ring re-tuned as tints so they still show on white; guardian coil at 84 % |
+| 27 | Key art | The coil's lighting flipped sign at its middle, a seam that the black coil hid and the white one showed | Smooth light across the coil |
 
 ## What still falls short of the bible (and why)
 

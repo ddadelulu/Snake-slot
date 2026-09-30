@@ -7,8 +7,8 @@ regenerated, not retouched to "almost".
 
 ## 1. The world in one sentence
 A 1940s jeweler's strongroom after midnight: riveted black steel, black velvet trays, aged brass, a round
-vault door ajar in the dark. Hard film-noir light cuts through venetian blinds. A huge black serpent with
-oil-slick scales is loose inside and swallowing the collection.
+vault door ajar in the dark. Hard film-noir light cuts through venetian blinds. A huge white serpent with
+pearl-sheen scales is loose inside and swallowing the collection.
 
 ## 2. Lighting (the signature, shared by every asset)
 | Light | Spec |
@@ -24,7 +24,7 @@ no fake depth blur), isolated on transparent background, with shadows from the s
 
 ## 3. Colour
 The environment is **almost monochrome**. Colour is reserved for gems, pearls, venom and the snake's
-iridescence. That is what keeps a dark theme rich instead of muddy.
+pearl sheen. That is what keeps a dark theme rich instead of muddy.
 
 | Token | Hex | Use |
 |---|---|---|
@@ -46,12 +46,16 @@ overtone), venom (luminous green, the only emissive object besides the ring).
 loading screen wordmark.
 
 ## 4. The snake
-- Reference animal: **sunbeam snake** (*Xenopeltis unicolor*): glossy black, small smooth scales, oil-slick
-  rainbow iridescence that appears only where the light hits.
+- **White** (the owner's call, D-037). Reference animal: a **leucistic snake** (all white, not albino): pure
+  white, small smooth glossy scales with soft grey seams, a faint pearl sheen that appears only where the light
+  hits. Against the black velvet it is the brightest thing on the board after the gems.
 - Realistic, elegant, menacing. **Not** cartoon, **not** gory (no blood, no gaping wounds, no
-  exaggerated fangs). Eyes: small, black, glassy. No extra eyes.
-- In-engine the body is a textured rope mesh. Iridescence is a hue shift driven by segment angle, time
-  and the blind-light slats. The head turns smoothly; the tongue flicks every 3–6 s.
+  exaggerated fangs). Eyes: small, black, glassy (leucistic, so never pink or red). No extra eyes.
+- In-engine the body is a textured rope mesh lit like the plates: cool fill in the shadows, warm tungsten key
+  on the lit flank. The pearl sheen is a soft hue shift driven by segment angle, time and the blind-light slats;
+  wild, glint and the OUROBOROS ring tint the white rather than add light to it. The skull is rigid to the back of
+  the jaw and the neck bends into the body on turns (one spine drives body and head); the tongue flicks every
+  3–6 s. The guardian coil around the board is the same snake, drawn a little dimmer so the hunting snake leads.
 
 ## 5. Symbols (read at 48 px, colour-blind safe)
 Each gem has a **distinct cut silhouette**, so they read without colour:

@@ -119,6 +119,7 @@ export class Stage {
 		coil.setPath(path.reverse());
 		coil.alpha = 0.95;
 		coil.headScale = 0.82;
+		coil.shade = 0.84;
 		this.guardian.addChild(coil);
 		this.guardianCoil = coil;
 	}

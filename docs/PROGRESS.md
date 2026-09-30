@@ -112,6 +112,10 @@ Resume point for any session. Update after every phase.
   then every UI surface restyled to match (loading, dialogs, HUD, plaque, logo, win cards). Unused BuyModal removed.
 - Checks: svelte-check 0/0, vitest 30 passed + 1 skipped, viewports 7/7 no overflow, compliance 14/14, social 0
   restricted words, smoke with HUNT + VENOM buys clean, Storybook 43/43 stories render, `docs/screenshots` regenerated (36).
+- Snake (D-037): the neck bends into the body on turns (head on the body's spine, rigid to the jaw); the snake is
+  white (leucistic, black eyes), guardian coil a little dimmer. Checks: svelte-check 0/0, vitest 30 + 1 skipped,
+  viewports 7/7, compliance 14/14, smoke clean, soak 40 rounds 0 mismatches, Storybook 44/44, frame-by-frame turns
+  in a forced HUNT, `docs/screenshots` regenerated (36).
 
 ## Next up
 - Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).

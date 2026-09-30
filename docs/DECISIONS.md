@@ -276,3 +276,16 @@ width); otherwise the dock spreads out like the owner's file does below 650 px. 
 outlines #D4AF37, gold text #E6C46B, gold SPIN with a black inset ring. Checks: SPIN 0 px off centre at 1200, 1024,
 800, 400×225, 425 and 375 px at a $1 bet; no overlap at 320 px even at $1,000; soak 100 rounds 0 mismatches.
 
+
+### D-037: A white snake whose neck bends on turns
+The owner asked to "fix the neck when he turns and make the snake white". **Neck:** the head was a rigid sprite
+with about a cell of neck behind the eyes, turned toward the new direction the moment a step began, so on every
+turn a straight stub of neck stuck out across the body's curve. The head is now a strip mesh on the same spine as
+the body: straight along the heading back to the jaw (a skull does not bend), then the neck bends into the body
+curve over 0.7 cells. The heading is the chord to a point 0.4 cells back along the body, so the head swings round
+with the curve as it moves into a turn instead of snapping, and body and head can no longer part. **White:** the
+snake is a leucistic white (not albino: the eyes stay small, black and glassy). Head and scale textures are white
+with soft grey seams; the body shader lights them like the plates (cool fill, warm tungsten key) with a faint
+pearl sheen instead of the oil-slick rainbow, and wild, glint and the OUROBOROS ring now tint the white rather than
+add light (added light is invisible on white). The guardian coil is the same snake at 84 % brightness so the
+hunting snake leads. Style bible §1/§3/§4, the Higgsfield snake prompts and the placeholder key art follow.

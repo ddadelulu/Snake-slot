@@ -4,7 +4,7 @@ Studio **Studio 12** · Game id `constrictor` · Math **v1** (frozen 2026-09-29)
 
 ## 1. Promo blurb
 
-After midnight in a 1940s jeweler's strongroom, a black serpent with oil-slick scales is loose among the velvet
+After midnight in a 1940s jeweler's strongroom, a white serpent with pearl-sheen scales is loose among the velvet
 trays, and it is swallowing everything. **CONSTRICTOR** fuses arcade Snake with a 7×7 cluster slot. An EGG hatches
 a snake that slithers across the grid cell by cell, swallowing pearls to grow longer and to raise the round
 multiplier, and its whole body is WILD. Bite your own tail? In any other Snake game that ends the run. Here it
@@ -96,10 +96,10 @@ the Stake upload is always `build/` itself.
 | Compliance flows | `node tests/e2e/compliance.mjs` | 14/14: resume + settle after refresh, bet kept, balance matches; replay shows mode/bet/cost multiplier/real cost, plays, shows win, PLAY AGAIN, **no wallet calls**; insufficient balance → error; console clean |
 | Social mode scan | `node tests/e2e/social.mjs` | 0 restricted words and no `$` on every screen/popup (main, rules tabs, feature menu + confirm, ante confirm, autoplay, settings, bet menu, error, replay) |
 | Viewports | `node tests/e2e/viewports.mjs` | 7/7 sizes, 0 overflow, 0 console problems |
-| Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible and the 24 fixes it led to in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
+| Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible, the 24 fixes it led to and the owner-directed changes in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
 | Audio QA | `node tests/e2e/audio.mjs` | 33 files decoded with WebAudio: peak ≤ −1 dBFS, none silent, loops seamless, all AUDIO_SPEC ids present; placeholder length differences listed in `art/AUDIO_SPEC.md` |
 | Hero-video layer | `node tests/e2e/video.mjs` against a build whose manifest has test clips | 7/7: intro plays when loaded, Hunt clip plays, spacebar skips, round completes, turbo never shows a clip, no page errors (the shipped build has no clips yet, D-026) |
-| Storybook | `npx storybook build` + `node tests/e2e/storybook.mjs` | 43 stories render without page errors (taskbar and Buy Bonus states, loading, HUD, every dialog, 21 real-book scenarios incl. small win, hatch, long snake, OUROBOROS once and twice, Hunt trigger, retrigger, Venom Hunt, max win, turbo, social); the only network miss is Chromium's automatic `/favicon.ico` probe inside Storybook |
+| Storybook | `npx storybook build` + `node tests/e2e/storybook.mjs` | 44 stories render without page errors (taskbar, Buy Bonus and BALANCE/WIN card states, loading, HUD, every dialog, 21 real-book scenarios incl. small win, hatch, long snake, OUROBOROS once and twice, Hunt trigger, retrigger, Venom Hunt, max win, turbo, social); the only network miss is Chromium's automatic `/favicon.ico` probe inside Storybook |
 
 ## 7. Compliance checklist (brief §3, verified against `docs/REQUIREMENTS.md`)
 

@@ -1,6 +1,6 @@
 # CONSTRICTOR (working title): Studio 12
 
-An arcade Snake / cluster-pays slot for **Stake Engine**. A black serpent is loose in a 1940s jeweler's
+An arcade Snake / cluster-pays slot for **Stake Engine**. A white serpent is loose in a 1940s jeweler's
 strongroom. It swallows pearls to raise the multiplier, its whole body is wild, and when it bites its
 own tail (**OUROBOROS**) the ring constricts everything inside into one symbol and doubles the multiplier.
 

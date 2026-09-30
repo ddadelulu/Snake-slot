@@ -1,9 +1,9 @@
 // The snake renderer (brief §8): a custom mesh along a smoothed path through cell centres, tapered,
-// breathing, with swallow bulges, a smoothly turning head sprite, tongue flicks, a contact shadow and a
-// scale shader (glossy black, oil-slick iridescence driven by angle, time and the blind-light slats).
+// breathing, with swallow bulges, a head that bends into the body on turns, tongue flicks, a contact shadow
+// and a scale shader (white scales, pearl sheen driven by angle, time and the blind-light slats).
 // It only animates what the book says: positions come from book cells, never from randomness.
 
-import { Container, Geometry, Mesh, Shader, Sprite, Texture } from 'pixi.js';
+import { Container, Geometry, Mesh, MeshGeometry, Shader, Sprite, Texture } from 'pixi.js';
 import { softDot } from './BoardView';
 import { clock, ease } from './clock';
 import { texture } from './assets';
@@ -11,6 +11,13 @@ import { texture } from './assets';
 export type Pt = { x: number; y: number };
 
 const N = 96; // samples along the body
+const HEAD_ROWS = 26; // rows of the head strip (snout to neck)
+const HEAD_PIVOT = 0.34; // head texture v between the eyes: the head's anchor on the path
+const HEAD_JAW = 0.57; // head texture v at the back of the jaw: rigid ahead of it, the neck bends behind it
+/** Half-width of the head strip in texture u per row: the whole head down to the jaw, only the neck behind it
+ * (a narrow neck strip cannot fold over itself on a tight turn). */
+const headHalfU = (v: number) => (v < 0.58 ? 0.31 : v > 0.7 ? 0.23 : 0.31 - ((v - 0.58) / 0.12) * 0.08);
+const NECK = 0.7; // cells behind the jaw over which the neck bends from the head's heading into the body curve
 const VERT = `
 in vec2 aPosition;
 in vec2 aUV;
@@ -76,6 +83,7 @@ uniform float uGlintOn;
 uniform float uRing;
 uniform float uWild;
 uniform float uPx;
+uniform float uShade;
 
 vec3 hsv2rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -100,21 +108,23 @@ void main() {
     // gl_FragCoord is y-up: bands at ~30 deg falling left-high to right-low (STYLE_BIBLE 2)
     float slatCoord = (sp.x * 0.5 + sp.y * 0.866) / uSlatPeriod + uSlatDrift;
     float slat = smoothstep(0.62, 0.72, fract(slatCoord)) * (1.0 - smoothstep(0.86, 0.96, fract(slatCoord)));
-    vec3 base = tex.rgb * (0.30 + 0.95 * diff);
+    // white scales: cool fill in the shadows, warm tungsten key on the lit flank
+    vec3 base = tex.rgb * (vec3(0.42, 0.44, 0.5) + vec3(1.0, 0.94, 0.84) * diff);
     float hue = fract(0.55 + 0.35 * dot(vTan, vec2(0.7, 0.7)) + uTime * 0.035 + vUV.x * 0.08);
-    vec3 irid = hsv2rgb(vec3(hue, 0.65, 1.0));
-    float iridAmt = spec * (0.35 + 1.4 * slat) + 0.25 * pow(1.0 - nz, 3.0) * diff;
-    vec3 col = base + vec3(1.0, 0.93, 0.82) * spec * (0.45 + 0.9 * slat) + irid * iridAmt * 0.75 + vec3(0.55, 0.65, 0.85) * rim * 0.35;
-    // wild glint running along the body (after the moves)
+    vec3 irid = hsv2rgb(vec3(hue, 0.4, 1.0));
+    float iridAmt = spec * (0.3 + 0.9 * slat) + 0.3 * pow(1.0 - nz, 3.0) * diff;
+    vec3 col = base + vec3(1.0, 0.95, 0.86) * spec * (0.3 + 0.6 * slat) + irid * iridAmt * 0.35 + vec3(0.55, 0.65, 0.85) * rim * 0.25;
+    // tints, not added light: white scales are already near full brightness
+    // wild: warm gold over the body, and a glint running along it (after the moves)
+    col *= mix(vec3(1.0), vec3(1.0, 0.88, 0.62), uWild * 0.45 * nz);
     float g = exp(-pow((vT - uGlint) * 9.0, 2.0)) * uGlintOn;
-    col += vec3(1.0, 0.86, 0.55) * g * (0.35 + 0.65 * nz);
-    col += vec3(0.85, 0.7, 0.4) * uWild * 0.10 * nz;
+    col = mix(col, vec3(1.0, 0.8, 0.38) * (0.8 + 0.3 * nz), g * 0.6);
     // OUROBOROS ring ignition: venom light racing along the scales
     float race = fract(vUV.x * 0.25 - uTime * 1.6);
     float ring = uRing * (0.35 + 0.65 * smoothstep(0.75, 1.0, race)) * (0.4 + 0.6 * nz);
-    col += vec3(0.24, 1.0, 0.54) * ring;
+    col = mix(col, vec3(0.24, 1.0, 0.54) * (0.55 + 0.55 * nz), clamp(ring, 0.0, 1.0) * 0.75);
     float a = smoothstep(0.0, 0.08, vUV.y) * smoothstep(1.0, 0.92, vUV.y);
-    gl_FragColor = vec4(col * a, a);
+    gl_FragColor = vec4(col * uShade * a, a);
 }`;
 
 type Bulge = { pos: number; speed: number; amp: number };
@@ -128,8 +138,12 @@ export class SnakeView extends Container {
 	private tan = new Float32Array(N * 2 * 2);
 	private tt = new Float32Array(N * 2);
 	private shadow: Mesh<Geometry, Shader>;
-	head: Sprite;
-	private headRig = new Container(); // head sprite + tongue (Sprites cannot have children in Pixi 8)
+	/** The head: a strip mesh that follows the path, so the neck bends into the body on turns. */
+	head: Mesh<MeshGeometry>;
+	private headGeom: MeshGeometry;
+	private headPos = new Float32Array(HEAD_ROWS * 4);
+	private tongueRig = new Container(); // under the head
+	private headRig = new Container(); // eye glows, over the head; both rigs sit on the pivot between the eyes
 	private eyes: Sprite[] = [];
 	/** 0..1: venom-green glow in the eyes (guardian anticipation). */
 	eyeGlow = 0;
@@ -167,6 +181,8 @@ export class SnakeView extends Container {
 	private enterClip = 1; // 0..1 portion of the body revealed (entry animation)
 	wild = 0;
 	ring = 0;
+	/** Overall brightness of body and head (the guardian sits a little back so the hunting snake leads). */
+	shade = 1;
 	private uni: { uniforms: Record<string, number> };
 
 	constructor(cell: number) {
@@ -205,6 +221,7 @@ export class SnakeView extends Container {
 					uRing: { value: 0, type: 'f32' },
 					uWild: { value: 0, type: 'f32' },
 					uPx: { value: 1, type: 'f32' },
+					uShade: { value: 1, type: 'f32' },
 				},
 			},
 		});
@@ -224,13 +241,21 @@ export class SnakeView extends Container {
 				},
 			}),
 		});
-		this.addChild(this.shadow, this.mesh);
-		this.head = new Sprite(texture('snake_head'));
-		this.head.anchor.set(0.5, 0.34); // pivot between the eyes; the neck overlaps the body
 		this.tongue = new Sprite(texture('snake_tongue'));
 		this.tongue.anchor.set(0.5, 1);
 		this.tongue.scale.set(0);
-		this.headRig.addChild(this.tongue, this.head);
+		this.tongueRig.addChild(this.tongue);
+		const hIdx: number[] = [];
+		const hUV = new Float32Array(HEAD_ROWS * 4);
+		for (let i = 0; i < HEAD_ROWS; i++) {
+			const v = i / (HEAD_ROWS - 1), hu = headHalfU(v);
+			hUV.set([0.5 - hu, v, 0.5 + hu, v], i * 4);
+			if (i < HEAD_ROWS - 1) hIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+		}
+		this.headGeom = new MeshGeometry({ positions: this.headPos, uvs: hUV, indices: new Uint32Array(hIdx) });
+		this.headGeom.batchMode = 'no-batch'; // rewritten every frame
+		this.head = new Mesh({ geometry: this.headGeom, texture: texture('snake_head') });
+		this.addChild(this.shadow, this.mesh, this.tongueRig, this.head);
 		// eye glows in head-texture pixels relative to the anchor (placeholder/final heads share the layout)
 		for (const sx of [-1, 1]) {
 			const e = new Sprite(softDot());
@@ -352,6 +377,7 @@ export class SnakeView extends Container {
 		u.uGlint = this.glint;
 		u.uRing = this.ring;
 		u.uWild = this.wild;
+		u.uShade = this.shade;
 		const poly = this.currentPolyline();
 		if (poly.length === 0) return;
 		const c = this.cell;
@@ -372,9 +398,9 @@ export class SnakeView extends Container {
 			}
 			dense.push(poly[poly.length - 1]);
 		}
-		// extend the tail slightly past the last centre so a length-1 hatchling still has a body
 		const cum = [0];
 		for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + Math.hypot(dense[i].x - dense[i - 1].x, dense[i].y - dense[i - 1].y));
+		// a length-1 hatchling still gets a short body: the path runs on past the last centre (see sample)
 		const total = Math.max(cum[cum.length - 1], c * 0.35);
 		const visibleLen = total * this.enterClip;
 		const startS = Math.min(c * 0.18, total * 0.2); // body starts under the head
@@ -389,8 +415,38 @@ export class SnakeView extends Container {
 			jc = j;
 			const a = dense[j - 1], b = dense[j];
 			const seg = cum[j] - cum[j - 1] || 1;
-			const t = Math.max(0, Math.min(1, (s - cum[j - 1]) / seg));
+			// past the last centre the path carries straight on (short snakes, and the neck behind the head)
+			const t = Math.max(0, j === cum.length - 1 ? (s - cum[j - 1]) / seg : Math.min(1, (s - cum[j - 1]) / seg));
 			return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+		};
+		// Head heading: the chord to a point a little way back along the path, so the head swings round with the
+		// curve as it moves into a turn rather than snapping to the new direction; eased so jumps never pop.
+		const hp = poly[0];
+		const back = sample(c * 0.4);
+		if (back.x !== hp.x || back.y !== hp.y) {
+			let dA = Math.atan2(hp.y - back.y, hp.x - back.x) - this.headAngle;
+			while (dA > Math.PI) dA -= 2 * Math.PI;
+			while (dA < -Math.PI) dA += 2 * Math.PI;
+			this.headAngle += dA * Math.min(1, (dt / 1000) * 16 * clock.speed);
+		}
+		this.look += (this.lookTarget - this.look) * Math.min(1, (dt / 1000) * 3);
+		const heading = this.headAngle + this.look;
+		const hdx = Math.cos(heading), hdy = Math.sin(heading);
+		// The spine the body and the head both follow: straight along the heading back to the jaw (the skull is
+		// rigid), then the neck bends into the path over NECK cells, so it curves with the body on a turn instead
+		// of sticking out as a stiff stub.
+		const tex = this.head.texture;
+		const hs = ((c * 1.8) / Math.max(1, tex.width)) * this.headScale * (this.mouthOpen ? 1.06 : 1);
+		const texW = tex.width * hs, texH = tex.height * hs;
+		const jawLen = (HEAD_JAW - HEAD_PIVOT) * texH;
+		const neckLen = c * NECK * this.headScale;
+		const spine = (s: number): Pt => {
+			const rx = hp.x - hdx * s, ry = hp.y - hdy * s;
+			if (s <= jawLen) return { x: rx, y: ry };
+			const p = sample(s);
+			if (s >= jawLen + neckLen) return p;
+			const k = 1 - (s - jawLen) / neckLen, w = k * k;
+			return { x: p.x + (rx - p.x) * w, y: p.y + (ry - p.y) * w };
 		};
 		// bulges travel toward the tail
 		for (const b of this.bulges) b.pos += (b.speed * dt * clock.speed) / 1000;
@@ -401,9 +457,9 @@ export class SnakeView extends Container {
 		for (let i = 0; i < N; i++) {
 			const f = i / (N - 1);
 			const s = startS + (Math.max(visibleLen, startS + 1) - startS) * f;
-			const p = sample(s);
-			const p2 = sample(Math.min(s + 2, total));
-			const p1 = sample(Math.max(s - 2, 0));
+			const p = spine(s);
+			const p2 = spine(Math.min(s + 2, total));
+			const p1 = spine(Math.max(s - 2, 0));
 			let tx = p2.x - p1.x, ty = p2.y - p1.y;
 			const tl = Math.hypot(tx, ty) || 1;
 			tx /= tl;
@@ -437,23 +493,48 @@ export class SnakeView extends Container {
 		this.geom.getBuffer('aUV').update();
 		this.geom.getBuffer('aTan').update();
 		this.geom.getBuffer('aT').update();
-		// head
-		const hp = poly[0];
-		const nextP = poly.length > 1 ? poly[1] : { x: hp.x, y: hp.y + 1 };
-		const target = Math.atan2(hp.y - nextP.y, hp.x - nextP.x);
-		let dA = target - this.headAngle;
-		while (dA > Math.PI) dA -= 2 * Math.PI;
-		while (dA < -Math.PI) dA += 2 * Math.PI;
-		this.headAngle += dA * Math.min(1, (dt / 1000) * 14 * clock.speed);
-		this.headRig.position.set(hp.x, hp.y);
-		this.look += (this.lookTarget - this.look) * Math.min(1, (dt / 1000) * 3);
-		this.headRig.rotation = this.headAngle + Math.PI / 2 + this.look;
-		// the head texture's neck is ~31 % of its width; scale it so the neck matches the body width
-		const hs = (c * 1.8) / Math.max(1, this.head.texture.width);
-		this.tongue.y = -0.27 * this.head.texture.height;
-		this.headRig.scale.set(hs * this.headScale * (this.mouthOpen ? 1.06 : 1));
+		// head: the snout rows run straight ahead of the pivot (between the eyes), the rows behind it lie on the
+		// spine (rigid to the jaw, then bending). The head texture's neck is ~35 % of its width; the scale makes
+		// that match the body width.
+		for (let i = 0; i < HEAD_ROWS; i++) {
+			const v = i / (HEAD_ROWS - 1);
+			const d = (v - HEAD_PIVOT) * texH; // distance behind the pivot (negative: towards the snout)
+			let px: number, py: number, tx: number, ty: number;
+			if (d <= 0) {
+				px = hp.x - hdx * d;
+				py = hp.y - hdy * d;
+				tx = -hdx;
+				ty = -hdy;
+			} else {
+				const p = spine(d), p1 = spine(Math.max(0, d - 2)), p2 = spine(d + 2);
+				px = p.x;
+				py = p.y;
+				tx = p2.x - p1.x;
+				ty = p2.y - p1.y;
+				const tl = Math.hypot(tx, ty) || 1;
+				tx /= tl;
+				ty /= tl;
+			}
+			// texture u runs to the head's right: the back-tangent turned a quarter clockwise
+			const r = headHalfU(v) * texW;
+			const o = i * 4;
+			this.headPos[o] = px - ty * r;
+			this.headPos[o + 1] = py + tx * r;
+			this.headPos[o + 2] = px + ty * r;
+			this.headPos[o + 3] = py - tx * r;
+		}
+		this.headGeom.getBuffer('aPosition').update();
+		for (const rig of [this.tongueRig, this.headRig]) {
+			rig.position.set(hp.x, hp.y);
+			rig.rotation = heading + Math.PI / 2;
+			rig.scale.set(hs);
+			rig.visible = this.enterClip > 0.02;
+		}
+		this.head.visible = this.enterClip > 0.02;
+		const g = Math.round(255 * Math.max(0, Math.min(1, this.shade)));
+		this.head.tint = (g << 16) | (g << 8) | g;
+		this.tongue.y = -0.27 * tex.height;
 		for (const e of this.eyes) e.alpha = this.eyeGlow * (0.75 + 0.25 * Math.sin(clock.time * 7));
-		this.headRig.visible = this.enterClip > 0.02;
 		// idle tongue flick every 3-6 s (cosmetic timing)
 		this.nextFlick -= dt / 1000;
 		if (this.nextFlick <= 0) {
