@@ -17,6 +17,7 @@
 		| { kind: 'maxWin'; amount: number };
 
 	let card = $state<Card | null>(null);
+	let introMs = $state(3200);
 	let shown = $state(0); // count-up value (book hundredths)
 	let ouro = $state(0); // OUROBOROS title flash counter
 	let pop = $state<{ amount: number; id: number } | null>(null);
@@ -49,9 +50,10 @@
 	eventEmitter.subscribeOnMount({
 		tierWin: async (e) => tier(e.level, e.amount),
 		featureIntro: async (e) => {
+			introMs = Math.round(ms(3200));
 			card = { kind: 'intro', feature: e.feature, spins: e.spins };
 			sound.play('hunt_intro_sting');
-			await clock.wait(ms(2600));
+			await clock.wait(introMs);
 			card = null;
 		},
 		featureOutro: async (e) => {
@@ -85,7 +87,14 @@
 </script>
 
 {#if card}
-	<div class="overlay" class:dim={card.kind !== 'retrigger'} role="presentation" onclick={requestSkip}>
+	<div
+		class="overlay"
+		class:dim={card.kind !== 'retrigger'}
+		class:reduced={game.reducedMotion}
+		style="--T:{introMs}ms"
+		role="presentation"
+		onclick={requestSkip}
+	>
 		{#if card.kind === 'tier'}
 			<div class="tier lvl{card.level}">
 				<div class="title display">{t(TIER_KEYS[card.level] ?? 'win.strike')}</div>
@@ -93,16 +102,26 @@
 				<div class="hint">{t('win.tapToSkip')}</div>
 			</div>
 		{:else if card.kind === 'intro'}
-			<svg class="vault" class:venom={card.feature === 'venom'} viewBox="-100 -100 200 200" aria-hidden="true">
-				<circle r="94" class="rim" />
-				<circle r="82" class="plate" />
-				{#each BOLTS as a}<circle cx={87 * Math.cos(a)} cy={87 * Math.sin(a)} r="3.4" class="bolt" />{/each}
-				<g class="wheel">
-					{#each SPOKES as a}<line x1={14 * Math.cos(a)} y1={14 * Math.sin(a)} x2={56 * Math.cos(a)} y2={56 * Math.sin(a)} />{/each}
-					<circle r="58" class="wheel-rim" />
-					<circle r="14" class="hub" />
-				</g>
-			</svg>
+			<!-- STYLE_BIBLE §9: the key turns, the wheel spins, the door swings open, blackness, then the board -->
+			<div class="veil" aria-hidden="true"></div>
+			<div class="door-wrap" aria-hidden="true">
+				<svg class="vault" class:venom={card.feature === 'venom'} viewBox="-100 -100 200 200">
+					<circle r="94" class="rim" />
+					<circle r="82" class="plate" />
+					{#each BOLTS as a}<circle cx={87 * Math.cos(a)} cy={87 * Math.sin(a)} r="3.4" class="bolt" />{/each}
+					<g class="wheel">
+						{#each SPOKES as a}<line x1={14 * Math.cos(a)} y1={14 * Math.sin(a)} x2={56 * Math.cos(a)} y2={56 * Math.sin(a)} />{/each}
+						<circle r="58" class="wheel-rim" />
+						<circle r="14" class="hub" />
+					</g>
+					<g class="key">
+						<circle cx="0" cy="-17" r="7" class="key-bow" />
+						<rect x="-1.8" y="-10" width="3.6" height="27" rx="1" class="key-shaft" />
+						<rect x="1.8" y="9" width="5" height="3" class="key-shaft" />
+						<rect x="1.8" y="14" width="3.5" height="3" class="key-shaft" />
+					</g>
+				</svg>
+			</div>
 			<div class="intro" class:venom={card.feature === 'venom'}>
 				<div class="rule"></div>
 				<div class="title display">{card.feature === 'venom' ? t('feature.venomTitle') : t('feature.huntTitle')}</div>
@@ -224,16 +243,28 @@
 		height: 1px;
 		background: linear-gradient(90deg, transparent, var(--brass-hi), transparent);
 	}
-	.vault {
+	.veil {
+		position: fixed;
+		inset: 0;
+		background: #030304;
+		opacity: 0;
+		animation: veil var(--T) ease both;
+	}
+	.door-wrap {
 		position: absolute;
 		left: 50%;
 		top: 50%;
 		width: min(78vmin, 560px);
 		height: min(78vmin, 560px);
 		transform: translate(-50%, -50%);
+		perspective: 1100px;
 		pointer-events: none;
-		opacity: 0.4;
-		animation: vaultdoor 2600ms ease-in both;
+	}
+	.vault {
+		width: 100%;
+		height: 100%;
+		transform-origin: 0% 50%; /* hinge on the left */
+		animation: doorswing var(--T) cubic-bezier(0.55, 0, 0.35, 1) both;
 	}
 	.vault .rim {
 		fill: #16181b;
@@ -253,7 +284,18 @@
 		stroke-width: 5;
 		stroke-linecap: round;
 		fill: none;
-		animation: wheel 1500ms cubic-bezier(0.5, 0, 0.3, 1) both;
+		animation: wheel var(--T) cubic-bezier(0.5, 0, 0.3, 1) both;
+	}
+	.vault .key {
+		animation: keyturn var(--T) ease both;
+	}
+	.key-bow {
+		fill: none;
+		stroke: #d9b26f;
+		stroke-width: 3;
+	}
+	.key-shaft {
+		fill: #d9b26f;
 	}
 	.vault .wheel-rim {
 		stroke-width: 4;
@@ -268,31 +310,95 @@
 	.vault.venom .bolt {
 		fill: #3dff8a;
 	}
-	@keyframes wheel {
-		from {
+	@keyframes keyturn {
+		0% {
+			opacity: 0;
 			transform: rotate(0deg);
 		}
-		to {
+		8%,
+		15% {
+			opacity: 1;
+			transform: rotate(0deg);
+		}
+		28% {
+			opacity: 1;
+			transform: rotate(90deg);
+		}
+		40%,
+		100% {
+			opacity: 0;
+			transform: rotate(90deg);
+		}
+	}
+	@keyframes wheel {
+		0%,
+		26% {
+			transform: rotate(0deg);
+		}
+		55%,
+		100% {
 			transform: rotate(300deg);
 		}
 	}
-	@keyframes vaultdoor {
+	@keyframes doorswing {
 		0% {
 			opacity: 0;
-			transform: translate(-50%, -50%) scale(0.9);
+			transform: rotateY(0deg) scale(0.92);
 		}
-		12%,
-		60% {
-			opacity: 0.55;
-			transform: translate(-50%, -50%) scale(1);
+		10%,
+		55% {
+			opacity: 1;
+			transform: rotateY(0deg) scale(1);
+		}
+		80% {
+			opacity: 1;
+			transform: rotateY(-100deg) scale(1);
 		}
 		100% {
 			opacity: 0;
-			transform: translate(-50%, -50%) scale(1.35);
+			transform: rotateY(-108deg) scale(1);
+		}
+	}
+	@keyframes veil {
+		0%,
+		55% {
+			opacity: 0;
+		}
+		80%,
+		100% {
+			opacity: 0.9;
+		}
+	}
+	@keyframes introtitle {
+		0%,
+		58% {
+			opacity: 0;
+			transform: scale(0.9);
+		}
+		76%,
+		100% {
+			opacity: 1;
+			transform: scale(1);
 		}
 	}
 	.intro {
 		position: relative;
+	}
+	.door-wrap ~ .intro {
+		animation: introtitle var(--T) ease both;
+	}
+	.reduced .veil,
+	.reduced .vault,
+	.reduced .vault .wheel,
+	.reduced .vault .key,
+	.reduced .door-wrap ~ .intro {
+		animation: none;
+	}
+	.reduced .vault {
+		opacity: 0.35;
+	}
+	.reduced .vault .key {
+		opacity: 0;
 	}
 	.retrigger {
 		font-size: clamp(30px, 9vmin, 90px);
@@ -385,8 +491,11 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
+		.veil,
 		.vault,
 		.vault .wheel,
+		.vault .key,
+		.door-wrap ~ .intro,
 		.title,
 		.retrigger,
 		.overlay.dim {

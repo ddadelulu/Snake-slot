@@ -97,7 +97,7 @@ Resume point for any session. Update after every phase.
   mismatches, 0 console/network problems. It found a real memory leak (Pixi 8 GraphicsContext retention), now fixed;
   heap 11.4 → 15.2 MB over 1,200 rounds and flattening, heap-snapshot diff shows no JS-object growth.
 - Storybook: 44 stories render (`npx storybook build`, `node tests/e2e/storybook.mjs`).
-- Visual self-review against the style bible: `docs/VISUAL_REVIEW.md` (21 problems found in screenshots and fixed;
+- Visual self-review against the style bible: `docs/VISUAL_REVIEW.md` (23 problems found in screenshots and fixed;
   remaining gaps are the placeholder art and the two video-dependent hero moments).
 - Environment placeholders (2026-09-30): strongroom plate, riveted Deco frame, loading key art; blind light and eyes
   aligned with the style bible.

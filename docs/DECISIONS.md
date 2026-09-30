@@ -186,7 +186,9 @@ and not guaranteed byte-identical, so the LUT hashes would not match what was ve
 
 ### D-026: Hero transitions are in-engine, not video, for now
 The brief's videos (intro, Hunt trigger, Ouroboros accent, max win) can't be imported (D-020). The Hunt/Venom
-intro is an in-engine vault-door wheel (SVG) that spins open behind the title. OUROBOROS is slow motion,
+intro follows STYLE_BIBLE §9 in-engine: a brass key turns in the hub, the wheel spins, the door swings open on its
+left hinge (CSS 3D), a black veil falls, the title rises out of it, then the board. At the max win, every jewel
+left on the board is drawn into the serpent's mouth before the title, so the vault is literally empty. OUROBOROS is slow motion,
 camera push, ring ignition, green shards and a ×2 slam. Max win is a gold shower, a shake and the
 Limelight-set "THE VAULT IS EMPTY". The manifest already has video slots (`vid_*`); when finals exist they can
 play as lazy-loaded overlays without replacing the board animation.

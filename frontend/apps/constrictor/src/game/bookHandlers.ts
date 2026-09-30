@@ -107,6 +107,8 @@ export function createBookPlayer(stage: Stage) {
 		},
 		wincap: async (ev) => {
 			game.totalWin = ev.amount;
+			// THE VAULT IS EMPTY: the serpent swallows what is left on the board, then the title
+			await stage.emptyVault();
 			stage.celebrate(5);
 			await eventEmitter.broadcastAsync({ type: 'maxWin', amount: ev.amount });
 		},

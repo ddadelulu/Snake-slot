@@ -422,6 +422,50 @@ export class Stage {
 		}
 	}
 
+	/**
+	 * Max win, "THE VAULT IS EMPTY": every jewel left on the board is drawn into the serpent's mouth (the board
+	 * centre when no snake is on the board), nearest first, and the velvet is left empty. Presentation only.
+	 */
+	async emptyVault() {
+		this.board.clearWins();
+		const head = this.snake.visible && this.snake.path.length ? this.snake.path[0] : { x: BOARD / 2, y: BOARD / 2 };
+		const cells = this.board.cells.filter((cv) => cv.sym.visible);
+		if (!cells.length) return;
+		const dur = this.speedMs(1500, 520);
+		if (clock.reducedMotion) {
+			await clock.tween(400, (t) => cells.forEach((cv) => ((cv.sym.alpha = 1 - t), cv.tag && (cv.tag.alpha = 1 - t))));
+			cells.forEach((cv) => cv.set(null));
+			return;
+		}
+		sound.play('hatch_hiss', { volume: 0.7 });
+		const maxD = Math.max(...cells.map((cv) => Math.hypot(cv.x - head.x, cv.y - head.y)), 1);
+		let gulps = 0;
+		const gulpTimer = async () => {
+			while (gulps < 6 && !clock.skipping) {
+				void this.snake.gulp(dur * 0.12);
+				sound.play('gulp', { rate: 1 + 0.1 * gulps, volume: 0.8 });
+				gulps++;
+				await clock.wait(dur * 0.14);
+			}
+		};
+		const pulls = cells.map(async (cv) => {
+			const d = Math.hypot(cv.x - head.x, cv.y - head.y);
+			await clock.wait((d / maxD) * dur * 0.55);
+			const dx = head.x - cv.x, dy = head.y - cv.y;
+			const s0 = cv.sym.scale.x;
+			await clock.tween(dur * 0.45, (t) => {
+				cv.sym.position.set(dx * t, dy * t);
+				cv.sym.scale.set(s0 * (1 - 0.85 * t));
+				cv.sym.alpha = 1 - t * t;
+				if (cv.tag) cv.tag.alpha = 1 - t;
+			}, ease.in);
+			cv.set(null);
+		});
+		await Promise.all([Promise.all(pulls), this.snake.visible ? gulpTimer() : Promise.resolve()]);
+		sound.play('deep_boom');
+		this.shake();
+	}
+
 	/** Gold shower for big wins; level 5 = max win. */
 	celebrate(level: number) {
 		const gold = [0xd9b26f, 0xf3dca6, 0xffe9b8, 0x9c7a45];
