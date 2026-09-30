@@ -111,7 +111,7 @@ Resume point for any session. Update after every phase.
 - Owner's taskbar design adopted (D-031): glass dock, menu popup, centred SPIN, bet −/+, floating Buy Bonus popup;
   then every UI surface restyled to match (loading, dialogs, HUD, plaque, logo, win cards). Unused BuyModal removed.
 - Checks: svelte-check 0/0, vitest 30 passed + 1 skipped, viewports 7/7 no overflow, compliance 14/14, social 0
-  restricted words, smoke with HUNT + VENOM buys clean, Storybook UI stories 22/22.
+  restricted words, smoke with HUNT + VENOM buys clean, Storybook 43/43 stories render, `docs/screenshots` regenerated (36).
 
 ## Next up
 - Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).
