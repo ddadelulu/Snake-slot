@@ -258,3 +258,11 @@ but not on phones, where the bet controls pushed it aside: the phone taskbar now
 menu | − SPIN + below, measured 0 px from the screen centre at all 7 viewports. In the 400×225 mini-player the WIN
 card in the side panel is now always shown (it used to appear only after a win).
 
+### D-035: Final symbols and pearls from the owner's Higgsfield set
+The owner generated all 16 board images in Higgsfield (GPT Image 2.5, 1024×1024, transparent) for this game and
+sent them as files. `art/pipeline/fetch_finals.py --from-dir` checked each (PNG, square, transparent), saved it
+under the game filename in `art/final/`, and `build_assets.py` swapped it in (trimmed, 88 % fill, 256 px WebP).
+The high symbols now each carry a snake detail; the EGG and KEY glow green; the +25 pearl sits in a gold serpent.
+Direct download from the Higgsfield image host is refused by this environment's network policy, so the files came
+in as chat attachments. Background, frame, snake parts and audio are still placeholders.
+

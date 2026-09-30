@@ -110,7 +110,7 @@ unless noted. The mock serves real books from the published math (D-024).
 | Item | Status | Evidence |
 |---|---|---|
 | Strictly stateless: no jackpots, gamble, carry-over, early cashout | ✅ | SPEC §1/§4; the base-game snake exits each spin; free spins live inside one round |
-| Original work, no web-sdk sample assets, no Stake branding | ✅ | All art is procedural (`art/pipeline/placeholders.py`), all audio synthesized (`art/audio/synth.py`); sample apps not shipped; no Stake names/logos in UI or art |
+| Original work, no web-sdk sample assets, no Stake branding | ✅ | The 10 symbols and 6 pearls are the owner's own Higgsfield art made for this game (`art/final/`, D-035); the rest of the art is procedural (`art/pipeline/placeholders.py`), all audio synthesized (`art/audio/synth.py`); sample apps not shipped; no Stake names/logos in UI or art |
 | Nothing appealing to minors | ✅ | Noir jeweler's vault, realistic serpent, no characters |
 | Math final before submission | ✅ | Math v1 frozen (SPEC §15); upload set + checksums in `math/games/constrictor/publish/` |
 

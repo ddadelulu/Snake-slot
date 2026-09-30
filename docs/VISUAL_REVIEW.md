@@ -44,7 +44,7 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 
 ## What still falls short of the bible (and why)
 
-- **Materials are illustrative, not photoreal.** Every image is procedural placeholder art because the Higgsfield
+- **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield
   results cannot be imported here (D-020). The realism rules in §8 apply to the finals; the prompts, models and
   target filenames are ready in `art/HIGGSFIELD_PROMPTS.md`, and the manifest swaps finals in without code changes.
 - **Hero moments 1 and 3** are now in-engine sequences (#22, #23). The photographic versions the bible
