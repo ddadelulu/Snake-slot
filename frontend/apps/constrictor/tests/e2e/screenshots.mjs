@@ -26,8 +26,8 @@ async function shot(page, name) {
 	shots.push(name);
 }
 async function buy(page, mode) {
-	await page.click('.feat.buy');
-	await page.click(`.card:nth-child(${mode === 'hunt' ? 1 : 2}) .btn.primary`);
+	await page.click('.buy-bonus');
+	await page.click(`[data-mode="${mode}"]`);
 	await page.click('.panel footer .btn.primary');
 }
 
@@ -63,7 +63,7 @@ for (const [name, w, h] of [['desktop', 1200, 675], ['mobileM', 375, 667]]) {
 for (const [name, w, h] of [['desktop', 1200, 675], ['mobileM', 375, 667]]) {
 	const page = await open(w, h, '&social=true', 'XSC');
 	await shot(page, `${name}_social_XSC`);
-	await page.click('.feat.buy');
+	await page.click('.buy-bonus');
 	await page.waitForTimeout(400);
 	await shot(page, `${name}_social_buy`);
 	await page.close();
@@ -75,7 +75,8 @@ for (const cur of ['JPY', 'XGC', 'EUR', 'BRL']) {
 }
 {
 	const page = await open(1200, 675);
-	await page.click('button[aria-label="Game info"]');
+	await page.click('.menu-btn');
+	await page.click('[data-act="rules"]');
 	await page.waitForTimeout(400);
 	await shot(page, 'desktop_rules');
 	for (const tab of ['paytable', 'modes', 'legal']) {
@@ -84,7 +85,8 @@ for (const cur of ['JPY', 'XGC', 'EUR', 'BRL']) {
 		await shot(page, `desktop_rules_${tab}`);
 	}
 	await page.keyboard.press('Escape');
-	await page.click('button[aria-label="AUTO"]');
+	await page.click('.menu-btn');
+	await page.click('[data-act="auto"]');
 	await page.waitForTimeout(300);
 	await shot(page, 'desktop_autoplay');
 	await page.close();

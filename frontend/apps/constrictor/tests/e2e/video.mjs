@@ -35,7 +35,9 @@ check('spacebar skips the clip', !(await page.$('.video-layer video')));
 await finish();
 check('round completes after the clip', !(await page.$('button.spin.busy')));
 // turbo: no clip
-await page.click('button[aria-label="TURBO"]');
+await page.click('.menu-btn');
+await page.click('[data-act="speed"]');
+await page.click('.menu-btn');
 await post('/dev/force', { mode: 'base', category: 'trigger3' });
 await page.keyboard.press('Space');
 let seen = false;

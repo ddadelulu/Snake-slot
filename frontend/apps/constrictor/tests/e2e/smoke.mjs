@@ -34,8 +34,8 @@ for (let i = 0; i < Math.max(spins, forced.length); i++) {
 	}
 	const mode = forced[i]?.split(':')[0] ?? 'base';
 	if (mode === 'hunt' || mode === 'venom') {
-		await page.click('.feat.buy');
-		await page.click(`.card:nth-child(${mode === 'hunt' ? 1 : 2}) .btn.primary`);
+		await page.click('.buy-bonus');
+		await page.click(`[data-mode="${mode}"]`);
 		await page.click('.panel footer .btn.primary');
 	} else {
 		await page.keyboard.press('Space');

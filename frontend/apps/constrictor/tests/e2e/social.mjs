@@ -27,7 +27,8 @@ const text = async () => (await page.innerText('body')) + ' ' + (await page.eval
 problems.push(...scan('main', await text()));
 await page.screenshot({ path: `${out}/social_main.png` });
 // rules, every tab
-await page.click('button[aria-label="Game info"]');
+await page.click('.menu-btn');
+await page.click('[data-act="rules"]');
 for (const tab of await page.$$('[role=tab]')) {
 	await tab.click();
 	problems.push(...scan(`rules/${await tab.innerText()}`, await text()));
@@ -35,22 +36,26 @@ for (const tab of await page.$$('[role=tab]')) {
 await page.screenshot({ path: `${out}/social_rules.png` });
 await page.keyboard.press('Escape');
 // feature menu + confirm
-await page.click('.feat.buy');
+await page.click('.buy-bonus');
+await page.waitForTimeout(400);
 problems.push(...scan('featureMenu', await text()));
 await page.screenshot({ path: `${out}/social_buy.png` });
-await page.click('.card .btn.primary');
+await page.click('[data-mode="hunt"]');
 problems.push(...scan('featureConfirm', await text()));
 await page.keyboard.press('Escape');
 await page.keyboard.press('Escape');
 // ante confirm
-await page.click('.feat.ante');
+await page.click('.buy-bonus');
+await page.click('[data-act="ante"]');
 problems.push(...scan('anteConfirm', await text()));
 await page.keyboard.press('Escape');
 // autoplay, settings, bet menu
-await page.click('button[aria-label="AUTO"]');
+await page.click('.menu-btn');
+await page.click('[data-act="auto"]');
 problems.push(...scan('autoplay', await text()));
 await page.keyboard.press('Escape');
-await page.click('button[aria-label="Settings"]');
+await page.click('.menu-btn');
+await page.click('[data-act="settings"]');
 problems.push(...scan('settings', await text()));
 await page.keyboard.press('Escape');
 await page.click('button.betval');

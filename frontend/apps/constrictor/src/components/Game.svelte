@@ -6,12 +6,10 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ControlBar } from 'ui-controlbar';
 	import { LoadingScreen } from 'ui-loading';
 	import Hud from './Hud.svelte';
 	import WinOverlay from './WinOverlay.svelte';
 	import RulesModal from './RulesModal.svelte';
-	import BuyModal from './BuyModal.svelte';
 	import ConfirmModal from './ConfirmModal.svelte';
 	import ErrorModal from './ErrorModal.svelte';
 	import AutoplayModal from './AutoplayModal.svelte';
@@ -21,10 +19,11 @@
 	import Modal from './Modal.svelte';
 	import Logo from './Logo.svelte';
 	import StatusPlaque from './StatusPlaque.svelte';
+	import Taskbar from './Taskbar.svelte';
+	import BonusButton from './BonusButton.svelte';
 	import { game, modeCost, type ModeId } from '$game/state/game.svelte';
 	import { parseLaunchParams, type LaunchParams } from '$game/url';
 	import { configureI18n, t } from '$game/i18n';
-	import { anteFactor } from '$game/i18n/rules';
 	import { formatMoney, bookToMoney } from '$game/money';
 	import { Stage } from '$game/stage/Stage';
 	import { loadManifest, loadTextures, audioUrl, imageUrl } from '$game/stage/assets';
@@ -107,7 +106,7 @@
 		const s = { soundOn: game.soundOn, musicVolume: game.musicVolume, sfxVolume: game.sfxVolume, turbo: game.turbo, reducedMotion: game.reducedMotion };
 		sound.setMuted(!s.soundOn);
 		sound.setVolumes(s.musicVolume, s.sfxVolume);
-		clock.speed = s.turbo && !game.jurisdiction.disabledTurbo ? 2.2 : 1;
+		clock.speed = s.turbo && !game.jurisdiction.disabledTurbo ? 2 : 1;
 		clock.reducedMotion = s.reducedMotion;
 		try {
 			localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
@@ -205,11 +204,6 @@
 		else game.modal = 'confirmAnte';
 	}
 
-	function openBuy() {
-		if (!canPlay || game.jurisdiction.disabledBuyFeature) return;
-		game.modal = 'buy';
-	}
-
 	function pickBuy(id: ModeId) {
 		game.pendingBuy = id;
 		game.modal = 'confirmBuy';
@@ -266,26 +260,43 @@
 		game.autoplay ? 'auto' : game.busy ? 'busy' : canPlay ? 'idle' : 'disabled',
 	);
 	const betIdx = $derived(game.betLevels.indexOf(game.bet));
-	const labels = $derived({
+	const onOff = (on: boolean) => t(on ? 'menu.on' : 'menu.off');
+	const tbLabels = $derived({
 		balance: t('hud.balance'),
-		bet: t('hud.bet'),
 		win: t('hud.win'),
+		bet: t('hud.bet'),
 		spin: t('button.spin'),
+		skip: t('button.skip'),
 		stop: t('button.stop'),
 		betDown: t('button.betDown'),
 		betUp: t('button.betUp'),
-		auto: t('button.autoplay'),
-		turbo: t('button.turbo'),
-		info: t('button.info'),
-		sound: t('button.sound'),
-		menu: t('button.settings'),
-		buy: t('button.buy'),
+		menu: t('button.menu'),
+		auto: t('menu.auto', { state: onOff(!!game.autoplay) }),
+		speed: t('menu.speed', { n: game.turbo ? 2 : 1 }),
+		sound: t('menu.sound', { state: onOff(game.soundOn) }),
+		rules: t('menu.rules'),
+		settings: t('menu.settings'),
 	});
 	const winText = $derived(money(bookToMoney(game.totalWin, game.roundBet || game.bet)));
 	const autoText = $derived(game.autoplay ? t('autoplay.remaining', { n: game.autoplay.remaining }) : null);
 	const replayMode = $derived(!!params?.replay);
 	const showFeatures = $derived(!replayMode && !game.jurisdiction.disabledBuyFeature);
 	const anteCost = modeCost('ante');
+	// wide: one row; compact: slim row (mini-player and narrow landscape); stacked: phones
+	const tbLayout = $derived<'wide' | 'stacked' | 'compact'>(L.portrait ? 'stacked' : L.compact || vw < 700 ? 'compact' : 'wide');
+	const bonusProps = $derived({
+		label: t('button.buyBonus'),
+		items: (['hunt', 'venom'] as ModeId[]).map((id) => ({ id, label: t(`mode.${id}`), price: money(Math.round(game.bet * modeCost(id))) })),
+		anteLabel: t('button.ante'),
+		anteSub: t('bonus.anteSub', { cost: anteCost, state: onOff(game.anteOn) }),
+		anteOn: game.anteOn,
+		anteChip: t('bonus.anteChip'),
+		disabled: !canPlay,
+		anteDisabled: game.busy || !!game.autoplay,
+		compact: L.compact,
+		onPick: (id: string) => canPlay && pickBuy(id as ModeId),
+		onAnte: toggleAnte,
+	});
 	const snakeOn = $derived(game.snakeLen > 0 && (game.moves !== null || game.fs !== null));
 	const hudIdle = $derived(!game.fs && !snakeOn);
 </script>
@@ -310,30 +321,12 @@
 			</div>
 			{#if showFeatures}
 				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
-					<button class="feat buy" onclick={openBuy} disabled={!canPlay}>
-						<span class="f-main display">{t('button.buy')}</span>
-						<span class="f-sub">{t('mode.hunt')}</span>
-					</button>
-					<button class="feat ante" class:on={game.anteOn} aria-pressed={game.anteOn} onclick={toggleAnte} disabled={game.busy || !!game.autoplay}>
-						<span class="f-main display">{t('button.ante')}</span>
-						<span class="f-sub num">{anteCost}× · {game.anteOn ? 'ON' : 'OFF'}</span>
-					</button>
+					<BonusButton {...bonusProps} />
 				</div>
 			{/if}
 		{:else}
 			<div class="side left" style="width:{L.side}px;bottom:{barH}px">
-				{#if showFeatures}
-					<button class="feat buy" onclick={openBuy} disabled={!canPlay}>
-						{#if !L.compact && imageUrl('sym_KEY')}<img src={imageUrl('sym_KEY')} alt="" />{/if}
-						<span class="f-main display">{t('button.buy')}</span>
-						<span class="f-sub">{t('mode.hunt')} · {t('mode.venom')}</span>
-					</button>
-					<button class="feat ante" class:on={game.anteOn} aria-pressed={game.anteOn} onclick={toggleAnte} disabled={game.busy || !!game.autoplay}>
-						<span class="f-main display">{t('button.ante')}</span>
-						<span class="f-sub num">{anteCost}× · HUNT ×{anteFactor()}</span>
-						<span class="switch" aria-hidden="true"><span></span></span>
-					</button>
-				{/if}
+				{#if showFeatures}<BonusButton {...bonusProps} />{/if}
 			</div>
 			<div class="side right" style="width:{L.side}px;bottom:{barH}px">
 				{#if game.fs || L.compact}<Hud layout="side" showWin={L.compact} showStats={L.compact} />{:else}<Logo />{/if}
@@ -349,25 +342,20 @@
 
 	<div class="bar" bind:clientHeight={barH}>
 		{#if entered}
-			<ControlBar
-				{labels}
+			<Taskbar
+				labels={tbLabels}
+				layout={tbLayout}
 				balanceText={replayMode ? '' : money(game.balance)}
 				betText={money(game.bet)}
 				{winText}
-				layout={L.portrait ? 'portrait' : 'landscape'}
-				preset="noir"
-				dense={L.compact}
 				{spinState}
 				{autoText}
-				turboOn={game.turbo}
-				muted={!game.soundOn}
 				showBalance={!replayMode}
-				showBetControls={!replayMode}
+				showBet={!replayMode}
 				showSpin={!replayMode}
-				showAuto={!replayMode && !L.compact && !game.jurisdiction.disabledAutoplay}
-				showTurbo={!L.compact && !game.jurisdiction.disabledTurbo}
-				showBuy={false}
 				showWin={!L.compact}
+				showAuto={!replayMode && !game.jurisdiction.disabledAutoplay}
+				showSpeed={!game.jurisdiction.disabledTurbo}
 				canBetDown={betIdx > 0}
 				canBetUp={betIdx < game.betLevels.length - 1}
 				onSpin={spin}
@@ -376,10 +364,10 @@
 				onBetUp={() => stepBet(1)}
 				onBetOpen={() => !game.busy && !game.autoplay && (game.modal = 'bet')}
 				onAuto={() => canPlay && (game.modal = 'autoplay')}
-				onTurbo={() => (game.turbo = !game.turbo)}
-				onInfo={() => (game.modal = 'rules')}
+				onSpeed={() => (game.turbo = !game.turbo)}
 				onSound={() => (game.soundOn = !game.soundOn)}
-				onMenu={() => (game.modal = 'settings')}
+				onRules={() => (game.modal = 'rules')}
+				onSettings={() => (game.modal = 'settings')}
 			/>
 		{/if}
 	</div>
@@ -409,14 +397,12 @@
 {#if entered}
 	{#if game.modal === 'rules'}
 		<RulesModal onClose={closeModal} />
-	{:else if game.modal === 'buy'}
-		<BuyModal onClose={closeModal} onPick={pickBuy} />
 	{:else if game.modal === 'confirmBuy' && game.pendingBuy}
 		<ConfirmModal
 			title={t('buy.confirmTitle')}
 			text={t('buy.confirmText', { mode: t(`mode.${game.pendingBuy}`), amount: money(Math.round(game.bet * modeCost(game.pendingBuy))) })}
 			onConfirm={confirmBuy}
-			onCancel={() => ((game.modal = 'buy'), (game.pendingBuy = null))}
+			onCancel={() => ((game.modal = null), (game.pendingBuy = null))}
 		/>
 	{:else if game.modal === 'confirmAnte'}
 		<ConfirmModal
@@ -428,7 +414,7 @@
 	{:else if game.modal === 'autoplay'}
 		<AutoplayModal onClose={closeModal} onStart={beginAutoplay} />
 	{:else if game.modal === 'settings'}
-		<SettingsModal onClose={closeModal} showAutoplay={L.compact && !replayMode} onAutoplay={() => canPlay || game.phase === 'idle' ? (game.modal = 'autoplay') : null} />
+		<SettingsModal onClose={closeModal} />
 	{:else if game.modal === 'bet'}
 		<BetMenu onClose={closeModal} onPick={(v) => (setBet(v), (game.modal = null))} />
 	{:else if game.modal === 'resume'}
@@ -487,6 +473,8 @@
 	}
 	.side.left {
 		left: 0;
+		justify-content: flex-end;
+		padding-bottom: clamp(8px, 2vh, 18px);
 	}
 	.side.right {
 		right: 0;
@@ -496,106 +484,8 @@
 		left: 0;
 		right: 0;
 		display: flex;
-		gap: 8px;
-		padding: 4px 10px;
-		justify-content: center;
-		pointer-events: auto;
-	}
-	.feat {
-		pointer-events: auto;
-		position: relative;
-		display: flex;
-		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		gap: 2px;
-		width: min(100%, 200px);
-		padding: clamp(6px, 1.4vh, 14px) 10px;
-		background: linear-gradient(180deg, rgba(23, 25, 28, 0.92), rgba(10, 11, 13, 0.92));
-		border: 1px solid var(--brass);
-		color: var(--ivory);
-		cursor: pointer;
-		box-shadow:
-			0 0 0 3px rgba(0, 0, 0, 0.5),
-			0 0 0 4px rgba(156, 122, 69, 0.3);
-		transition: border-color 120ms, transform 90ms;
-	}
-	.feat:hover:not(:disabled),
-	.feat:focus-visible {
-		border-color: var(--brass-hi);
-		outline: none;
-	}
-	.feat:active:not(:disabled) {
-		transform: scale(0.98);
-	}
-	.feat:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-	.feat img {
-		width: clamp(36px, 8vh, 72px);
-		height: clamp(36px, 8vh, 72px);
-	}
-	.f-main {
-		font-size: clamp(15px, 3vh, 26px);
-		color: var(--brass-hi);
-		letter-spacing: 0.1em;
-		line-height: 1;
-	}
-	.f-sub {
-		font-size: clamp(8px, 1.3vh, 11px);
-		letter-spacing: 0.14em;
-		color: var(--ivory-dim);
-		text-align: center;
-	}
-	.feat.ante.on {
-		border-color: var(--venom);
-		box-shadow:
-			0 0 0 3px rgba(0, 0, 0, 0.5),
-			0 0 0 4px rgba(61, 255, 138, 0.35),
-			0 0 18px rgba(61, 255, 138, 0.18);
-	}
-	.feat.ante.on .f-main {
-		color: var(--venom);
-	}
-	.switch {
-		margin-top: 4px;
-		width: 30px;
-		height: 14px;
-		border-radius: 7px;
-		border: 1px solid var(--gunmetal);
-		position: relative;
-	}
-	.switch span {
-		position: absolute;
-		top: 2px;
-		left: 2px;
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--ivory-dim);
-		transition: transform 150ms;
-	}
-	.feat.on .switch {
-		border-color: var(--venom);
-	}
-	.feat.on .switch span {
-		transform: translateX(16px);
-		background: var(--venom);
-	}
-	.portrait .feat {
-		flex: 1;
-		padding: 4px 8px;
-		flex-direction: column;
-	}
-	.compact .feat {
-		padding: 5px 6px;
-	}
-	.compact .f-main {
-		font-size: 13px;
-	}
-	.compact .f-sub {
-		display: none;
+		padding: 0 20px;
 	}
 	.compact .side {
 		padding: 4px;

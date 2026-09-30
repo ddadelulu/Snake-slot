@@ -24,10 +24,12 @@ for (let i = 0; i < 9; i++) {
 // let the Hunt finish with skips
 for (let k = 0; k < 2000 && (await page.$('button.spin.busy')); k++) { await page.keyboard.press('Space'); await page.waitForTimeout(150); }
 // 2. Max win in turbo: rolling buffer of frames until the title shows
-await page.click('button[aria-label="TURBO"]');
+await page.click('.menu-btn');
+await page.click('[data-act="speed"]');
+await page.click('.menu-btn');
 await post('/dev/force', { mode: 'hunt', category: 'maxWin' });
-await page.click('.feat.buy');
-await page.click('.card:nth-child(1) .btn.primary');
+await page.click('.buy-bonus');
+await page.click('[data-mode="hunt"]');
 await page.click('.panel footer .btn.primary');
 const buf = [];
 const t0 = Date.now();

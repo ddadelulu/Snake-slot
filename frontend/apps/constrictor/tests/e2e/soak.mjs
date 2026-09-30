@@ -35,14 +35,15 @@ for (let i = 0; i < rounds; i++) {
 		const cats = Object.keys(showcase[mode] ?? {});
 		if (cats.length) await post('/dev/force', { mode, category: cats[i % cats.length] });
 	}
-	const anteOn = await page.$eval('.feat.ante', (e) => e.classList.contains('on')).catch(() => false);
+	const anteOn = await page.$eval('[data-act="ante"]', (e) => e.classList.contains('on')).catch(() => false);
 	if ((mode === 'ante') !== anteOn && (mode === 'ante' || anteOn)) {
-		await page.click('.feat.ante');
+		await page.click('.buy-bonus');
+		await page.click('[data-act="ante"]');
 		if (mode === 'ante') await page.click('.panel footer .btn.primary');
 	}
 	if (mode === 'hunt' || mode === 'venom') {
-		await page.click('.feat.buy');
-		await page.click(`.card:nth-child(${mode === 'hunt' ? 1 : 2}) .btn.primary`);
+		await page.click('.buy-bonus');
+		await page.click(`[data-mode="${mode}"]`);
 		await page.click('.panel footer .btn.primary');
 	} else {
 		await page.keyboard.press('Space');

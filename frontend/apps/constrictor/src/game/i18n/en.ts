@@ -40,6 +40,16 @@ export const en = {
 	'button.play': 'PLAY',
 	'button.playAgain': 'PLAY AGAIN',
 	'button.settings': 'Settings',
+	'button.buyBonus': 'BUY BONUS',
+	'menu.auto': 'AUTO SPIN: {state}',
+	'menu.speed': 'SPEED: ×{n}',
+	'menu.sound': 'SOUND: {state}',
+	'menu.rules': 'GAME RULES',
+	'menu.settings': 'SETTINGS',
+	'menu.on': 'ON',
+	'menu.off': 'OFF',
+	'bonus.anteSub': '{cost}× · {state}',
+	'bonus.anteChip': 'SERPENT CALL ON',
 
 	'mode.base': 'BASE GAME',
 	'mode.ante': 'SERPENT CALL',
@@ -126,6 +136,7 @@ export type I18nKey = keyof typeof en;
 // Hand-written social-mode wording for labels where the automatic replacement would read badly.
 export const SOCIAL_OVERRIDES: Partial<Record<I18nKey, string>> = {
 	'button.buy': 'GET',
+	'button.buyBonus': 'GET BONUS',
 	'buy.title': 'GET A FEATURE',
 	'buy.cost': 'Plays for',
 	'buy.confirmTitle': 'Confirm',

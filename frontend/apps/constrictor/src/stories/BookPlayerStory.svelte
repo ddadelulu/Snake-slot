@@ -52,7 +52,7 @@
 		configureI18n({ social, lang: 'en' });
 		game.currency = social ? 'XSC' : 'USD';
 		game.turbo = turbo;
-		clock.speed = turbo ? 2.2 : 1;
+		clock.speed = turbo ? 2 : 1;
 		const ro = new ResizeObserver(fit);
 		(async () => {
 			await loadManifest();
