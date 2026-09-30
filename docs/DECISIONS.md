@@ -289,3 +289,20 @@ with soft grey seams; the body shader lights them like the plates (cool fill, wa
 pearl sheen instead of the oil-slick rainbow, and wild, glint and the OUROBOROS ring now tint the white rather than
 add light (added light is invisible on white). The guardian coil is the same snake at 84 % brightness so the
 hunting snake leads. Style bible §1/§3/§4, the Higgsfield snake prompts and the placeholder key art follow.
+
+### D-039: BALANCE and WIN inside the taskbar
+The owner asked for the balance "where it actually belongs". Their layout has no balance at all, and D-036 had
+put BALANCE and WIN in a separate card beside Buy Bonus / under the side panel, which read as floating. In slots
+the balance lives in the bottom bar: on wide screens BALANCE and WIN now sit inside the dock, right of the menu
+button, in the same label-over-value style as BET (a mirror of − BET +, split by a thin gold rule); on phones
+they are a slim row across the top of the dock (BALANCE left, WIN right). The WIN amount turns gold while the
+round has a win. SPIN stays measured into the exact centre when both sides fit (the ResizeObserver now compares
+both side groups). `Readouts.svelte` is gone; the e2e selectors (`.readout`, `.readout.win .val`) are unchanged.
+
+### D-040: Polish pass (owner: "sand the game")
+Found in a screen-by-screen review and fixed: the TAP TO ENTER title covered the serpent in the key art (it now
+takes the art's empty left third on wide screens and the top on phones, and fits the 400×225 player); the bet
+replay card sat on top of the taskbar (now centred over the board); the free-spin counter read "0 / 12" before
+the first spin (now "VENOM · 12 SPINS" / "HUNT · 10 SPINS"); cluster outlines stayed after the hatchling left,
+framing the fresh gems that took its place (they fade as the refill starts); the tail tapered into a long spike
+that made a hatchling look like a carrot (short rounded taper).

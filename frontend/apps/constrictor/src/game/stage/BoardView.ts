@@ -58,6 +58,8 @@ class CellView extends Container {
 	tag: Container | null = null;
 	code: SymbolCode | 'EMPTY' | null = null;
 	empty: Graphics;
+	/** Bumped whenever something new takes over the symbol, so a running drop-in stops touching it. */
+	anim = 0;
 	constructor() {
 		super();
 		this.empty = new Graphics().circle(0, 0, CELL * 0.3).fill({ color: 0x000000, alpha: 0.28 });
@@ -67,6 +69,7 @@ class CellView extends Container {
 		this.addChild(this.empty, this.sym);
 	}
 	set(code: SymbolCode | 'EMPTY' | null) {
+		this.anim++;
 		this.code = code;
 		this.empty.visible = code === 'EMPTY';
 		if (this.tag) this.tag.visible = false;
@@ -204,6 +207,7 @@ export class BoardView extends Container {
 
 	async eat(c: Cell, ms: number, toward: { x: number; y: number }) {
 		const cv = this.get(c);
+		cv.anim++;
 		if (!cv.sym.visible) {
 			cv.set(null);
 			return;
@@ -222,6 +226,21 @@ export class BoardView extends Container {
 
 	emptyCell(c: Cell) {
 		this.get(c).set('EMPTY');
+	}
+
+	/** A fresh gem falls into a cell the snake just left (the trail never stays empty). */
+	async dropIn(c: Cell, code: SymbolCode, ms: number) {
+		const cv = this.get(c);
+		cv.set(code);
+		const my = cv.anim;
+		const fall = CELL * 0.8;
+		cv.sym.alpha = 0;
+		cv.sym.position.y = -fall;
+		await clock.tween(ms, (t) => {
+			if (cv.anim !== my) return; // eaten again or replaced mid-fall
+			cv.sym.alpha = Math.min(1, t * 2.5);
+			cv.sym.position.y = -fall * (1 - t);
+		}, ease.outBack);
 	}
 
 	hideUnderSnake(c: Cell) {
@@ -287,7 +306,15 @@ export class BoardView extends Container {
 	clearWins() {
 		// destroy() without options also frees each Graphics' own GraphicsContext (Pixi 8)
 		this.winLayer.removeChildren().forEach((c) => c.destroy());
+		this.winLayer.alpha = 1;
 		for (const cv of this.cells) cv.scale.set(1);
+	}
+
+	/** Fade the win outlines out (the snake is leaving: its cells refill, so the outlines no longer fit). */
+	async fadeWins(ms: number) {
+		if (!this.winLayer.children.length) return;
+		await clock.tween(ms, (t) => (this.winLayer.alpha = 1 - t));
+		this.clearWins();
 	}
 
 	/** Brass outline around the union of each winning cluster. */

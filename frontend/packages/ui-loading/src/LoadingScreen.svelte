@@ -87,7 +87,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="game" style={keyArt ? `background-image:url(${keyArt})` : ''}>
+		<div class="game" class:with-art={!!keyArt} style={keyArt ? `background-image:url(${keyArt})` : ''}>
 			<div class="shade"></div>
 			<div class="center">
 				{#if logo}{@render logo()}{:else}<h1 class="title">{title}</h1>{/if}
@@ -161,6 +161,40 @@
 		position: absolute;
 		inset: 0;
 		background: radial-gradient(ellipse at center, rgba(7, 8, 10, 0.25), rgba(7, 8, 10, 0.85));
+	}
+	/* with key art the title never covers the hero: it takes the art's empty left third on wide screens and the
+	   top of the screen on tall ones */
+	.game.with-art {
+		place-items: center start;
+		padding-left: 6vw;
+	}
+	.with-art .shade {
+		background: linear-gradient(90deg, rgba(7, 8, 10, 0.8), rgba(7, 8, 10, 0.2) 55%, rgba(7, 8, 10, 0.45));
+	}
+	.with-art .center {
+		width: auto;
+		max-width: min(40vw, 480px);
+		align-items: flex-start;
+	}
+	.with-art .title {
+		font-size: clamp(26px, 4.8vw, 76px);
+	}
+	@media (max-aspect-ratio: 1/1) {
+		.game.with-art {
+			place-items: start center;
+			padding: 12vh 0 0;
+		}
+		.with-art .shade {
+			background: linear-gradient(180deg, rgba(7, 8, 10, 0.85), rgba(7, 8, 10, 0.2) 45%, rgba(7, 8, 10, 0.5));
+		}
+		.with-art .center {
+			width: min(86vw, 520px);
+			max-width: none;
+			align-items: center;
+		}
+		.with-art .title {
+			font-size: clamp(34px, 11vw, 86px);
+		}
 	}
 	.center {
 		position: relative;

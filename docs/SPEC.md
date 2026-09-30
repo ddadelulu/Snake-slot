@@ -4,7 +4,7 @@
 > the fix in DECISIONS.md. Numeric parameters marked **[P3]** were set during optimisation and are frozen
 > at **math v1** (values in §15).
 
-- Studio: **Studio 12** · Working title: **CONSTRICTOR** · Math version: **v1 (frozen 2026-09-29, §15)**
+- Studio: **Studio 12** · Working title: **CONSTRICTOR** · Math version: **v2 (2026-09-30, §15; v1 frozen 2026-09-29)**
 - Engine: Stake Engine math-sdk `a6dccd8` (vendored in `/math`), web-sdk `1843d60`.
 
 ---
@@ -19,7 +19,8 @@ grow and to raise a round **multiplier**, and its **whole body is WILD**. If it 
 board and its length and multiplier carry from spin to spin. A buy-only super bonus, **VENOM HUNT**,
 starts with a long snake and a head-start multiplier.
 
-No tumbles. No jackpots, no gamble, nothing carries between bets. Every outcome is pre-computed in the
+The board never has holes: the moment the snake's tail leaves a cell, a **fresh gem drops into it** (math v2,
+D-038). No tumbles (nothing is removed and re-evaluated). No jackpots, no gamble, nothing carries between bets. Every outcome is pre-computed in the
 books; the frontend only animates it.
 
 ---
@@ -53,8 +54,9 @@ books; the frontend only animates it.
   H1 > H2 > H3 > H4 > L1 > L2 > L3 > L4.
 - In events a cell is `{"name": "<code>"}`. A pearl is `{"name": "PEARL", "value": v}`. In a free-spin
   reveal, a cell occupied by the snake is `null`.
-- Cell states that only exist during a spin (never in a `reveal`): **SNAKE** (occupied by the body,
-  counts as WILD for evaluation) and **EMPTY** (the snake passed through and ate what was there).
+- A cell state that only exists during a spin (never in a `reveal`): **SNAKE** (occupied by the body,
+  counts as WILD for evaluation). Math v1 also had **EMPTY** (a cell the tail left); since v2 such a cell
+  is refilled at once (§5.4), so EMPTY never reaches evaluation.
 - There is **no wild symbol**. The snake's body is the wild.
 
 ---
@@ -88,7 +90,8 @@ Every board is drawn by this algorithm. The weights and tables depend on the **m
    qualifying bite: **OUROBOROS** (§6).
 3. If a snake is on the board: its body cells become WILD (`snakeWild`).
 4. **Evaluate** clusters (§7). Spin win = Σ cluster pays × multiplier. Apply the win cap (§9).
-5. If a snake was present: it slithers off the board (`snakeExit`). Nothing carries over.
+5. If a snake was present: it slithers off the board (`snakeExit`) and fresh gems fill its cells (§5.6).
+   Nothing carries over.
 6. If `k ≥ 3` KEYs landed: **THE HUNT** is awarded (§8.1): 3→10, 4→12, 5→15 free spins.
 7. `finalWin`.
 
@@ -130,12 +133,13 @@ The round starts directly in VENOM HUNT (`enterBonus`, reason `venom`): **12 fre
    OUROBOROS bite (§6.1). No other move into the tail cell is ever generated.
 3. After the head moves:
    - if `length < target`: the tail **stays**, so `length += 1` (growth);
-   - else: the tail **advances**. The cell the tail leaves becomes **EMPTY**.
+   - else: the tail **advances**. A **fresh gem** drops into the cell the tail leaves at once: one regular
+     symbol (H1–L4) drawn from the mode's `fill` weights (the regular-symbol weights, §15.2), never a KEY,
+     PEARL or EGG. It is part of this spin's evaluation board (step field `fill`).
 4. **Eating:** what was in the cell the head entered:
    - `PEARL(v)`: swallowed. `M += v`; `target = min(target + 1, LCAP)`.
-   - H1–L4, `KEY`: eaten (covered by the body); no effect on length or multiplier. KEYs were already
-     counted at landing.
-   - `EMPTY`: nothing.
+   - H1–L4 (fresh gems included), `KEY`: eaten (covered by the body); no effect on length or multiplier.
+     KEYs were already counted at landing.
 5. Pearls the snake never reaches do nothing, pay nothing, and do not form clusters.
 6. **The math generates the entire path.** Every generated path has exactly `N` legal steps, or ends
    earlier only with a bite. The frontend never chooses a move.
@@ -164,7 +168,11 @@ backtracks. At each step where a qualifying bite is legal, it is taken with prob
   changing any rule.
 
 ### 5.6 End of a base-game spin
-After evaluation the hatchling slithers off the board (`snakeExit`). Nothing carries over.
+After evaluation the hatchling slithers off the board (`snakeExit`), tail first, and a fresh gem drops into
+each cell it uncovers (`snakeExit.fill`, in that order). The spin's win is already counted, so these gems are
+drawn so that **each differs from every orthogonal neighbour** (already-filled ones included): none can form
+or extend a cluster, so the board never shows an unpaid win. After a max win there is no exit fill (the vault
+stays empty). Nothing carries over.
 
 ---
 
@@ -189,7 +197,8 @@ the **ring**. The bite is always the snake's last step of the spin (§5.3).
 ### 6.3 Constrict
 1. The chosen symbol `X` is the **highest-paying regular symbol** (by §2.2 rank) found in any enclosed
    cell. If no enclosed cell holds a regular symbol, **X = H1**.
-2. **Every enclosed cell** becomes `X`, whatever it held: a regular symbol, KEY, uneaten PEARL or EMPTY.
+2. **Every enclosed cell** becomes `X`, whatever it held: a regular symbol (fresh gems included), KEY or
+   uneaten PEARL.
    (Pearls crushed this way give no multiplier.)
 3. `M ← M × 2`.
 4. The ring is the snake body, so it is WILD for this spin's evaluation.
@@ -203,7 +212,7 @@ Several OUROBOROS events can happen in one bonus round, at most one per spin. Ea
 ## 7. Evaluation (cluster pays with a wild snake)
 
 ### 7.1 Evaluation grid
-After the moves (and any constrict): SNAKE cells → **WILD**. EMPTY, KEY and uneaten PEARL cells are
+After the moves (and any constrict): SNAKE cells → **WILD**. KEY and uneaten PEARL cells are
 **blockers** (not wild, never paying). EGG never survives to evaluation. Every other cell holds its regular symbol.
 
 ### 7.2 Clusters
@@ -292,7 +301,7 @@ has `index` (its position in `events`, used by the web-sdk) and `type`. The mach
 `math/games/constrictor/schema/book.schema.json`. Every book is validated against it (P3).
 
 **Cells** are `[reel, row]`. **Symbols** are strings: `H1`…`L4`, `KEY`, `EGG`, pearls `P1` `P2` `P3`
-`P5` `P10` `P25` (value after the P), `EMPTY` (only in `crushed`), and `null` for a snake-occupied cell in a
+`P5` `P10` `P25` (value after the P), `EMPTY` (math v1 only, in `crushed`), and `null` for a snake-occupied cell in a
 free-spin reveal. Boards are `board[reel][row]` (7 columns × 7 rows, top to bottom).
 
 | type | Fields | When |
@@ -311,21 +320,21 @@ free-spin reveal. Boards are `board[reel][row]` (7 columns × 7 rows, top to bot
 | `setTotalWin` | `amount` (running round total, capped) | after every spin's evaluation |
 | `wincap` | `amount` (= 2,500,000), `uncappedAmount` | when the cap is reached; the round ends |
 | `freeSpinRetrigger` | `totalFs`, `added`, `keys` (count), `positions` | 3+ KEYs in a free spin, if spins can still be added |
-| `snakeExit` | (none) | end of a base/ante spin that had a snake |
+| `snakeExit` | `fill` (`[{at, sym}]`, tail first; `[]` after a max win) | end of a base/ante spin that had a snake |
 | `freeSpinEnd` | `amount` (feature total, capped), `winLevel` | end of a feature |
 | `finalWin` | `amount` (= `payoutMultiplier`) | last event of every book |
 
 `snakeMoves.steps[i]`: `from`, `to` (head before/after), `eat` (contents of `to` before entry: a symbol
-code, or `null` for EMPTY and for the tail cell of a bite), `len` and `mult` (state after the step, pearl
-added), `grow: true` only when the tail stayed, `bite: true` only on a qualifying OUROBOROS step (always
-the last step). The tail and the growth queue are implied by the step sequence (§5.4). The verifier
+code, or `null` for the tail cell of a bite), `len` and `mult` (state after the step, pearl added),
+`grow: true` only when the tail stayed, `bite: true` only on a qualifying OUROBOROS step (always the last
+step), `fill` (the fresh gem that dropped into the cell the tail left; present exactly when the tail advanced). The tail and the growth queue are implied by the step sequence (§5.4). The verifier
 reconstructs them.
 
 `winLevel` (presentation tiers, × base bet): 0 = below 15×, 1 = STRIKE ≥ 15×, 2 = CONSTRICT ≥ 50×,
 3 = DEVOUR ≥ 150×, 4 = APEX PREDATOR ≥ 500×, 5 = THE VAULT IS EMPTY (max win).
 
 Event order, base spin with an egg: `reveal → hatch → snakeMoves → (ouroboros) → snakeWild → (winInfo →
-setWin) → setTotalWin → (wincap) → snakeExit → (freeSpinTrigger → snakeEnter → [updateFreeSpin → reveal →
+setWin) → setTotalWin → (wincap) → snakeExit (with its fill) → (freeSpinTrigger → snakeEnter → [updateFreeSpin → reveal →
 snakeMoves → (ouroboros) → snakeWild → (winInfo → setWin) → setTotalWin → (wincap | freeSpinRetrigger)]* →
 freeSpinEnd) → finalWin`. Buy rounds start with `enterBonus → freeSpinTrigger → snakeEnter …`.
 

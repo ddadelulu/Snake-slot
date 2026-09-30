@@ -2,7 +2,7 @@
 
 This script does NOT import any game logic (engine/rounds/params/game_config). It re-implements the
 rules from SPEC and replays every book from its events alone:
-  * rebuilds the board, the snake body step by step (growth queue, tail, EMPTY cells),
+  * rebuilds the board, the snake body step by step (growth queue, tail, trail refills),
   * checks every movement rule (adjacency, no self-entry, qualifying bites only, bite ends the moves),
   * recomputes the enclosure (flood fill), the constrict symbol and the doubling,
   * evaluates the wild-aware clusters itself and recomputes every pay x multiplier,
@@ -42,15 +42,15 @@ SCHEMA = os.path.join(HERE, "games", "constrictor", "schema", "book.schema.json"
 REG = ["H1", "H2", "H3", "H4", "L1", "L2", "L3", "L4"]  # rank order, best first
 BANDS = [(5, 5), (6, 6), (7, 7), (8, 8), (9, 10), (11, 12), (13, 15), (16, 49)]
 BAND_NAMES = ["5", "6", "7", "8", "9-10", "11-12", "13-15", "16+"]
-PAYTABLE_X = {  # SPEC 15 (x bet)
-    "H1": [2.2, 2.7, 3.2, 3.8, 4.4, 5.4, 6.5, 8.6],
-    "H2": [1.6, 2.0, 2.4, 2.8, 3.2, 3.9, 4.9, 6.5],
-    "H3": [1.3, 1.5, 1.8, 2.2, 2.6, 3.0, 3.8, 4.9],
-    "H4": [1.1, 1.3, 1.5, 1.7, 2.2, 2.6, 3.2, 4.3],
-    "L1": [0.9, 1.0, 1.1, 1.3, 1.6, 1.9, 2.4, 3.2],
-    "L2": [0.7, 0.8, 0.9, 1.1, 1.3, 1.5, 1.9, 2.7],
-    "L3": [0.5, 0.6, 0.8, 0.9, 1.1, 1.3, 1.6, 2.2],
-    "L4": [0.4, 0.5, 0.6, 0.8, 0.9, 1.1, 1.3, 1.7],
+PAYTABLE_X = {  # SPEC 15 (x bet), math v2
+    "H1": [1.8, 2.2, 2.7, 3.2, 3.7, 4.5, 5.4, 7.1],
+    "H2": [1.3, 1.7, 2.0, 2.3, 2.7, 3.2, 4.1, 5.4],
+    "H3": [1.1, 1.2, 1.5, 1.8, 2.2, 2.5, 3.2, 4.1],
+    "H4": [0.9, 1.1, 1.2, 1.4, 1.8, 2.2, 2.7, 3.6],
+    "L1": [0.7, 0.8, 0.9, 1.1, 1.3, 1.6, 2.0, 2.7],
+    "L2": [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.6, 2.2],
+    "L3": [0.4, 0.5, 0.7, 0.8, 0.9, 1.1, 1.3, 1.8],
+    "L4": [0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.1, 1.4],
 }
 CAP = 2_500_000  # hundredths (25,000x)
 LCAP = 20
@@ -233,6 +233,7 @@ def replay(book, mode):
                 check(len(enclosed(body)) > 0, "bite must enclose a cell")
                 check(st["eat"] is None, "bite eats nothing")
                 check(not st.get("grow"), "bite does not grow")
+                check("fill" not in st, "a bite vacates no cell")
                 body.insert(0, body.pop())
                 bit = True
             else:
@@ -242,8 +243,12 @@ def replay(book, mode):
                 grow = len(body) < snake["target"]
                 check(bool(st.get("grow")) == grow, "growth flag")
                 if not grow:
+                    # the cell the tail leaves gets a fresh regular gem at once (SPEC 5.4)
                     t = body.pop()
-                    grid[t] = "EMPTY"
+                    check(st.get("fill") in REG, "a vacated tail cell is refilled with a regular symbol")
+                    grid[t] = st["fill"]
+                else:
+                    check("fill" not in st, "no refill when the tail stays")
                 body.insert(0, to)
                 grid.pop(to, None)
                 if prev.startswith("P"):
@@ -369,7 +374,19 @@ def replay(book, mode):
             check(peek() != "hatch", "hatch without egg")
         info["base_win"] = evaluate_phase(grid, snake)
         if snake:
-            nxt("snakeExit")
+            x = nxt("snakeExit")
+            fill = x.get("fill", [])
+            if capped:
+                check(fill == [], "no trail refill after a max win")
+            else:
+                # the trail is refilled tail first; each gem differs from every neighbour, so none can form
+                # (or grow) a cluster after the win was counted (SPEC 5.6)
+                check([tuple(f["at"]) for f in fill] == snake["body"][::-1], "exit refill covers the body, tail first")
+                for f in fill:
+                    c = tuple(f["at"])
+                    check(f["sym"] in REG, "exit refill is a regular symbol")
+                    check(all(grid.get(n) != f["sym"] for n in neighbours(c)), "exit refill never matches a neighbour")
+                    grid[c] = f["sym"]
         if len(keys) >= 3 and not capped:
             t = nxt("freeSpinTrigger")
             check(t["totalFs"] == FS_AWARD[len(keys)] and t["keys"] == len(keys), "trigger award")

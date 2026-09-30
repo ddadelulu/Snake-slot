@@ -50,6 +50,18 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 26 | Snake colour | Owner asked for a white snake | Leucistic white head and scales, black glassy eyes, shader lit with cool fill and warm key and a faint pearl sheen; wild, glint and ring re-tuned as tints so they still show on white; guardian coil at 84 % |
 | 27 | Key art | The coil's lighting flipped sign at its middle, a seam that the black coil hid and the white one showed | Smooth light across the coil |
 
+## Owner round: refills, taskbar balance, polish (D-038 to D-040)
+
+| # | Where | Problem | Change |
+|---|---|---|---|
+| 28 | Board during and after the snake | The snake's trail left dark holes; the owner wanted gems to fall in | Every cell the tail leaves gets a fresh gem at once (math v2); the hatchling's cells refill as it leaves, with gems that never match a neighbour |
+| 29 | Win outlines after the snake leaves | Outlines that counted the wild body would frame the fresh gems | Outlines fade as the exit refill starts |
+| 30 | BALANCE / WIN | A separate card beside Buy Bonus read as floating | Inside the taskbar: beside the menu on wide screens (mirrors BET), a slim top row on phones; WIN turns gold on a win |
+| 31 | TAP TO ENTER | The title covered the serpent in the key art; TAP was clipped at 400×225 | Title in the art's empty left third (top on phones); fits every viewport |
+| 32 | Replay | The replay card sat on the taskbar | Centred over the board |
+| 33 | Free-spin counter | "VENOM 0 / 12" before the first spin | "VENOM · 12 SPINS" until spin 1 |
+| 34 | Snake tail | Long thin spike; a hatchling looked like a carrot | Short rounded taper |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

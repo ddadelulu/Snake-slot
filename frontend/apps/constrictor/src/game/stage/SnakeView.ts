@@ -348,10 +348,14 @@ export class SnakeView extends Container {
 		this.enterClip = 1;
 	}
 
-	async exitAlong(points: Pt[], msPerCell: number) {
-		// slither off in one continuous glide (linear per cell, about a second in total), shrinking from the tail
+	/** Slither off in one continuous glide (linear per cell, about a second in total). onStep(k) fires as the
+	 * k-th step completes, i.e. once the tail has uncovered its k-th cell (counted from the tail). */
+	async exitAlong(points: Pt[], msPerCell: number, onStep?: (k: number) => void) {
 		const ms = Math.min(msPerCell, 1100 / Math.max(1, points.length));
-		for (const p of points) await this.step(p, false, ms, false, ease.linear);
+		for (let k = 0; k < points.length; k++) {
+			await this.step(points[k], false, ms, false, ease.linear);
+			onStep?.(k);
+		}
 		this.visible = false;
 	}
 
@@ -464,9 +468,9 @@ export class SnakeView extends Container {
 			const tl = Math.hypot(tx, ty) || 1;
 			tx /= tl;
 			ty /= tl;
-			// width: neck -> full body -> tapering tail
+			// width: neck -> full body -> a short, rounded taper into the tail tip (not a long spike)
 			const fromTail = (visibleLen - s) / c;
-			let w = W * breath * (f < 0.06 ? 0.86 + f * 2.3 : 1) * Math.min(1, 0.18 + fromTail * 0.55);
+			let w = W * breath * (f < 0.06 ? 0.86 + f * 2.3 : 1) * (0.2 + 0.8 * Math.sqrt(Math.min(1, Math.max(0, fromTail) / 1.2)));
 			for (const b of this.bulges) {
 				const d = s / c - b.pos;
 				w *= 1 + b.amp * Math.exp(-d * d * 7);

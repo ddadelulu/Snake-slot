@@ -127,8 +127,8 @@ export function createBookPlayer(stage: Stage) {
 			await stage.board.pulseKeys(ev.positions);
 			await eventEmitter.broadcastAsync({ type: 'retrigger', added: ev.added, total: ev.totalFs });
 		},
-		snakeExit: async () => {
-			await stage.snakeExit();
+		snakeExit: async (ev) => {
+			await stage.snakeExit(ev.fill ?? []);
 			game.moves = null;
 			game.snakeLen = 0;
 			game.snakeMult = 1;

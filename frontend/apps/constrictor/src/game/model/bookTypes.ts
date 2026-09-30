@@ -32,6 +32,8 @@ export type SnakeStep = {
 	mult: number;
 	grow?: true;
 	bite?: true;
+	/** Fresh gem that drops into the cell the tail just left (absent when the tail stayed or on a bite). */
+	fill?: RegSymbol;
 };
 export type BookEventSnakeMoves = Base<'snakeMoves'> & { moves: number; steps: SnakeStep[] };
 export type BookEventOuroboros = Base<'ouroboros'> & {
@@ -60,7 +62,9 @@ export type BookEventFreeSpinRetrigger = Base<'freeSpinRetrigger'> & {
 	keys: number;
 	positions: Cell[];
 };
-export type BookEventSnakeExit = Base<'snakeExit'>;
+/** The hatchling leaves tail first; `fill` lists the gems that drop into its cells in that order (empty
+ * after a max win). They arrive after the win is counted and never match a neighbour. */
+export type BookEventSnakeExit = Base<'snakeExit'> & { fill: { at: Cell; sym: RegSymbol }[] };
 export type BookEventFreeSpinEnd = Base<'freeSpinEnd'> & { amount: number; winLevel: number };
 export type BookEventFinalWin = Base<'finalWin'> & { amount: number };
 

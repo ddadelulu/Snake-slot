@@ -98,7 +98,7 @@ export function applyEvent(prev: ModelState, e: BookEvent): ModelState {
 				const next = bodies[i];
 				if (!st.bite && !st.grow) {
 					const tail = body[body.length - 1];
-					s.board[cellKey(tail)] = 'EMPTY';
+					s.board[cellKey(tail)] = st.fill ?? 'EMPTY';
 				}
 				s.board[cellKey(st.to)] = null;
 				body = next;
@@ -134,6 +134,7 @@ export function applyEvent(prev: ModelState, e: BookEvent): ModelState {
 			break;
 		case 'snakeExit':
 			s.snake = null;
+			for (const f of e.fill ?? []) s.board[cellKey(f.at)] = f.sym;
 			break;
 		case 'freeSpinEnd':
 			s.featureWin = e.amount;

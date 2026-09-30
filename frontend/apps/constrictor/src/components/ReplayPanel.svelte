@@ -42,10 +42,11 @@
 
 <style>
 	.panel {
+		/* centred over the board like a start card, clear of the taskbar */
 		position: fixed;
 		left: 50%;
-		bottom: calc(16px + env(safe-area-inset-bottom));
-		transform: translateX(-50%);
+		top: 50%;
+		transform: translate(-50%, -50%);
 		z-index: 20;
 		width: min(92vw, 420px);
 		padding: 14px 18px;

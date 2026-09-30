@@ -13,6 +13,8 @@ export const en = {
 	'hud.multiplier': 'MULTIPLIER',
 	'hud.freeSpins': 'HUNT {current} / {total}',
 	'hud.venomSpins': 'VENOM {current} / {total}',
+	'hud.freeSpinsStart': 'HUNT · {total} SPINS',
+	'hud.venomStart': 'VENOM · {total} SPINS',
 	'hud.win': 'WIN',
 	'hud.totalWin': 'TOTAL WIN',
 	'hud.balance': 'BALANCE',

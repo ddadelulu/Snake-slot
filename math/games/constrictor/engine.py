@@ -188,6 +188,24 @@ def draw_board(rng, tables, gametype: str, snake_cells=(), key_table: Table | No
     return board, sorted(picks), egg
 
 
+def exit_fill(rng, board, cells, fill_table):
+    """Fresh gems for the cells a leaving snake vacates (SPEC 5.6), in the order given.
+
+    The spin's win is already counted, so these gems must never look like an unpaid cluster: each one
+    differs from every orthogonal neighbour (already-filled cells included), so it joins no group.
+    Mutates ``board``; returns [(cell, code), ...]."""
+    out = []
+    for c in cells:
+        near = {board[n] for n in NEIGH[c]}
+        while True:
+            code = fill_table.draw(rng)
+            if code not in near:
+                break
+        board[c] = code
+        out.append((c, code))
+    return out
+
+
 # ----------------------------------------------------------------------------------------------------
 # Enclosure (SPEC 6.2)
 # ----------------------------------------------------------------------------------------------------
@@ -281,7 +299,9 @@ def generate_path(rng, board, snake: Snake, n: int, prm: dict, budget: int = 200
     """Generate a legal path of exactly ``n`` steps, or ending earlier with a qualifying bite.
 
     Mutates ``board`` and ``snake`` to the final state. Returns (steps, bite) where steps are tuples
-    (frm, to, eaten_code_or_None, grow, tail_after, length, target, mult, bite). Returns None if no
+    (frm, to, eaten_code_or_None, grow, tail_after, length, target, mult, bite, fill). ``fill`` is the
+    fresh regular symbol that drops into the cell the tail just left (None when the tail stayed), so the
+    trail never stays empty (SPEC 5.4). Returns None if no
     legal path exists within the node budget; board and snake may then be partially modified, so
     always call it through ``generate_path_safe``.
     """
@@ -295,13 +315,17 @@ def generate_path(rng, board, snake: Snake, n: int, prm: dict, budget: int = 200
     seek_tail = prm.get("seek_tail", 1.0)
     nodes = [0]
 
+    fill_table = prm["fill"]
+
     def do_step(c):
         eaten = board[c]
         grow = len(body) < snake.target
         old_tail = None
+        fill = None
         if not grow:
             old_tail = body.pop()
-            board[old_tail] = EMPTY
+            fill = fill_table.draw(rng)
+            board[old_tail] = fill
         frm = body[0]
         body.insert(0, c)
         board[c] = WILD
@@ -309,7 +333,7 @@ def generate_path(rng, board, snake: Snake, n: int, prm: dict, budget: int = 200
         if eaten >= PEARL:
             snake.mult += eaten - PEARL
             snake.target = min(snake.target + 1, LCAP)
-        steps.append((frm, c, eaten, grow, body[-1], len(body), snake.target, snake.mult, False))
+        steps.append((frm, c, eaten, grow, body[-1], len(body), snake.target, snake.mult, False, fill))
         return (c, eaten, grow, old_tail, prev_mult, prev_target)
 
     def undo_step(u):
@@ -326,7 +350,7 @@ def generate_path(rng, board, snake: Snake, n: int, prm: dict, budget: int = 200
         frm = body[0]
         tail = body.pop()
         body.insert(0, tail)  # tail cell stays WILD, now the head
-        steps.append((frm, tail, None, False, body[-1], len(body), snake.target, snake.mult, True))
+        steps.append((frm, tail, None, False, body[-1], len(body), snake.target, snake.mult, True, None))
 
     def candidates():
         head = body[0]
@@ -539,6 +563,8 @@ def compile_tables(raw: dict) -> dict:
     t["pearl_count"] = Table({int(k): v for k, v in raw["pearl_count"].items()})
     t["pearl_value"] = Table({int(k): v for k, v in raw["pearl_value"].items()})
     t["moves"] = Table({int(k): v for k, v in raw["moves"].items()})
+    f = raw.get("fill", raw["symbols"])
+    t["fill"] = f if isinstance(f, Table) else Table({NAME_TO_CODE[k]: v for k, v in f.items()})
     t.setdefault("p_egg", 0.0)
     t.setdefault("bias_tail", 1.0)
     return t

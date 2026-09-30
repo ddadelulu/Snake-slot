@@ -49,7 +49,7 @@
               "properties": {"from": {"$ref": "#/definitions/cell"}, "to": {"$ref": "#/definitions/cell"},
                 "eat": {"anyOf": [{"$ref": "#/definitions/sym"}, {"type": "null"}]},
                 "len": {"type": "integer", "minimum": 2, "maximum": 20}, "mult": {"type": "integer", "minimum": 1},
-                "grow": {"const": true}, "bite": {"const": true}}}}}}},
+                "grow": {"const": true}, "bite": {"const": true}, "fill": {"$ref": "#/definitions/reg"}}}}}}},
         {"if": {"properties": {"type": {"const": "ouroboros"}}}, "then": {
           "required": ["ring", "enclosed", "crushed", "symbol", "multFrom", "mult"], "additionalProperties": false,
           "properties": {"index": {}, "type": {}, "ring": {"allOf": [{"$ref": "#/definitions/cells"}, {"minItems": 8}]},
@@ -80,7 +80,11 @@
           "required": ["totalFs", "added", "keys", "positions"], "additionalProperties": false,
           "properties": {"index": {}, "type": {}, "totalFs": {"type": "integer", "maximum": 30}, "added": {"type": "integer", "minimum": 1, "maximum": 5},
             "keys": {"enum": [3, 4, 5]}, "positions": {"$ref": "#/definitions/cells"}}}},
-        {"if": {"properties": {"type": {"const": "snakeExit"}}}, "then": {"additionalProperties": false, "properties": {"index": {}, "type": {}}}},
+        {"if": {"properties": {"type": {"const": "snakeExit"}}}, "then": {
+          "required": ["fill"], "additionalProperties": false,
+          "properties": {"index": {}, "type": {}, "fill": {"type": "array", "maxItems": 20, "items": {
+            "type": "object", "required": ["at", "sym"], "additionalProperties": false,
+            "properties": {"at": {"$ref": "#/definitions/cell"}, "sym": {"$ref": "#/definitions/reg"}}}}}}},
         {"if": {"properties": {"type": {"const": "freeSpinEnd"}}}, "then": {
           "required": ["amount", "winLevel"], "additionalProperties": false,
           "properties": {"index": {}, "type": {}, "amount": {"$ref": "#/definitions/amount"}, "winLevel": {"type": "integer", "minimum": 0, "maximum": 5}}}},

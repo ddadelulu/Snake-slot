@@ -21,7 +21,6 @@
 	import StatusPlaque from './StatusPlaque.svelte';
 	import Taskbar from './Taskbar.svelte';
 	import BonusButton from './BonusButton.svelte';
-	import Readouts from './Readouts.svelte';
 	import { game, modeCost, type ModeId } from '$game/state/game.svelte';
 	import { parseLaunchParams, type LaunchParams } from '$game/url';
 	import { configureI18n, t } from '$game/i18n';
@@ -264,6 +263,8 @@
 	const onOff = (on: boolean) => t(on ? 'menu.on' : 'menu.off');
 	const tbLabels = $derived({
 		bet: t('hud.bet'),
+		balance: t('hud.balance'),
+		win: t('hud.win'),
 		spin: t('button.spin'),
 		skip: t('button.skip'),
 		stop: t('button.stop'),
@@ -283,13 +284,6 @@
 	const anteCost = modeCost('ante');
 	// wide: one row; compact: slim row (mini-player and narrow landscape); stacked: phones
 	const tbLayout = $derived<'wide' | 'stacked' | 'compact'>(L.portrait ? 'stacked' : L.compact || vw < 700 ? 'compact' : 'wide');
-	const readoutProps = $derived({
-		balanceLabel: t('hud.balance'),
-		winLabel: t('hud.win'),
-		balanceText: money(game.balance),
-		winText,
-		showBalance: !replayMode,
-	});
 	const bonusProps = $derived({
 		label: t('button.buyBonus'),
 		items: (['hunt', 'venom'] as ModeId[]).map((id) => ({ id, label: t(`mode.${id}`), price: money(Math.round(game.bet * modeCost(id))) })),
@@ -328,12 +322,6 @@
 			{#if showFeatures}
 				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
 					<BonusButton {...bonusProps} />
-					<Readouts {...readoutProps} compact={vw < 360} />
-				</div>
-			{:else}
-				<div class="featrow" style="bottom:{barH}px;height:{L.featH}px">
-					<span></span>
-					<Readouts {...readoutProps} compact={vw < 360} />
 				</div>
 			{/if}
 		{:else}
@@ -344,7 +332,6 @@
 				<div class="side-main">
 					{#if game.fs || L.compact}<Hud layout="side" showWin={false} showStats={L.compact} />{:else}<Logo />{/if}
 				</div>
-				<Readouts {...readoutProps} stack={L.compact || L.side < 250} compact={L.compact} />
 			</div>
 			{#if snakeOn && !L.compact}
 				<!-- MOVES + snake status on the board's top rail (above the board) -->
@@ -361,6 +348,10 @@
 				labels={tbLabels}
 				layout={tbLayout}
 				betText={money(game.bet)}
+				balanceText={money(game.balance)}
+				{winText}
+				winHot={game.totalWin > 0}
+				showBalance={!replayMode}
 				{spinState}
 				{autoText}
 				showBet={!replayMode}

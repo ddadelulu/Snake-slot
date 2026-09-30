@@ -278,7 +278,14 @@ export class Stage {
 			}
 			const tail = this.snake.path[this.snake.path.length - 1];
 			await Promise.all([this.snake.step(to, !!st.grow, ms, !!st.bite), eatP]);
-			if (!st.grow && !st.bite && tail) this.board.emptyCell(this.cellAt(tail));
+			// the cell the tail left gets a fresh gem at once (falls in while the snake keeps moving)
+			if (!st.grow && !st.bite && tail) {
+				if (st.fill) {
+					void this.board.dropIn(this.cellAt(tail), st.fill, ms * 1.1);
+					sound.play('gem_tick', { volume: 0.3, rate: 0.92 + 0.04 * (i % 4) });
+				}
+				else this.board.emptyCell(this.cellAt(tail));
+			}
 			if (st.eat && isPearl(st.eat)) this.snake.addBulge();
 			onStep(i, st);
 		}
@@ -351,7 +358,7 @@ export class Stage {
 		await this.board.showWins(wins, this.speedMs(900, 380));
 	}
 
-	async snakeExit() {
+	async snakeExit(fill: { at: Cell; sym: SymbolCode }[] = []) {
 		this.snake.wild = 0;
 		this.snake.ring = 0;
 		const head = this.snake.path[0];
@@ -369,9 +376,20 @@ export class Stage {
 			out.push(center(cur));
 		}
 		sound.loop('slither_loop', { volume: 0.3 });
-		await this.snake.exitAlong(out, this.speedMs(120, 45));
+		// the tail leaves the body cells first to last; each gets its fresh gem as it is uncovered. The win
+		// outlines (which counted the wild body) fade as the refill starts, so they never frame fresh gems.
+		const ms = this.speedMs(120, 45);
+		const drops: Promise<void>[] = fill.length ? [this.board.fadeWins(this.speedMs(300, 120))] : [];
+		await this.snake.exitAlong(out, ms, (k) => {
+			const f = fill[k];
+			if (f) {
+				drops.push(this.board.dropIn(f.at, f.sym, this.speedMs(260, 110)));
+				sound.play('gem_tick', { volume: 0.22, rate: 0.9 + 0.05 * (k % 3) });
+			}
+		});
 		sound.stop('slither_loop');
 		this.snake.setPath([]);
+		await Promise.all(drops);
 	}
 
 	setSnakeImmediate(cells: Cell[]) {

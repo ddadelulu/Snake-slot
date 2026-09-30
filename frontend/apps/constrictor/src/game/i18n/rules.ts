@@ -43,9 +43,9 @@ export function rulesSections(): RulesSection[] {
 			paragraphs: [
 				`At most one EGG can land on a base game board. When it lands, a snake hatches on the EGG's cell. It starts with length 1 and unfurls to length ${sn.hatchLength} over its first two moves.`,
 				`The MOVES counter shows how many moves the snake makes this spin (${sn.movesBase[0]} to ${sn.movesBase[1]} in the base game, ${sn.movesFree[0]} to ${sn.movesFree[1]} in free spins). Each move takes the head one cell up, down, left or right. The snake never leaves the grid and never crosses its own body.`,
-				`When the snake leaves a cell at its tail, that cell is left EMPTY. The snake eats whatever its head moves onto. Eaten symbols and KEYs are covered by the body. KEYs are counted when they land, before the snake moves.`,
-				`The snake's whole body is WILD. Wild cells substitute for every paying symbol and can be part of clusters of several different symbols in the same spin. A cluster must contain at least one real symbol; a group made only of wild cells does not pay. EMPTY cells, KEYs and uneaten PEARLs block clusters.`,
-				`At the end of a base game spin the snake slithers off the board. Nothing carries over to the next spin.`,
+				`When the snake's tail leaves a cell, a fresh gem drops into it at once, so the board never has holes. Fresh gems are always one of the eight paying symbols (never a KEY, PEARL or EGG) and count for this spin's wins. The snake eats whatever its head moves onto, fresh gems included. Eaten symbols and KEYs are covered by the body. KEYs are counted when they land, before the snake moves.`,
+				`The snake's whole body is WILD. Wild cells substitute for every paying symbol and can be part of clusters of several different symbols in the same spin. A cluster must contain at least one real symbol; a group made only of wild cells does not pay. KEYs and uneaten PEARLs block clusters.`,
+				`At the end of a base game spin the snake slithers off the board and fresh gems fill the cells it leaves (except after a max win). They arrive after the spin's win is counted: none of them matches a neighbouring symbol, so they never form or extend a cluster. Nothing carries over to the next spin.`,
 			],
 		},
 		{
@@ -63,7 +63,7 @@ export function rulesSections(): RulesSection[] {
 			title: 'OUROBOROS',
 			paragraphs: [
 				`When the snake is at least ${sn.minBiteLength} long and is not still growing, its head can bite its own tail. If the closed ring encloses at least one cell, OUROBOROS happens.`,
-				`Every enclosed cell is constricted into the highest-paying symbol found inside the ring (H1 if there is none). Enclosed KEYs, PEARLs and EMPTY cells are changed too. Crushed PEARLs add nothing.`,
+				`Every enclosed cell is constricted into the highest-paying symbol found inside the ring (H1 if there is none). Enclosed KEYs and PEARLs are changed too. Crushed PEARLs add nothing.`,
 				`The multiplier is doubled. The ring is the snake's body, so it stays WILD for the win evaluation.`,
 				`The bite is always the snake's last move of the spin. Any moves left on the counter are forfeited. OUROBOROS can happen at most once per spin, and several times in one bonus round. It needs a long snake, so it is seen mostly during free spins.`,
 			],

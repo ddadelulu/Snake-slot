@@ -5,23 +5,26 @@ Every pay is a multiple of 0.1x. Tables are {value: weight}.
 
 from copy import deepcopy
 
-MATH_VERSION = "v1"  # frozen 2026-09-29 (SPEC 15); any change to a table below requires new books
+MATH_VERSION = "v2"  # 2026-09-30: trail refills (D-038); any change to a table below requires new books
 
 # Paytable bands: 5, 6, 7, 8, 9-10, 11-12, 13-15, 16+  (x bet). Deliberately flat at the top: a long
 # wild snake joins almost every neighbouring symbol into a cluster, so the multiplier (not the band)
-# drives the big wins (see docs/DECISIONS.md D-013).
+# drives the big wins (see docs/DECISIONS.md D-013). v2: the v1 table x 0.83, rounded to 0.1x, to pay for
+# the trail refills (D-038).
 PAYTABLE = {
-    "H1": [2.2, 2.7, 3.2, 3.8, 4.4, 5.4, 6.5, 8.6],
-    "H2": [1.6, 2.0, 2.4, 2.8, 3.2, 3.9, 4.9, 6.5],
-    "H3": [1.3, 1.5, 1.8, 2.2, 2.6, 3.0, 3.8, 4.9],
-    "H4": [1.1, 1.3, 1.5, 1.7, 2.2, 2.6, 3.2, 4.3],
-    "L1": [0.9, 1.0, 1.1, 1.3, 1.6, 1.9, 2.4, 3.2],
-    "L2": [0.7, 0.8, 0.9, 1.1, 1.3, 1.5, 1.9, 2.7],
-    "L3": [0.5, 0.6, 0.8, 0.9, 1.1, 1.3, 1.6, 2.2],
-    "L4": [0.4, 0.5, 0.6, 0.8, 0.9, 1.1, 1.3, 1.7],
+    "H1": [1.8, 2.2, 2.7, 3.2, 3.7, 4.5, 5.4, 7.1],
+    "H2": [1.3, 1.7, 2.0, 2.3, 2.7, 3.2, 4.1, 5.4],
+    "H3": [1.1, 1.2, 1.5, 1.8, 2.2, 2.5, 3.2, 4.1],
+    "H4": [0.9, 1.1, 1.2, 1.4, 1.8, 2.2, 2.7, 3.6],
+    "L1": [0.7, 0.8, 0.9, 1.1, 1.3, 1.6, 2.0, 2.7],
+    "L2": [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.6, 2.2],
+    "L3": [0.4, 0.5, 0.7, 0.8, 0.9, 1.1, 1.3, 1.8],
+    "L4": [0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.1, 1.4],
 }
 
 SYMBOLS = {"H1": 6, "H2": 7, "H3": 8, "H4": 9, "L1": 11, "L2": 12, "L3": 13, "L4": 14}
+# Fresh gems dropping into the cells the snake's tail leaves (and, after a base spin, its whole trail) are
+# drawn from the same weights (engine "fill" table; a block may override it with its own "fill").
 
 WALK = {"bias_straight": 1.5, "bias_pearl": 4.0, "bias_seek": 2.0, "p_bite": 0.9, "bias_tail": 4.0, "seek_tail": 3.0}
 
@@ -99,8 +102,8 @@ MODES = {
     "ante": {
         "cost": 2.5,
         "kind": "base",
-        # KEY chance x5.19: P(>=3 keys) = 21.1/1018.1 (≈ 1 in 48.25)
-        "base": {**BASE_TABLES, "key_count": {0: 900, 1: 85, 2: 12, 3: 18.0, 4: 2.6, 5: 0.5}},
+        # KEY chance x4.90: P(>=3 keys) = 19.92/1016.92 (≈ 1 in 51.05)
+        "base": {**BASE_TABLES, "key_count": {0: 900, 1: 85, 2: 12, 3: 17.0, 4: 2.45, 5: 0.47}},
         "fs": HUNT_TABLES,
     },
     "hunt": {"cost": 100.0, "kind": "hunt", "fs": HUNT_TABLES, "buy_keys": {3: 3.4, 4: 0.5, 5: 0.1}},

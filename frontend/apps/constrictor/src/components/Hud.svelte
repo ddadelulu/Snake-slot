@@ -29,7 +29,9 @@
 <div class="hud on-glass {layout}">
 	{#if game.fs}
 		<div class="fs" class:venom={game.feature === 'venom'}>
-			<span class="fs-title display">{game.feature === 'venom' ? t('hud.venomSpins', game.fs) : t('hud.freeSpins', game.fs)}</span>
+			<span class="fs-title display">{game.fs.current === 0
+					? t(game.feature === 'venom' ? 'hud.venomStart' : 'hud.freeSpinsStart', game.fs)
+					: t(game.feature === 'venom' ? 'hud.venomSpins' : 'hud.freeSpins', game.fs)}</span>
 			<span class="fs-win num">{money(game.featureWin)}</span>
 		</div>
 	{/if}

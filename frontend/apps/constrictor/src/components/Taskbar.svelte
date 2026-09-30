@@ -1,13 +1,16 @@
 <!--
-	The game's taskbar, laid out exactly as the owner's design (slot_layout.html): a floating glass dock with the
-	menu button on the left, SPIN in the middle and − BET + on the right, in black with gold outlines and the game's
-	fonts. The menu opens a popup (auto spin, speed, sound, rules, settings). BALANCE and WIN are shown by
-	Readouts.svelte beside the dock (Stake requirement), so the dock itself stays as designed.
+	The game's taskbar, laid out as the owner's design (slot_layout.html): a floating glass dock with the menu
+	button on the left, SPIN in the middle and − BET + on the right, in black with gold outlines and the game's
+	fonts. The menu opens a popup (auto spin, speed, sound, rules, settings). BALANCE and WIN (always on screen,
+	a Stake requirement) live in the dock where a slot player looks for them: beside the menu, mirroring BET, on
+	wide screens; on phones as a slim row across the top of the dock.
 	Layouts only change sizes: wide (desktop), compact (mini-player / narrow landscape), stacked (phones).
 -->
 <script lang="ts">
 	type Labels = {
 		bet: string;
+		balance: string;
+		win: string;
 		spin: string;
 		skip: string;
 		stop: string;
@@ -25,6 +28,12 @@
 		labels: Labels;
 		layout: 'wide' | 'stacked' | 'compact';
 		betText: string;
+		balanceText: string;
+		winText: string;
+		showBalance?: boolean;
+		showWin?: boolean;
+		/** true while the round has a win: the WIN amount lights up gold */
+		winHot?: boolean;
 		spinState: 'idle' | 'busy' | 'auto' | 'disabled';
 		autoText?: string | null;
 		showBet?: boolean;
@@ -49,6 +58,11 @@
 		labels,
 		layout,
 		betText,
+		balanceText,
+		winText,
+		showBalance = true,
+		showWin = true,
+		winHot = false,
 		spinState,
 		autoText = null,
 		showBet = true,
@@ -94,29 +108,33 @@
 
 	// SPIN sits exactly in the middle whenever − BET + fits beside it; otherwise (tiny phones, long amounts) the
 	// dock falls back to the owner's small-screen rule and spreads the three groups out
-	let dockEl: HTMLDivElement | undefined = $state();
+	let rowEl: HTMLDivElement | undefined = $state();
 	let spinEl: HTMLButtonElement | undefined = $state();
 	let betEl: HTMLDivElement | undefined = $state();
+	let leftEl: HTMLDivElement | undefined = $state();
 	let tight = $state(false);
 	function measure() {
-		if (!dockEl || !betEl) return void (tight = false);
-		const cs = getComputedStyle(dockEl);
-		const inner = dockEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+		if (!rowEl) return void (tight = false);
+		const cs = getComputedStyle(rowEl);
+		const inner = rowEl.clientWidth;
 		const gap = parseFloat(cs.columnGap) || 0;
 		const side = (inner - (spinEl?.offsetWidth ?? 0) - 2 * gap) / 2;
-		tight = betEl.offsetWidth > side;
+		tight = Math.max(betEl?.offsetWidth ?? 0, leftEl?.offsetWidth ?? 0) > side;
 	}
 	$effect(() => {
 		void betText;
+		void balanceText;
+		void winText;
 		void layout;
 		measure();
 	});
 	$effect(() => {
-		if (!dockEl || typeof ResizeObserver === 'undefined') return;
+		if (!rowEl || typeof ResizeObserver === 'undefined') return;
 		const ro = new ResizeObserver(() => measure());
-		ro.observe(dockEl);
+		ro.observe(rowEl);
 		return () => ro.disconnect();
 	});
+	const fundsInRow = $derived(layout === 'stacked');
 
 	function pick(fn: () => void, keepOpen = false) {
 		fn();
@@ -137,11 +155,28 @@
 		<button class="btn" role="menuitem" data-act="settings" onclick={() => pick(onSettings)}>{labels.settings}</button>
 	</div>
 
-	<div class="dock" class:tight bind:this={dockEl} role="toolbar" aria-label="Game controls">
+	{#snippet funds()}
+		{#if showBalance}
+			<div class="readout" aria-live="polite"><span class="lbl">{labels.balance}</span><span class="val num">{balanceText}</span></div>
+		{/if}
+		{#if showWin}
+			<div class="readout win" class:hot={winHot} aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
+		{/if}
+	{/snippet}
+	<div class="dock" role="toolbar" aria-label="Game controls">
+		{#if fundsInRow && (showBalance || showWin)}
+			<div class="funds-row">{@render funds()}</div>
+		{/if}
+		<div class="row" class:tight bind:this={rowEl}>
 		<div class="side left">
-			<button class="menu-btn" class:open={menuOpen} aria-label={labels.menu} aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
-				<span></span><span></span><span></span>
-			</button>
+			<div class="left-group" bind:this={leftEl}>
+				<button class="menu-btn" class:open={menuOpen} aria-label={labels.menu} aria-haspopup="menu" aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
+					<span></span><span></span><span></span>
+				</button>
+				{#if !fundsInRow && (showBalance || showWin)}
+					<div class="funds">{@render funds()}</div>
+				{/if}
+			</div>
 		</div>
 
 		<div class="center">
@@ -172,6 +207,7 @@
 				</div>
 			{/if}
 		</div>
+		</div>
 	</div>
 </div>
 
@@ -181,6 +217,7 @@
 		--spin-pad: clamp(8px, 1.5vh, 14px) clamp(28px, 4vw, 45px);
 		--adj: 40px;
 		--amount: 24px;
+		--funds: 20px;
 		--dock-radius: 30px;
 		position: relative;
 		width: 100%;
@@ -195,10 +232,6 @@
 	}
 	/* the owner's dock: glass, heavy outline, round corners; equal sides keep SPIN exactly in the middle */
 	.dock {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-		align-items: center;
-		gap: 10px;
 		background: var(--glass);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
@@ -207,9 +240,61 @@
 		padding: 10px 20px;
 		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.45);
 	}
-	.dock.tight {
+	.row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		align-items: center;
+		gap: 10px;
+	}
+	.row.tight {
 		display: flex;
 		justify-content: space-between;
+	}
+	.left-group {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex: 0 0 auto;
+	}
+	/* BALANCE and WIN: the same label-over-value readout as BET, split by a thin gold rule */
+	.funds {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+	.readout {
+		display: flex;
+		flex-direction: column;
+		line-height: 1.1;
+	}
+	.funds .readout + .readout {
+		border-left: 1px solid var(--rule);
+		padding-left: 14px;
+	}
+	.readout .val {
+		font-size: var(--funds);
+		transition: color 0.3s ease;
+	}
+	.readout.win.hot .val {
+		color: var(--gold-text);
+	}
+	/* phones: one slim row across the top of the dock, BALANCE left and WIN right */
+	.funds-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 10px;
+		padding: 0 8px 7px;
+		margin-bottom: 7px;
+		border-bottom: 1px solid var(--rule);
+	}
+	.funds-row .readout {
+		flex-direction: row;
+		align-items: baseline;
+		gap: 6px;
+	}
+	.funds-row .lbl {
+		margin-bottom: 0;
 	}
 	.side {
 		display: flex;
@@ -399,11 +484,14 @@
 		--spin-pad: 10px 15px;
 		--adj: 32px;
 		--amount: 17px;
+		--funds: 15px;
 		--dock-radius: 26px;
 		padding: 0 10px calc(8px + env(safe-area-inset-bottom));
 	}
 	.stacked .dock {
-		padding: 10px 8px;
+		padding: 8px 8px 10px;
+	}
+	.stacked .row {
 		gap: 4px;
 	}
 	.stacked .bet {
@@ -440,13 +528,23 @@
 		--spin-pad: 6px 18px;
 		--adj: 28px;
 		--amount: 14px;
+		--funds: 13px;
 		--dock-radius: 20px;
 		padding: 0 6px 5px;
 	}
 	.compact .dock {
 		padding: 4px 10px;
 		border-width: 2px;
+	}
+	.compact .row {
 		gap: 6px;
+	}
+	.compact .left-group,
+	.compact .funds {
+		gap: 8px;
+	}
+	.compact .funds .readout + .readout {
+		padding-left: 8px;
 	}
 	.compact .menu-btn {
 		width: 32px;

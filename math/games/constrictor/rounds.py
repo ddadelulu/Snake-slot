@@ -20,6 +20,7 @@ from engine import (
     constrict,
     draw_board,
     evaluate,
+    exit_fill,
     generate_path_safe,
     pick_tier,
     has_future,
@@ -138,6 +139,8 @@ def _moves_and_path(rng, board, snake, tables, stats, em, future=0):
                 d["grow"] = True
             if s[8]:
                 d["bite"] = True
+            if s[9] is not None:
+                d["fill"] = sym_json(s[9])
             out.append(d)
         em.add("snakeMoves", moves=n, steps=out)
     for s in steps:
@@ -274,7 +277,10 @@ def play_base_spin(rng, cfg, crit, stats, em):
         stats.uncapped_tenths = uncapped
         em.add("wincap", amount=WINCAP_TENTHS * 10, uncappedAmount=uncapped * 10)
     if snake is not None:
-        em.add("snakeExit")
+        # the hatchling slithers off tail first; fresh gems drop into its cells (not after a max win:
+        # the vault stays empty)
+        fill = [] if capped else exit_fill(rng, board, snake.body[::-1], bT["fill"])
+        em.add("snakeExit", fill=[{"at": cell_json(c), "sym": sym_json(code)} for c, code in fill])
     return spin, capped, len(kcells), kcells
 
 

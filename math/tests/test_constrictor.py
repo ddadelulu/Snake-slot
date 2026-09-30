@@ -15,7 +15,7 @@ from rounds import play_round  # noqa: E402
 
 C = E.cell_index
 PAY = E.build_paytable(P.PAYTABLE)
-WALK = {"bias_straight": 1.0, "bias_pearl": 1.0, "bias_seek": 1.0, "p_bite": 1.0}
+WALK = {"bias_straight": 1.0, "bias_pearl": 1.0, "bias_seek": 1.0, "p_bite": 1.0, "fill": E.Table({c: 1 for c in range(E.NREG)})}
 
 
 def ring_cells(r0, c0, r1, c1):
@@ -79,7 +79,7 @@ def replay_steps(start_body, start_target, start_mult, board, steps):
     body = list(start_body)
     target, mult = start_target, start_mult
     board = list(board)
-    for i, (frm, to, eaten, grow, tail, length, tgt, m, bite) in enumerate(steps):
+    for i, (frm, to, eaten, grow, tail, length, tgt, m, bite, fill) in enumerate(steps):
         assert frm == body[0]
         assert to in E.NEIGH[frm], "must move orthogonally inside the grid"
         if bite:
@@ -87,6 +87,7 @@ def replay_steps(start_body, start_target, start_mult, board, steps):
             assert to == body[-1], "bite enters the tail tip"
             assert len(body) >= 8 and len(body) == target
             assert E.enclosed_cells(set(body)), "bite must enclose something"
+            assert fill is None, "a bite vacates no cell"
             body = [body[-1]] + body[:-1]
         else:
             assert to not in body, "cannot enter own body (incl. neck => no reversal)"
@@ -95,7 +96,10 @@ def replay_steps(start_body, start_target, start_mult, board, steps):
             assert grow == exp_grow
             if not grow:
                 t = body.pop()
-                board[t] = E.EMPTY
+                assert fill is not None and 0 <= fill < E.NREG, "the vacated tail cell gets a fresh regular gem"
+                board[t] = fill
+            else:
+                assert fill is None, "no refill when the tail stays"
             body.insert(0, to)
             board[to] = E.WILD
             if eaten >= E.PEARL:
@@ -159,7 +163,7 @@ class TestMovement:
         rng = random.Random(0)
         # force a long straight path through pearls
         steps, _ = E.generate_path_safe(
-            rng, board, snake, 6, {"bias_straight": 1e6, "bias_pearl": 1e6, "bias_seek": 1.0, "p_bite": 0.0}
+            rng, board, snake, 6, {**WALK, "bias_straight": 1e6, "bias_pearl": 1e6, "p_bite": 0.0}
         )
         assert snake.target == E.LCAP
         assert all(s[6] <= E.LCAP for s in steps)
@@ -359,3 +363,33 @@ def test_schema_validates_generated_rounds():
             for i in range(10):
                 r = play_round(rng, cfg, crit)
                 validate({"id": i, "payoutMultiplier": r.payout_tenths * 10, "events": r.events})
+
+
+# --------------------------------------------------------------------------------------------------
+# Trail refills (SPEC 5.4, 5.6; math v2)
+# --------------------------------------------------------------------------------------------------
+class TestRefill:
+    @pytest.mark.parametrize("seed", range(30))
+    def test_moves_leave_no_empty_cell(self, seed):
+        rng = random.Random(seed)
+        tables = E.compile_tables(P.HUNT_TABLES)
+        tables = tables["tier_sets"][1]
+        board, _, _ = E.draw_board(rng, tables, "freegame", [C(3, 3), C(3, 4), C(3, 5)])
+        s = E.Snake([C(3, 3), C(3, 4), C(3, 5)], 3, 1)
+        res = E.generate_path_safe(rng, board, s, 10, tables)
+        assert res is not None
+        assert E.EMPTY not in board, "every cell the tail left was refilled"
+
+    @pytest.mark.parametrize("seed", range(30))
+    def test_exit_fill_never_matches_a_neighbour(self, seed):
+        rng = random.Random(seed)
+        tables = E.compile_tables(P.BASE_TABLES)
+        board = [rng.randrange(E.NREG) for _ in range(E.NCELLS)]
+        body = [C(2, 2), C(2, 3), C(3, 3), C(4, 3), C(4, 4), C(4, 5)]
+        for c in body:
+            board[c] = E.WILD
+        fill = E.exit_fill(rng, board, body[::-1], tables["fill"])
+        assert [c for c, _ in fill] == body[::-1]
+        for c, code in fill:
+            assert 0 <= code < E.NREG
+            assert all(board[n] != code for n in E.NEIGH[c])
