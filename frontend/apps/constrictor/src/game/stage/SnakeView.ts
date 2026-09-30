@@ -3,7 +3,7 @@
 // scale shader (glossy black, oil-slick iridescence driven by angle, time and the blind-light slats).
 // It only animates what the book says: positions come from book cells, never from randomness.
 
-import { Container, Geometry, Graphics, Mesh, Shader, Sprite, Texture } from 'pixi.js';
+import { Container, Geometry, Mesh, Shader, Sprite, Texture } from 'pixi.js';
 import { softDot } from './BoardView';
 import { clock, ease } from './clock';
 import { texture } from './assets';
@@ -28,6 +28,39 @@ void main() {
     vUV = aUV;
     vTan = aTan;
     vT = aT;
+}`;
+
+// Soft contact shadow: the body strip itself, pushed down-right and widened in the vertex shader, fading to
+// the edges. It shares the body's geometry, so it costs one extra draw and no per-frame tessellation.
+const SHADOW_VERT = `
+in vec2 aPosition;
+in vec2 aUV;
+in vec2 aTan;
+in float aT;
+out float vAcross;
+out float vT;
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
+uniform float uExpand;
+uniform vec2 uOffset;
+void main() {
+    float side = 1.0 - 2.0 * aUV.y;                 // +1 on the +normal edge, -1 on the other
+    vec2 nrm = vec2(-aTan.y, aTan.x);
+    vec2 p = aPosition + nrm * side * uExpand + uOffset;
+    mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+    gl_Position = vec4((mvp * vec3(p, 1.0)).xy, 0.0, 1.0);
+    vAcross = side;
+    vT = aT;
+}`;
+
+const SHADOW_FRAG = `
+in float vAcross;
+in float vT;
+uniform float uAlpha;
+void main() {
+    float a = uAlpha * smoothstep(0.0, 0.85, 1.0 - abs(vAcross)) * smoothstep(0.0, 0.04, vT);
+    gl_FragColor = vec4(0.0, 0.0, 0.0, a);
 }`;
 
 const FRAG = `
@@ -94,7 +127,7 @@ export class SnakeView extends Container {
 	private uv = new Float32Array(N * 2 * 2);
 	private tan = new Float32Array(N * 2 * 2);
 	private tt = new Float32Array(N * 2);
-	private shadow = new Graphics();
+	private shadow: Mesh<Geometry, Shader>;
 	head: Sprite;
 	private headRig = new Container(); // head sprite + tongue (Sprites cannot have children in Pixi 8)
 	private eyes: Sprite[] = [];
@@ -177,8 +210,20 @@ export class SnakeView extends Container {
 		});
 		this.uni = shader.resources.snake;
 		this.mesh = new Mesh({ geometry: this.geom, shader });
-		// soft contact shadow from layered strokes (no blur filter: filters are costly on mobile GPUs)
-		this.shadow.alpha = 1;
+		// soft contact shadow (no blur filter and no per-frame stroke tessellation: both are costly on phones)
+		this.shadow = new Mesh({
+			geometry: this.geom,
+			shader: Shader.from({
+				gl: { vertex: SHADOW_VERT, fragment: SHADOW_FRAG },
+				resources: {
+					shadow: {
+						uExpand: { value: cell * 0.1, type: 'f32' },
+						uOffset: { value: new Float32Array([cell * 0.06, cell * 0.1]), type: 'vec2<f32>' },
+						uAlpha: { value: 0.5, type: 'f32' },
+					},
+				},
+			}),
+		});
 		this.addChild(this.shadow, this.mesh);
 		this.head = new Sprite(texture('snake_head'));
 		this.head.anchor.set(0.5, 0.34); // pivot between the eyes; the neck overlaps the body
@@ -216,7 +261,7 @@ export class SnakeView extends Container {
 	}
 
 	/** Animate one step: head slides to `to`; the tail advances unless `grow`. Bite: `to` is the tail cell. */
-	async step(to: Pt, grow: boolean, ms: number, bite = false) {
+	async step(to: Pt, grow: boolean, ms: number, bite = false, e: (t: number) => number = ease.inOut) {
 		const from = this.path[0];
 		const oldTail = this.path[this.path.length - 1];
 		this.headFrom = from;
@@ -229,7 +274,7 @@ export class SnakeView extends Container {
 		}
 		void bite;
 		this.stepT = 0;
-		await clock.tween(ms, (t) => (this.stepT = t), ease.inOut);
+		await clock.tween(ms, (t) => (this.stepT = t), e);
 		// commit
 		const np = [{ ...to }, ...this.path];
 		if (!grow) np.pop();
@@ -279,8 +324,9 @@ export class SnakeView extends Container {
 	}
 
 	async exitAlong(points: Pt[], msPerCell: number) {
-		// slither off: keep stepping the head along `points` (off-board), shrinking from the tail
-		for (const p of points) await this.step(p, false, msPerCell);
+		// slither off in one continuous glide (linear per cell, about a second in total), shrinking from the tail
+		const ms = Math.min(msPerCell, 1100 / Math.max(1, points.length));
+		for (const p of points) await this.step(p, false, ms, false, ease.linear);
 		this.visible = false;
 	}
 
@@ -332,10 +378,15 @@ export class SnakeView extends Container {
 		const total = Math.max(cum[cum.length - 1], c * 0.35);
 		const visibleLen = total * this.enterClip;
 		const startS = Math.min(c * 0.18, total * 0.2); // body starts under the head
+		// queries come in nearly increasing order (s - 2, s, s + 2 as s grows), so a moving cursor replaces
+		// a scan from the start for every sample
+		let jc = 1;
 		const sample = (s: number): Pt => {
 			if (dense.length < 2) return dense[0];
-			let j = 1;
+			let j = jc;
+			while (j > 1 && cum[j - 1] >= s) j--;
 			while (j < cum.length - 1 && cum[j] < s) j++;
+			jc = j;
 			const a = dense[j - 1], b = dense[j];
 			const seg = cum[j] - cum[j - 1] || 1;
 			const t = Math.max(0, Math.min(1, (s - cum[j - 1]) / seg));
@@ -347,7 +398,6 @@ export class SnakeView extends Container {
 		const W = c * 0.56;
 		const breath = 1 + 0.035 * Math.sin(clock.time * 2 * Math.PI * 0.33);
 		const texLen = c * 1.15; // one texture repeat per ~1.15 cells
-		const shadowPts: number[] = [];
 		for (let i = 0; i < N; i++) {
 			const f = i / (N - 1);
 			const s = startS + (Math.max(visibleLen, startS + 1) - startS) * f;
@@ -382,18 +432,11 @@ export class SnakeView extends Container {
 			this.tan[o + 3] = ty;
 			this.tt[i * 2] = f;
 			this.tt[i * 2 + 1] = f;
-			if (i % 3 === 0) shadowPts.push(p.x + c * 0.06, p.y + c * 0.1);
 		}
 		this.geom.getBuffer('aPosition').update();
 		this.geom.getBuffer('aUV').update();
 		this.geom.getBuffer('aTan').update();
 		this.geom.getBuffer('aT').update();
-		this.shadow.clear();
-		if (shadowPts.length >= 4) {
-			for (const [k, a] of [[1.35, 0.1], [1.1, 0.12], [0.85, 0.16], [0.6, 0.2]] as const) {
-				this.shadow.poly(shadowPts, false).stroke({ width: W * k, color: 0x000000, alpha: a, cap: 'round', join: 'round' });
-			}
-		}
 		// head
 		const hp = poly[0];
 		const nextP = poly.length > 1 ? poly[1] : { x: hp.x, y: hp.y + 1 };

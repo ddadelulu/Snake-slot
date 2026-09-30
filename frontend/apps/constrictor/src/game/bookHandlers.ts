@@ -58,6 +58,10 @@ export function createBookPlayer(stage: Stage) {
 			await stage.snakeEnter(ev.body, ev.edge);
 		},
 		updateFreeSpin: async (ev) => {
+			// a skip (tap / space) fast-forwards the current spin only: each free spin starts at normal speed,
+			// so one tap never plays the rest of the feature in a single frame
+			clock.skipping = false;
+			game.skipRequested = false;
 			game.fs = { current: ev.amount, total: ev.total };
 			game.spinWin = 0;
 		},

@@ -1,6 +1,8 @@
 // Small WebAudio sound manager: mute, music/sfx volumes, pitch (playbackRate), loops, crossfades.
 // Audio starts only after a user gesture (browser autoplay policy). Missing files are ignored silently.
 
+import { clock } from './stage/clock';
+
 type Loop = { src: AudioBufferSourceNode; gain: GainNode };
 
 export class Sound {
@@ -78,6 +80,8 @@ export class Sound {
 
 	play(name: string, opts: { rate?: number; volume?: number; delay?: number } = {}) {
 		if (!this.ctx) return;
+		// while a skip fast-forwards, every step would fire its sound at once: keep only the win stingers and UI
+		if (clock.skipping && !name.startsWith('stinger_') && !name.startsWith('ui_')) return;
 		const buf = this.buffers.get(name);
 		if (!buf) return;
 		const src = this.ctx.createBufferSource();
@@ -91,6 +95,7 @@ export class Sound {
 
 	loop(name: string, opts: { music?: boolean; volume?: number; fade?: number } = {}) {
 		if (!this.ctx || this.loops.has(name)) return;
+		if (clock.skipping && !opts.music) return; // an effect loop would only blip on and off during a skip
 		const buf = this.buffers.get(name);
 		if (!buf) return;
 		const src = this.ctx.createBufferSource();

@@ -232,3 +232,13 @@ dialogs, HUD cards, the status plaque, the logo card and the win cards (STYLE_BI
 its fonts. Added for Stake: BALANCE and WIN on the dock at all times, the SERPENT CALL switch in the bonus
 popup with an "on" chip, rules and settings in the menu. Turbo runs at exactly 2× so "SPEED: ×2" is literal.
 
+### D-032: A skip fast-forwards the current spin only; lighter snake rendering
+Owner report: quick-spinning in the bonus, and the moment the snake leaves, felt laggy. Measured with a CPU
+profile (`NO_MINIFY=1` build): one tap in free spin 1 played the rest of THE HUNT inside a single frame (every
+move, board update and sound at once), and every frame rebuilt the snake's soft shadow from four round-joined
+strokes for both snakes. Changes: `clock.skipping` is cleared at each `updateFreeSpin`, so a tap skips one spin;
+short sound effects and effect loops are not started while skipping (win stingers and UI sounds still play);
+the shadow is a second mesh sharing the body geometry (widened and offset in its vertex shader, no per-frame
+tessellation); the exit is one linear glide of about a second instead of an ease-in-out stop at every cell; path
+sampling uses a moving cursor. Presentation only: outcomes, books and the round flow are unchanged.
+
