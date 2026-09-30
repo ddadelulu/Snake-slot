@@ -1,21 +1,23 @@
 <!--
-	Studio 12 reusable loading screen (Svelte 5): studio splash ("STUDIO 12", "12" in #FF6B1A, Archivo) then
-	the game's key art with a progress hairline and a tap-to-continue prompt. No platform branding.
-	Presets: "studio12" (default) or "plain" (no studio splash).
+	Studio 12 reusable loading screen (Svelte 5), used unchanged on desktop and phones.
+	1. Studio screen: the STUDIO12 wordmark ("12" in #FF6B1A, Archivo) over a thin progress bar that shows the
+	   real loading progress. It stays up at least `minMs` (2 s) and until loading is done.
+	2. Game screen: the game's key art and title with a tap-to-continue button (the tap also unlocks audio).
+	No platform branding. Presets: "studio12" (default) or "plain" (no studio screen; progress on the game screen).
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	type Props = {
-		progress: number; // 0..1
+		progress: number; // 0..1, real asset loading progress
 		ready: boolean;
 		preset?: 'studio12' | 'plain';
 		title?: string;
 		tapText?: string;
 		loadingText?: string;
 		keyArt?: string | null;
-		splashMs?: number;
+		minMs?: number;
 		reducedMotion?: boolean;
 		onEnter: () => void;
 		logo?: Snippet;
@@ -28,18 +30,37 @@
 		tapText = 'Tap to continue',
 		loadingText = 'Loading',
 		keyArt = null,
-		splashMs = 1400,
+		minMs = 2000,
 		reducedMotion = false,
 		onEnter,
 		logo,
 	}: Props = $props();
 
 	let stage = $state<'splash' | 'game'>(preset === 'studio12' ? 'splash' : 'game');
+	let shown = $state(0); // displayed progress: eases toward the real value, never jumps backwards
+
 	onMount(() => {
-		if (stage === 'splash') {
-			const id = setTimeout(() => (stage = 'game'), reducedMotion ? 400 : splashMs);
-			return () => clearTimeout(id);
-		}
+		if (stage !== 'splash') return;
+		const t0 = performance.now();
+		let raf = 0;
+		let doneAt = 0;
+		const frame = (now: number) => {
+			const minDone = now - t0 >= minMs;
+			const target = ready ? 1 : Math.max(0, Math.min(1, progress));
+			shown = reducedMotion ? target : Math.max(shown, shown + (target - shown) * 0.12);
+			if (target - shown < 0.002) shown = target;
+			if (ready && minDone && shown >= 1) {
+				// hold the full bar for a moment, then hand over to the game screen
+				if (!doneAt) doneAt = now;
+				if (now - doneAt >= (reducedMotion ? 0 : 250)) {
+					stage = 'game';
+					return;
+				}
+			}
+			raf = requestAnimationFrame(frame);
+		};
+		raf = requestAnimationFrame(frame);
+		return () => cancelAnimationFrame(raf);
 	});
 
 	function enter() {
@@ -58,17 +79,22 @@
 <div class="ls" class:reduced={reducedMotion} role="presentation" onclick={enter}>
 	{#if stage === 'splash'}
 		<div class="splash">
-			<div class="studio">STUDIO <span class="twelve">12</span></div>
+			<div class="brand">
+				<div class="studio" aria-label="Studio 12">STUDIO<span class="twelve">12</span></div>
+				<div class="pbar" role="progressbar" aria-label={loadingText} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(shown * 100)}>
+					<div class="pfill" style="transform:scaleX({shown})"></div>
+				</div>
+			</div>
 		</div>
 	{:else}
 		<div class="game" style={keyArt ? `background-image:url(${keyArt})` : ''}>
 			<div class="shade"></div>
 			<div class="center">
 				{#if logo}{@render logo()}{:else}<h1 class="title">{title}</h1>{/if}
-				<div class="bar" aria-hidden="true"><div class="fill" style="transform:scaleX({Math.max(0.02, progress)})"></div></div>
 				{#if ready}
 					<button class="tap" onclick={enter}>{tapText}</button>
 				{:else}
+					<div class="bar" aria-hidden="true"><div class="fill" style="transform:scaleX({Math.max(0.02, progress)})"></div></div>
 					<div class="loading" aria-live="polite">{loadingText}… {Math.round(progress * 100)}%</div>
 				{/if}
 			</div>
@@ -87,19 +113,42 @@
 		display: grid;
 		cursor: pointer;
 	}
+	/* studio screen: STUDIO12 over a thin progress bar, sized to the viewport (desktop and phones) */
 	.splash {
 		display: grid;
 		place-items: center;
-		animation: fade 1.4s ease both;
+		background: #17181e;
+		animation: fadein 0.4s ease both;
+	}
+	.brand {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.42em;
+		font-size: clamp(20px, 6.4vw, 78px); /* wordmark about a third of the screen width, capped on large screens */
 	}
 	.studio {
+		font-family: 'Archivo', system-ui, sans-serif;
 		font-weight: 800;
-		letter-spacing: 0.32em;
-		font-size: clamp(18px, 4.2vw, 40px);
+		letter-spacing: -0.01em;
+		line-height: 1;
+		color: #f2f2f2;
+		white-space: nowrap;
 	}
 	.twelve {
 		color: #ff6b1a;
-		letter-spacing: 0.08em;
+	}
+	.pbar {
+		width: 6.6em; /* overhangs the wordmark a little on both sides */
+		height: max(2px, 0.075em);
+		background: #2c2f39;
+		border-radius: 2px;
+		overflow: hidden;
+	}
+	.pfill {
+		height: 100%;
+		background: #ff6b1a;
+		transform-origin: left;
 	}
 	.game {
 		position: relative;
@@ -205,18 +254,6 @@
 		.tap:hover {
 			background: #111;
 			color: #efebe0;
-		}
-	}
-	@keyframes fade {
-		0% {
-			opacity: 0;
-		}
-		25%,
-		75% {
-			opacity: 1;
-		}
-		100% {
-			opacity: 0;
 		}
 	}
 	@keyframes fadein {

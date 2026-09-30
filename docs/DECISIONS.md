@@ -242,3 +242,11 @@ the shadow is a second mesh sharing the body geometry (widened and offset in its
 tessellation); the exit is one linear glide of about a second instead of an ease-in-out stop at every cell; path
 sampling uses a moving cursor. Presentation only: outcomes, books and the round flow are unchanged.
 
+### D-033: Studio 12 loading screen (owner's spec)
+The owner's studio spec defines one loading screen for every game, on desktop and phones: the STUDIO12 wordmark
+(Archivo 800, "12" in `#FF6B1A`) centred on `#17181E`, with a thin progress bar under it (orange fill on a dark
+track, a little wider than the wordmark) that shows the real asset-loading progress. It stays up at least 2 s and
+until loading is done, then hands over to the key art with the title and TAP TO ENTER (the tap also unlocks audio,
+which browsers require). The wordmark is about a third of the screen width, capped on large screens. It lives in
+the shared `ui-loading` package; the Archivo 800 file is preloaded so the wordmark never shows a fallback font.
+
