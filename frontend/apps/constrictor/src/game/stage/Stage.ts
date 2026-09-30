@@ -162,10 +162,12 @@ export class Stage {
 		const s = Math.max(w / tw, h / th);
 		this.bg.scale.set(s);
 		this.bg.position.set((w - tw * s) / 2, (h - th * s) / 2);
-		this.blinds.width = w * 2;
-		this.blinds.height = h * 2;
-		this.blinds.position.set(-w * 0.5, -h * 0.5);
-		this.blinds.rotation = -0.52;
+		// centred square that covers the viewport at any rotation; bands fall left-high to right-low (~30 deg)
+		const side = Math.hypot(w, h) * 1.1;
+		this.blinds.width = this.blinds.height = side;
+		this.blinds.pivot.set(side / 2, side / 2);
+		this.blinds.position.set(w / 2, h / 2);
+		this.blinds.rotation = 0.52;
 		this.dim.clear().rect(0, 0, w, h).fill({ color: 0x000000 });
 		this.applyCamera();
 		this.snake.setPixelRatio(this.app.renderer.resolution);

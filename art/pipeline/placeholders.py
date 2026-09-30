@@ -424,14 +424,15 @@ def snake_head(open_mouth=False):
         iris = Image.new("RGBA", (int(R * 2 + 4), int(R * 2 + 4)), (0, 0, 0, 0))
         iy, ix = np.mgrid[0 : iris.height, 0 : iris.width].astype(float)
         rr = np.hypot(ix - iris.width / 2, iy - iris.height / 2) / R
-        ring = np.clip(1 - rr, 0, 1)
-        icol = np.stack([217 * (0.55 + 0.45 * ring), 150 * (0.45 + 0.55 * ring), 50 * (0.4 + 0.6 * ring)], -1)
+        # small, black, glassy (sunbeam snake, STYLE_BIBLE 4) with a thin warm iris rim so it reads at game size
+        rimk = np.exp(-((rr - 0.86) / 0.09) ** 2)
+        icol = np.stack([8 + 120 * rimk, 7 + 82 * rimk, 6 + 34 * rimk], -1)
         ia = (rr < 1).astype(float) * 255
         iris_px = np.dstack([icol, ia]).astype(np.uint8)
         iris = Image.fromarray(iris_px, "RGBA")
         im.alpha_composite(iris, (int(ex - iris.width / 2), int(ey - iris.height / 2)))
         d = ImageDraw.Draw(im)
-        d.ellipse([ex - R * 0.22, ey - R * 0.95, ex + R * 0.22, ey + R * 0.95], fill=(2, 2, 3, 255))
+        d.ellipse([ex - R * 0.16, ey - R * 0.8, ex + R * 0.16, ey + R * 0.8], fill=(0, 0, 0, 255))
         d.ellipse([ex - R * 0.62, ey - R * 0.7, ex - R * 0.18, ey - R * 0.3], fill=(255, 246, 225, 210))
     # nostrils
     for sgn in (-1, 1):
@@ -612,8 +613,9 @@ def room(w, h, portrait=False):
     trim = np.exp(-((v - ctop) * h / 3.0) ** 2)
     arr[..., :3] += np.array([150, 112, 56]) * (trim * (0.35 + 0.65 * np.clip(1 - u, 0, 1)))[..., None]
     # --- blind-light slats (soft, warm, upper left, falling across wall and door)
-    a30 = math.radians(28)
-    pp = (xx * math.cos(a30) + yy * math.sin(a30)) / (S0 * 0.085)
+    a30 = math.radians(30)
+    # bands at ~30 deg from horizontal, falling left-high to right-low (STYLE_BIBLE 2)
+    pp = (yy * math.cos(a30) - xx * math.sin(a30)) / (S0 * 0.085)
     slat = np.clip(np.sin(pp * math.pi) * 1.6 - 0.25, 0, 1) ** 1.4
     fall = np.exp(-(((u - 0.18) / 0.36) ** 2 + ((v - 0.18) / 0.48) ** 2)) * (1 - 0.7 * centre)
     lightk = (slat * fall)[..., None]

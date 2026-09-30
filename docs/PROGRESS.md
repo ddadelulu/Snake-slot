@@ -96,7 +96,11 @@ Resume point for any session. Update after every phase.
 - Browser soak `node tests/e2e/soak.mjs http://localhost:8080 1200`: 1,200 real rounds (all modes), 0 WIN/BALANCE
   mismatches, 0 console/network problems. It found a real memory leak (Pixi 8 GraphicsContext retention), now fixed;
   heap 11.4 → 15.2 MB over 1,200 rounds and flattening, heap-snapshot diff shows no JS-object growth.
-- Storybook: 39 stories render (`npx storybook build`, `node tests/e2e/storybook.mjs`).
+- Storybook: 44 stories render (`npx storybook build`, `node tests/e2e/storybook.mjs`).
+- Visual self-review against the style bible: `docs/VISUAL_REVIEW.md` (20 problems found in screenshots and fixed;
+  remaining gaps are the placeholder art and the two video-dependent hero moments).
+- Environment placeholders (2026-09-30): strongroom plate, riveted Deco frame, loading key art; blind light and eyes
+  aligned with the style bible.
 - `docs/screenshots/` (36), `docs/RULES.md` (generated), `docs/SUBMISSION.md` (blurb, rules, RTP/cost/max win,
   20 replay event ids, tile layers, QA evidence, compliance checklist, open items).
 

@@ -64,7 +64,8 @@ void main() {
     float rim = pow(1.0 - nz, 2.5) * max(dot(n, R), 0.0);
     // blind slats in screen space (~30 degrees), drifting slowly
     vec2 sp = gl_FragCoord.xy / uPx;
-    float slatCoord = (sp.x * 0.866 - sp.y * 0.5) / uSlatPeriod + uSlatDrift;
+    // gl_FragCoord is y-up: bands at ~30 deg falling left-high to right-low (STYLE_BIBLE 2)
+    float slatCoord = (sp.x * 0.5 + sp.y * 0.866) / uSlatPeriod + uSlatDrift;
     float slat = smoothstep(0.62, 0.72, fract(slatCoord)) * (1.0 - smoothstep(0.86, 0.96, fract(slatCoord)));
     vec3 base = tex.rgb * (0.30 + 0.95 * diff);
     float hue = fract(0.55 + 0.35 * dot(vTan, vec2(0.7, 0.7)) + uTime * 0.035 + vUV.x * 0.08);
