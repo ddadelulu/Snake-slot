@@ -1,4 +1,4 @@
-<!-- Modal shell: dimmed backdrop, brass-edged panel, Escape / backdrop closes (unless locked). -->
+<!-- Modal shell: dimmed backdrop, glass panel (taskbar style), Escape / backdrop closes (unless locked). -->
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
 	import { t } from '$game/i18n';
@@ -31,7 +31,7 @@
 <svelte:window onkeydown={key} />
 
 <div class="backdrop" role="presentation" onclick={() => !locked && onClose?.()}></div>
-<div class="panel" class:wide role="dialog" aria-modal="true" aria-label={title} bind:this={panel}>
+<div class="panel on-glass" class:wide role="dialog" aria-modal="true" aria-label={title} bind:this={panel}>
 	<header>
 		<h2 class="display">{title}</h2>
 		{#if !locked && onClose}
@@ -62,13 +62,14 @@
 		max-height: min(90dvh, 720px);
 		display: flex;
 		flex-direction: column;
-		background: linear-gradient(180deg, #17191c, #0e0f11);
-		border: 1px solid var(--brass);
-		box-shadow:
-			0 0 0 3px rgba(0, 0, 0, 0.6),
-			0 0 0 4px rgba(156, 122, 69, 0.35),
-			0 24px 60px rgba(0, 0, 0, 0.7);
-		color: var(--ivory);
+		background: var(--glass-strong);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+		overflow: hidden;
+		color: var(--ink);
 		animation: rise 200ms ease both;
 	}
 	.panel.wide {
@@ -83,16 +84,17 @@
 	h2 {
 		margin: 0;
 		font-size: clamp(18px, 3.6vh, 28px);
-		color: var(--brass-hi);
+		color: var(--ink);
 		letter-spacing: 0.1em;
 	}
 	.x {
 		width: 34px;
 		height: 34px;
 		border-radius: 50%;
-		border: 1px solid var(--gunmetal);
+		border: 2px solid var(--ink);
 		background: none;
-		color: var(--ivory);
+		color: var(--ink);
+		flex: none;
 		display: grid;
 		place-items: center;
 		cursor: pointer;
@@ -100,8 +102,8 @@
 	}
 	.x:hover,
 	.x:focus-visible {
-		border-color: var(--brass-hi);
-		color: var(--brass-hi);
+		background: var(--ink);
+		color: var(--paper);
 		outline: none;
 	}
 	.x svg {

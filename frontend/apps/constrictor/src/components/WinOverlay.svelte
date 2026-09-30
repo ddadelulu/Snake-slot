@@ -96,7 +96,7 @@
 		onclick={requestSkip}
 	>
 		{#if card.kind === 'tier'}
-			<div class="tier lvl{card.level}">
+			<div class="tier on-glass lvl{card.level}">
 				<div class="title display">{t(TIER_KEYS[card.level] ?? 'win.strike')}</div>
 				<div class="amount num">{money(shown)}</div>
 				<div class="hint">{t('win.tapToSkip')}</div>
@@ -122,22 +122,22 @@
 					</g>
 				</svg>
 			</div>
-			<div class="intro" class:venom={card.feature === 'venom'}>
+			<div class="intro on-glass" class:venom={card.feature === 'venom'}>
 				<div class="rule"></div>
 				<div class="title display">{card.feature === 'venom' ? t('feature.venomTitle') : t('feature.huntTitle')}</div>
 				<div class="sub">{t('feature.freeSpins', { n: card.spins })}</div>
 				<div class="rule"></div>
 			</div>
 		{:else if card.kind === 'outro'}
-			<div class="intro" class:venom={card.feature === 'venom'}>
+			<div class="intro on-glass" class:venom={card.feature === 'venom'}>
 				<div class="sub">{t('feature.summary')}</div>
 				<div class="amount num">{money(shown)}</div>
 				{#if card.capped}<div class="note">{t('feature.maxReached')}</div>{/if}
 			</div>
 		{:else if card.kind === 'retrigger'}
-			<div class="retrigger display">{t('feature.retrigger', { n: card.added })}</div>
+			<div class="retrigger on-glass display">{t('feature.retrigger', { n: card.added })}</div>
 		{:else if card.kind === 'maxWin'}
-			<div class="tier lvl5">
+			<div class="tier on-glass lvl5">
 				<div class="title display">{t('win.vaultEmpty')}</div>
 				<div class="amount num">{money(shown)}</div>
 				<div class="note">{t('feature.maxReached')}</div>
@@ -154,7 +154,7 @@
 
 {#if pop}
 	{#key pop.id}
-		<div class="pop num" aria-hidden="true">{money(pop.amount)}</div>
+		<div class="pop on-glass num" aria-hidden="true">{money(pop.amount)}</div>
 	{/key}
 {/if}
 
@@ -179,21 +179,22 @@
 		align-items: center;
 		gap: clamp(4px, 1.2vh, 12px);
 		text-align: center;
-		padding: 0 16px;
+		/* glass card (taskbar style) */
+		max-width: 94vw;
+		padding: clamp(14px, 3vh, 28px) clamp(20px, 4vw, 48px);
+		background: var(--glass-strong);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid var(--ink);
+		border-radius: 28px;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 	}
 	.title {
 		font-size: clamp(34px, 11vmin, 120px);
 		line-height: 0.95;
-		color: var(--brass-hi);
+		color: var(--ink);
 		letter-spacing: 0.08em;
-		text-shadow:
-			0 2px 0 #3a2a10,
-			0 0 30px rgba(217, 178, 111, 0.35);
 		animation: slam 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
-	}
-	.lvl3 .title,
-	.lvl4 .title {
-		color: #f0d49a;
 	}
 	.lvl4 .title {
 		font-size: clamp(38px, 12.5vmin, 140px);
@@ -202,16 +203,23 @@
 		font-family: 'Limelight', var(--font-display);
 		font-weight: 400;
 		color: var(--venom);
-		text-shadow:
-			0 2px 0 #06301a,
-			0 0 40px rgba(61, 255, 138, 0.45);
 		font-size: clamp(30px, 9vmin, 110px);
 	}
+	.tier.lvl5 {
+		box-shadow:
+			inset 0 0 0 3px #3dff8a,
+			0 8px 25px rgba(0, 0, 0, 0.4);
+	}
+	/* the amount sits in an inverse pill, like the SPIN button */
 	.amount {
-		font-size: clamp(24px, 7vmin, 72px);
+		font-size: clamp(22px, 6.4vmin, 64px);
 		font-weight: 800;
-		color: var(--ivory);
 		letter-spacing: 0.02em;
+		color: var(--paper);
+		background: var(--ink);
+		border-radius: 999px;
+		padding: 0.12em 0.7em;
+		box-shadow: inset 0 0 0 2px var(--paper);
 	}
 	.hint,
 	.note {
@@ -230,7 +238,11 @@
 	}
 	.intro.venom .title {
 		color: var(--venom);
-		text-shadow: 0 0 36px rgba(61, 255, 138, 0.4);
+	}
+	.intro.venom {
+		box-shadow:
+			inset 0 0 0 3px #3dff8a,
+			0 8px 25px rgba(0, 0, 0, 0.4);
 	}
 	.sub {
 		font-weight: 800;
@@ -401,9 +413,13 @@
 		opacity: 0;
 	}
 	.retrigger {
-		font-size: clamp(30px, 9vmin, 90px);
-		color: var(--brass-hi);
-		text-shadow: 0 0 24px rgba(217, 178, 111, 0.5);
+		font-size: clamp(26px, 7.5vmin, 76px);
+		color: var(--ink);
+		padding: 0.1em 0.8em;
+		background: var(--glass-strong);
+		border: 3px solid var(--ink);
+		border-radius: 999px;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 		animation: slam 360ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 	}
 	.ouro {
@@ -415,8 +431,13 @@
 		pointer-events: none;
 		font-size: clamp(30px, 10vmin, 110px);
 		letter-spacing: 0.2em;
-		color: var(--venom);
-		text-shadow: 0 0 30px rgba(61, 255, 138, 0.55);
+		color: #3dff8a;
+		background: var(--ink);
+		border: 3px solid var(--paper);
+		border-radius: 999px;
+		padding: 0.06em 0.8em;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
+		white-space: nowrap;
 		animation: ouro 1900ms ease both;
 	}
 	.pop {
@@ -427,11 +448,14 @@
 		z-index: 28;
 		pointer-events: none;
 		font-weight: 800;
-		font-size: clamp(22px, 6vmin, 56px);
-		color: var(--ivory);
-		text-shadow:
-			0 2px 0 #000,
-			0 0 18px rgba(217, 178, 111, 0.6);
+		font-size: clamp(20px, 5vmin, 48px);
+		color: var(--ink);
+		background: var(--glass-strong);
+		border: 3px solid var(--ink);
+		border-radius: 999px;
+		padding: 0.1em 0.7em;
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+		white-space: nowrap;
 		animation: popwin 1300ms ease both;
 	}
 	@keyframes popwin {

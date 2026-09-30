@@ -1,6 +1,5 @@
 <script lang="ts">
 	import RulesModal from '$components/RulesModal.svelte';
-	import BuyModal from '$components/BuyModal.svelte';
 	import AutoplayModal from '$components/AutoplayModal.svelte';
 	import SettingsModal from '$components/SettingsModal.svelte';
 	import ErrorModal from '$components/ErrorModal.svelte';
@@ -12,7 +11,7 @@
 	import { onMount } from 'svelte';
 	import { loadManifest } from '$game/stage/assets';
 
-	type Props = { which: 'rules' | 'buy' | 'autoplay' | 'settings' | 'error' | 'confirmAnte' | 'bet' | 'replay'; social?: boolean; errorCode?: string };
+	type Props = { which: 'rules' | 'autoplay' | 'settings' | 'error' | 'confirmAnte' | 'bet' | 'replay'; social?: boolean; errorCode?: string };
 	let { which, social = false, errorCode = 'ERR_IPB' }: Props = $props();
 	let ready = $state(false);
 	const noop = () => {};
@@ -32,7 +31,6 @@
 <div class="bg"></div>
 {#if ready}
 	{#if which === 'rules'}<RulesModal onClose={noop} />
-	{:else if which === 'buy'}<BuyModal onClose={noop} onPick={noop} />
 	{:else if which === 'autoplay'}<AutoplayModal onClose={noop} onStart={noop} />
 	{:else if which === 'settings'}<SettingsModal onClose={noop} showAutoplay />
 	{:else if which === 'error'}<ErrorModal code={errorCode} fatal={errorCode === 'ERR_IS'} onClose={noop} />

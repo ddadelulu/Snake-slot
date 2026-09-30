@@ -222,3 +222,13 @@ wordmark keep Big Shoulders; the max-win title uses Limelight.
 The brief asks for a MOVES counter above the board and a status line "LENGTH 12 · ×17". In landscape, a
 brass plaque sits on the board's top rail (`StatusPlaque.svelte`), and the side panel keeps the feature
 counter and feature win. In portrait, the HUD row above the board shows the same values.
+
+### D-031: UI in the owner's glass dock style
+The owner supplied a taskbar design (`slot_layout.html`): a beige glass dock with a 3 px black outline and
+round corners, a menu button with a popup (auto spin, speed, sound), a central SPIN, bet −/+, and a floating
+dashed "Buy Bonus" button with its own popup. It replaces the brass control bar and the BUY / SERPENT CALL
+plaques (`Taskbar.svelte`, `BonusButton.svelte`), and every other UI surface follows it: loading screen,
+dialogs, HUD cards, the status plaque, the logo card and the win cards (STYLE_BIBLE §7). Kept from the game:
+its fonts. Added for Stake: BALANCE and WIN on the dock at all times, the SERPENT CALL switch in the bonus
+popup with an "on" chip, rules and settings in the menu. Turbo runs at exactly 2× so "SPEED: ×2" is literal.
+

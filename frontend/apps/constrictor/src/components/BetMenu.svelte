@@ -25,21 +25,23 @@
 	}
 	.lvl {
 		min-height: 38px;
-		border: 1px solid var(--gunmetal);
-		background: rgba(255, 255, 255, 0.02);
-		color: var(--ivory);
+		border: 2px solid var(--ink);
+		border-radius: 12px;
+		background: transparent;
+		color: var(--ink);
+		font-family: var(--font-ui);
 		font-weight: 700;
 		font-size: 13px;
 		cursor: pointer;
 	}
 	.lvl:hover,
 	.lvl:focus-visible {
-		border-color: var(--brass-hi);
+		background: rgba(17, 17, 17, 0.1);
 		outline: none;
 	}
 	.lvl.on {
-		background: var(--brass-hi);
-		border-color: var(--brass-hi);
-		color: #0b0b0c;
+		background: var(--ink);
+		color: var(--paper);
+		box-shadow: inset 0 0 0 2px var(--paper);
 	}
 </style>

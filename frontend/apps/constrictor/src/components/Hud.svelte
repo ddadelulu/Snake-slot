@@ -26,7 +26,7 @@
 	const money = (x: number) => formatMoney(bookToMoney(x, game.roundBet), game.currency);
 </script>
 
-<div class="hud {layout}">
+<div class="hud on-glass {layout}">
 	{#if game.fs}
 		<div class="fs" class:venom={game.feature === 'venom'}>
 			<span class="fs-title display">{game.feature === 'venom' ? t('hud.venomSpins', game.fs) : t('hud.freeSpins', game.fs)}</span>
@@ -83,13 +83,18 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 6px 12px;
-		border-top: 1px solid var(--brass);
-		border-bottom: 1px solid var(--brass);
-		background: rgba(7, 8, 10, 0.55);
+		padding: 6px 16px;
+		background: var(--glass);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid var(--ink);
+		border-radius: 20px;
+		box-shadow: var(--glass-shadow);
 	}
 	.fs.venom {
-		border-color: var(--venom);
+		box-shadow:
+			inset 0 0 0 2px #3dff8a,
+			var(--glass-shadow);
 	}
 	.fs-title {
 		font-size: clamp(14px, 2.8vh, 24px);
@@ -116,10 +121,13 @@
 		flex-direction: column;
 		align-items: center;
 		min-width: 64px;
-		padding: 4px 8px;
-		background: rgba(7, 8, 10, 0.5);
-		border-left: 1px solid rgba(156, 122, 69, 0.5);
-		border-right: 1px solid rgba(156, 122, 69, 0.5);
+		padding: 4px 10px;
+		background: var(--glass);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 2px solid var(--ink);
+		border-radius: 14px;
+		box-shadow: var(--glass-shadow);
 	}
 	.lbl {
 		font-size: clamp(8px, 1.3vh, 11px);
@@ -150,6 +158,13 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		padding: 4px 12px;
+		background: var(--glass);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 2px solid var(--ink);
+		border-radius: 14px;
+		box-shadow: var(--glass-shadow);
 	}
 	.win .val {
 		font-size: clamp(13px, 2.4vh, 20px);

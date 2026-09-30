@@ -104,6 +104,15 @@ Resume point for any session. Update after every phase.
 - `docs/screenshots/` (36), `docs/RULES.md` (generated), `docs/SUBMISSION.md` (blurb, rules, RTP/cost/max win,
   20 replay event ids, tile layers, QA evidence, compliance checklist, open items).
 
+## Owner feedback round (2026-09-30)
+- Shareable play-money demo (`scripts/make_demo.py`, in-page RGS stand-in); private link for the owner.
+- Symbol sheet for Higgsfield (Claude Doc): every symbol, pearl, snake part and scene image with its filename and
+  a copy-ready prompt.
+- Owner's taskbar design adopted (D-031): glass dock, menu popup, centred SPIN, bet −/+, floating Buy Bonus popup;
+  then every UI surface restyled to match (loading, dialogs, HUD, plaque, logo, win cards). Unused BuyModal removed.
+- Checks: svelte-check 0/0, vitest 30 passed + 1 skipped, viewports 7/7 no overflow, compliance 14/14, social 0
+  restricted words, smoke with HUNT + VENOM buys clean, Storybook UI stories 22/22.
+
 ## Next up
 - Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).
 - Dylan: review D-001/D-012 (Coba overlap) and D-015 (Venom 700×) before submission.

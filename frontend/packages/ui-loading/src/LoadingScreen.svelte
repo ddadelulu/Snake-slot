@@ -127,35 +127,85 @@
 		font-weight: 900;
 		font-size: clamp(34px, 9vw, 86px);
 		letter-spacing: 0.08em;
-		color: #d9b26f;
+		line-height: 1;
+		color: #111;
+		background: rgba(239, 235, 224, 0.9);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid #111;
+		border-radius: 28px;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+		padding: 0.18em 0.5em;
 	}
+	/* glass dock style (beige glass, heavy black outline, round corners) */
 	.bar {
-		width: 100%;
-		height: 2px;
-		background: rgba(217, 178, 111, 0.18);
+		width: min(100%, 360px);
+		height: 16px;
+		padding: 3px;
+		border: 3px solid #111;
+		border-radius: 999px;
+		background: rgba(239, 235, 224, 0.85);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 		overflow: hidden;
 	}
 	.fill {
 		height: 100%;
-		background: #d9b26f;
+		border-radius: 999px;
+		background: #111;
 		transform-origin: left;
 		transition: transform 0.25s ease;
 	}
-	.loading,
-	.tap {
-		font-size: clamp(11px, 1.8vh, 14px);
-		letter-spacing: 0.24em;
+	.loading {
+		font-size: clamp(11px, 1.8vh, 13px);
+		font-weight: 800;
+		letter-spacing: 0.2em;
 		text-transform: uppercase;
-		color: #a39c8c;
+		color: #111;
+		background: rgba(239, 235, 224, 0.85);
+		border: 2px solid #111;
+		border-radius: 999px;
+		padding: 6px 16px;
+		font-variant-numeric: tabular-nums;
 	}
 	.tap {
-		background: none;
-		border: 1px solid rgba(217, 178, 111, 0.6);
-		color: #ede6d6;
-		padding: 10px 22px;
-		cursor: pointer;
 		font-family: inherit;
+		font-size: clamp(15px, 2.6vh, 20px);
+		font-weight: 800;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: #111;
+		background: rgba(239, 235, 224, 0.92);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid #111;
+		border-radius: 24px;
+		box-shadow:
+			inset 0 0 0 2px rgba(239, 235, 224, 0.9),
+			0 4px 15px rgba(0, 0, 0, 0.35);
+		padding: 14px 36px;
+		cursor: pointer;
+		transition: background 0.2s ease, color 0.2s ease;
 		animation: pulse 1.8s ease-in-out infinite;
+	}
+	.tap:focus-visible {
+		outline: 2px solid #efebe0;
+		outline-offset: 4px;
+	}
+	@media (max-width: 440px) {
+		.tap {
+			font-size: 14px;
+			letter-spacing: 0.1em;
+			padding: 12px 22px;
+			white-space: nowrap;
+		}
+	}
+	@media (hover: hover) {
+		.tap:hover {
+			background: #111;
+			color: #efebe0;
+		}
 	}
 	@keyframes fade {
 		0% {
@@ -176,7 +226,10 @@
 	}
 	@keyframes pulse {
 		50% {
-			border-color: rgba(217, 178, 111, 1);
+			box-shadow:
+				inset 0 0 0 2px rgba(239, 235, 224, 0.9),
+				0 4px 15px rgba(0, 0, 0, 0.35),
+				0 0 0 7px rgba(239, 235, 224, 0.28);
 		}
 	}
 	.reduced * {

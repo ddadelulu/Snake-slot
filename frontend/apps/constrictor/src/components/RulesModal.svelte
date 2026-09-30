@@ -119,27 +119,30 @@
 <style>
 	.tabs {
 		display: flex;
-		gap: 4px;
+		gap: 6px;
 		flex-wrap: wrap;
 		margin-bottom: 12px;
-		border-bottom: 1px solid var(--gunmetal);
 	}
 	.tabs button {
 		background: none;
-		border: 0;
-		border-bottom: 2px solid transparent;
-		color: var(--ivory-dim);
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		color: var(--ink);
+		font-family: var(--font-ui);
 		font-weight: 800;
-		letter-spacing: 0.14em;
+		letter-spacing: 0.12em;
 		font-size: 11px;
-		padding: 8px 10px;
+		padding: 6px 12px;
 		cursor: pointer;
+		transition: background 0.2s ease, color 0.2s ease;
 	}
-	.tabs button.on,
 	.tabs button:focus-visible {
-		color: var(--brass-hi);
-		border-bottom-color: var(--brass-hi);
-		outline: none;
+		outline: 2px solid var(--ink);
+		outline-offset: 2px;
+	}
+	.tabs button.on {
+		background: var(--ink);
+		color: var(--paper);
 	}
 	h3 {
 		margin: 14px 0 4px;
@@ -165,7 +168,7 @@
 	.pt td {
 		padding: 4px 6px;
 		text-align: right;
-		border-bottom: 1px solid rgba(42, 46, 51, 0.8);
+		border-bottom: 1px solid rgba(17, 17, 17, 0.18);
 		white-space: nowrap;
 	}
 	.pt thead th {

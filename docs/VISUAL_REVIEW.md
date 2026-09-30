@@ -34,6 +34,14 @@ and Storybook. Every problem below was seen in a screenshot, fixed, and re-check
 | 23 | Max win | Gold shower + title only; §9's "THE VAULT IS EMPTY" should read literally | On the cap, every jewel left on the board is drawn into the serpent's mouth (nearest first, rising gulps), leaving empty velvet; then the gold shower and the title (frames: `node tests/e2e/hero.mjs`) |
 | 24 | KEY symbol | Plain ring bow; §5 asks for a bow shaped as a snake head | Brass key with a viper-head bow (tapered snout, wide jaw, ring hole, engraved ridge, recessed eyes), shared brass shading lit from the upper left |
 
+## Owner-directed UI restyle (D-031)
+
+The owner's taskbar design replaced the brass control bar, and every UI surface now follows it: glass dock,
+floating Buy Bonus popup, loading screen (TAP TO ENTER, progress bar, title card), dialogs (rules, bet,
+autoplay, settings, confirm, error, resume), replay panel, HUD cards, the status plaque, the logo card and
+the win cards. Checked in screenshots at all 7 viewports: no overflow, SPIN centred, BALANCE and WIN always
+on the dock. The scene art (board, frame, snake, background) is unchanged and still the noir set.
+
 ## What still falls short of the bible (and why)
 
 - **Materials are illustrative, not photoreal.** Every image is procedural placeholder art because the Higgsfield

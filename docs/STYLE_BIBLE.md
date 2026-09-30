@@ -79,13 +79,17 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 | UI | **Archivo** (OFL, variable) | also used for the Studio 12 wordmark |
 | Counters | Archivo with **tabular numerals** (`font-variant-numeric: tabular-nums`) | wins, balance, moves, multiplier |
 
-## 7. UI
-- Flat, restrained **charcoal panels, 1 px brass edges**, subtle brushed-metal or velvet texture.
-- No gradient soup, no chunky cartoon buttons, no glossy pills. Radii ≤ 6 px.
-- Readability beats decoration: ivory on charcoal, contrast ≥ 7:1 for body text, ≥ 4.5:1 minimum.
-- Icons: thin-line (1.5 px) brass or ivory, consistent stroke.
-- Motion: short and purposeful (120–220 ms UI transitions). Restraint everywhere except the three hero
-  moments (Hunt trigger, OUROBOROS, max win).
+## 7. UI (glass dock style, owner's direction, D-031)
+- Every UI surface follows the owner's taskbar: **beige glass** (`rgba(239,235,224,0.85–0.95)`, 6 px blur),
+  a **heavy black outline** (3 px panels, 2 px controls), **round corners** (panels 20–30 px, buttons 14 px,
+  pills fully round), a soft drop shadow. Text on glass is black ink `#111`.
+- Buttons: outlined ink buttons that fill black on hover; the primary action (SPIN, CONFIRM) is black with an
+  inset ivory ring. Amounts in win cards sit in the same black pill.
+- Fonts stay the game's: Archivo for UI and numbers, Big Shoulders Display for titles and SPIN, Limelight for
+  the max-win title. The venom green appears on glass only as a thin inner ring or dark green `#0A7D3C` text.
+- Readability beats decoration: ink on beige, contrast ≥ 7:1 for body text.
+- Motion: short and purposeful (120–300 ms UI transitions). Restraint everywhere except the three hero
+  moments (Hunt trigger, OUROBOROS, max win). The noir scene (board, art, lighting) is unchanged.
 
 ## 8. Realism rules: reject and regenerate if any of these appear
 Plastic sheen · random sparkles or bokeh orbs · glowing auras (except venom) · fantasy filigree ·

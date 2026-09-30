@@ -10,7 +10,27 @@
 	--ruby: #b0122e;
 	--font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--font-display: 'Big Shoulders Display', 'Archivo', sans-serif;
+	/* glass dock style (owner's taskbar): beige glass, black ink, ivory, round corners */
+	--glass: rgba(239, 235, 224, 0.88);
+	--glass-strong: rgba(239, 235, 224, 0.95);
+	--ink: #111;
+	--ink-dim: #5b5548;
+	--paper: #efebe0;
+	--venom-ink: #0a7d3c;
+	--glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 	color-scheme: dark;
+}
+/* anything on a glass surface: the shared colour tokens switch to ink */
+.on-glass {
+	--ivory: var(--ink);
+	--ivory-dim: var(--ink-dim);
+	--brass-hi: var(--ink);
+	--brass: var(--ink);
+	--gunmetal: rgba(17, 17, 17, 0.3);
+	--charcoal: rgba(17, 17, 17, 0.06);
+	--venom: var(--venom-ink);
+	color: var(--ink);
+	color-scheme: light;
 }
 html, body {
 	margin: 0;
@@ -29,35 +49,43 @@ button { font-family: var(--font-ui); }
 .num { font-variant-numeric: tabular-nums; }
 .display { font-family: var(--font-display); font-weight: 900; letter-spacing: 0.06em; }
 
-/* shared buttons (modals, panels) */
+/* shared buttons (modals, panels): the taskbar's button style */
 .btn {
 	min-height: 40px;
 	padding: 0 18px;
-	border: 1px solid var(--gunmetal);
+	border: 2px solid var(--ink);
+	border-radius: 14px;
 	background: transparent;
-	color: var(--ivory);
+	color: var(--ink);
 	font-weight: 800;
-	font-size: 12px;
-	letter-spacing: 0.16em;
+	font-size: 13px;
+	letter-spacing: 1px;
 	text-transform: uppercase;
 	cursor: pointer;
-	transition: border-color 120ms, background 120ms, color 120ms;
+	transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
-.btn:hover:not(:disabled),
 .btn:focus-visible {
-	border-color: var(--brass-hi);
-	outline: none;
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
 }
 .btn.primary {
-	border-color: var(--brass-hi);
-	background: var(--brass-hi);
-	color: #0b0b0c;
+	background: var(--ink);
+	color: var(--paper);
+	box-shadow: inset 0 0 0 2px var(--paper);
 }
-.btn.primary:hover:not(:disabled) {
-	background: #e8c585;
+@media (hover: hover) {
+	.btn:hover:not(:disabled) {
+		background: var(--ink);
+		color: var(--paper);
+	}
+	.btn.primary:hover:not(:disabled) {
+		background: transparent;
+		color: var(--ink);
+		box-shadow: none;
+	}
 }
 .btn:disabled {
-	opacity: 0.35;
+	opacity: 0.4;
 	cursor: default;
 }
 .sr-only {

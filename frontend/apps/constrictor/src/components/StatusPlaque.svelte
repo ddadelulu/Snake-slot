@@ -18,7 +18,7 @@
 	});
 </script>
 
-<div class="plaque" aria-live="polite">
+<div class="plaque on-glass" aria-live="polite">
 	<span class="grp">
 		<span class="lbl">{t('hud.moves')}</span>
 		{#key movesPop}<span class="val num mv" class:pop={movesPop > 0}>{game.moves ? game.moves.left : '–'}</span>{/key}
@@ -37,12 +37,13 @@
 		display: inline-flex;
 		align-items: center;
 		gap: clamp(8px, 1.4vw, 16px);
-		padding: 3px clamp(10px, 1.6vw, 18px);
-		background: linear-gradient(180deg, #1c1e22, #0e0f11);
-		border: 1px solid var(--brass);
-		box-shadow:
-			0 0 0 2px rgba(0, 0, 0, 0.6),
-			0 4px 10px rgba(0, 0, 0, 0.5);
+		padding: 4px clamp(12px, 1.8vw, 20px);
+		background: var(--glass);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 2px solid var(--ink);
+		border-radius: 999px;
+		box-shadow: var(--glass-shadow);
 		pointer-events: none;
 		white-space: nowrap;
 	}
@@ -75,7 +76,7 @@
 	.sep {
 		width: 1px;
 		align-self: stretch;
-		background: rgba(156, 122, 69, 0.6);
+		background: rgba(17, 17, 17, 0.35);
 	}
 	.pop {
 		animation: pop 380ms cubic-bezier(0.2, 1.6, 0.4, 1) both;

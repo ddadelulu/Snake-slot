@@ -91,19 +91,21 @@
 	.chip {
 		min-width: 46px;
 		height: 34px;
-		border: 1px solid var(--gunmetal);
+		border: 2px solid var(--ink);
+		border-radius: 12px;
 		background: none;
-		color: var(--ivory);
+		color: var(--ink);
+		font-family: var(--font-ui);
 		font-weight: 700;
 		cursor: pointer;
 	}
 	.chip.on {
-		background: var(--brass-hi);
-		border-color: var(--brass-hi);
-		color: #0b0b0c;
+		background: var(--ink);
+		color: var(--paper);
 	}
 	.chip:focus-visible {
-		outline: 1px solid var(--brass-hi);
+		outline: 2px solid var(--ink);
+		outline-offset: 2px;
 	}
 	.row {
 		display: flex;
@@ -111,18 +113,19 @@
 		justify-content: space-between;
 		gap: 10px;
 		padding: 7px 0;
-		border-top: 1px solid rgba(42, 46, 51, 0.7);
+		border-top: 1px solid rgba(17, 17, 17, 0.2);
 	}
 	input[type='checkbox'] {
-		accent-color: #d9b26f;
+		accent-color: #111;
 		width: 18px;
 		height: 18px;
 		order: 2;
 	}
 	select {
-		background: #0e0f11;
-		color: var(--ivory);
-		border: 1px solid var(--gunmetal);
+		background: rgba(255, 255, 255, 0.55);
+		color: var(--ink);
+		border: 2px solid var(--ink);
+		border-radius: 10px;
 		padding: 6px 8px;
 		font: inherit;
 		min-width: 96px;

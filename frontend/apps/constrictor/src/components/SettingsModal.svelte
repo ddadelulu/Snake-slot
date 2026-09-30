@@ -44,15 +44,15 @@
 		justify-content: space-between;
 		gap: 12px;
 		padding: 9px 0;
-		border-top: 1px solid rgba(42, 46, 51, 0.7);
+		border-top: 1px solid rgba(17, 17, 17, 0.2);
 	}
 	input[type='checkbox'] {
-		accent-color: #d9b26f;
+		accent-color: #111;
 		width: 18px;
 		height: 18px;
 	}
 	input[type='range'] {
-		accent-color: #d9b26f;
+		accent-color: #111;
 		width: min(50%, 200px);
 	}
 	.hint {

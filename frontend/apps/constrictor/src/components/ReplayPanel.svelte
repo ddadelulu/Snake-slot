@@ -16,11 +16,11 @@
 </script>
 
 {#if game.phase === 'loading'}
-	<div class="panel"><p>{t('replay.loading')}</p></div>
+	<div class="panel on-glass"><p>{t('replay.loading')}</p></div>
 {:else if game.phase === 'error'}
-	<div class="panel"><p>{t('replay.error')}</p></div>
+	<div class="panel on-glass"><p>{t('replay.error')}</p></div>
 {:else if r && (game.phase === 'replayReady' || game.phase === 'replayDone')}
-	<div class="panel">
+	<div class="panel on-glass">
 		<h2 class="display">{t('replay.title')}</h2>
 		<dl>
 			<dt>{t('replay.mode')}</dt>
@@ -48,9 +48,13 @@
 		transform: translateX(-50%);
 		z-index: 20;
 		width: min(92vw, 420px);
-		padding: 12px 16px;
-		background: rgba(12, 13, 15, 0.92);
-		border: 1px solid var(--brass);
+		padding: 14px 18px;
+		background: var(--glass-strong);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		border: 3px solid var(--ink);
+		border-radius: 24px;
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
