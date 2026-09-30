@@ -15,6 +15,28 @@ Shared prompt blocks (paste where noted):
 Style-lock drafts already generated (Higgsfield project "CONSTRICTOR (Studio 12) game art"): H1 ×4,
 SNAKE_HEAD ×4. Job IDs are in `GENERATION_LOG.md`. Pick the best one of each, then use it as [REF].
 
+## 0. All symbols in one go (reference chart)
+
+`art/reference/symbol_chart.png` (labelled) and `art/reference/symbol_chart_clean.png` (no text, 4×4, 2048 px) show
+all 10 symbols and 6 pearls. Attach the clean one as the reference image (GPT Image, high, largest size, 1:1) with:
+
+> Recreate this 4x4 sheet of slot-game symbols as photoreal studio product photographs. Keep every object in the
+> same cell and order, with the same shape, cut and colour, centred in its own square on a plain black background,
+> evenly spaced, nothing crossing into the next cell. Row 1: a polished oval black opal cabochon with one vertical
+> red, orange and green fire slit, in a thin aged-gold bezel; an antique gold signet ring shaped as a coiled snake
+> with two tiny emerald eyes; a small antique glass apothecary vial with a faceted stopper, two-thirds full of
+> softly glowing venom-green liquid; an open antique gold pocket watch with a cream dial and no numerals, lid open
+> to the left. Row 2: a deep red pear-cut ruby, point up; a cornflower-blue cushion-cut sapphire; a honey-gold
+> emerald-cut citrine, long side vertical; a violet round brilliant amethyst seen from above. Row 3: a pale
+> leathery reptile egg with faint blue-green veins, upright; an antique brass vault key whose bow is sculpted as a
+> snake's head, lying diagonally; a round white South Sea pearl; a round golden pearl. Row 4: a round rose-pink
+> pearl; a round black Tahitian pearl with peacock-green overtones; a round pearl glowing softly from within in
+> venom green; a larger venom-green glowing pearl with faint dark veins. Lighting: one warm tungsten key light from
+> the upper left, a faint cool rim light from the right, deep black shadows. 1940s jeweler's collection, crisp fine
+> detail, no text, no numbers, no logos, no sparkles, no bokeh.
+
+The finished sheet is cut into the 16 files below (and the black background removed) before `build_assets.py`.
+
 ## 1. Symbols: `gpt_image_2_5`, quality `high`, resolution `2k`, aspect `1:1`, background `transparent`
 
 | ID | Target filename | Prompt |
