@@ -80,6 +80,10 @@ All commands from `frontend/apps/constrictor` unless noted; the mock RGS serves 
 books (`python3 scripts/mock_rgs.py`, D-024). Headless Chromium uses software rendering (≈ 2–4 fps), so wall-clock
 times in these runs are not representative of real devices.
 
+A shareable play-money demo (no server) is built with `python3 scripts/make_demo.py <outDir>`: the same build with
+an in-page stand-in for the RGS (`scripts/demo_rgs.js`) and a sample of real books. It is for playtesting only;
+the Stake upload is always `build/` itself.
+
 | Check | Command | Result |
 |---|---|---|
 | Math unit tests | `cd math && env/bin/pytest tests -q` | 72 passed |
