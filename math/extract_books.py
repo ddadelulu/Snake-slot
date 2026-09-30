@@ -19,6 +19,7 @@ import csv
 import io
 import json
 import os
+import re
 
 import numpy as np
 import zstandard as zstd
@@ -88,6 +89,12 @@ def extract(mode: str, n: int, seed: int = 12):
     # one streaming pass over the published books; also finds hatch books for base/ante
     hatch: list[int] = []
     books: dict[int, str] = {}
+    # extra showcase categories (brief §10 Storybook list): separate RNG + reservoir, so the sample and the
+    # categories above are unchanged by adding these
+    rng2 = np.random.default_rng(seed + 1)
+    extra = {"ouroboros2": [], "longSnake": []}
+    seen_extra = {k: 0 for k in extra}
+    len_re = re.compile(r'"len":(\d+)')
     with open(os.path.join(PUB, f"books_{mode}.jsonl.zst"), "rb") as fh:
         reader = io.TextIOWrapper(zstd.ZstdDecompressor().stream_reader(fh), encoding="UTF-8")
         for line in reader:
@@ -98,6 +105,26 @@ def extract(mode: str, n: int, seed: int = 12):
                 if rng.random() < 0.05:
                     hatch.append(bid)
                     books[bid] = line.strip()
+            if mode in ("hunt", "venom", "base", "ante") and bid not in want:
+                conds = {
+                    "ouroboros2": line.count('"type":"ouroboros"') >= 2,
+                    "longSnake": '"len":1' in line and max((int(x) for x in len_re.findall(line)), default=0) >= 16,
+                }
+                for k, ok in conds.items():
+                    if ok:
+                        seen_extra[k] += 1
+                        res = extra[k]
+                        if len(res) < PER_CAT:
+                            res.append((bid, line.strip()))
+                        else:
+                            j = int(rng2.integers(0, seen_extra[k]))
+                            if j < PER_CAT:
+                                res[j] = (bid, line.strip())
+    for k, res in extra.items():
+        if res:
+            show[k] = sorted(b for b, _ in res)
+            for b, line in res:
+                books[b] = line
     if hatch:
         show["hatch"] = hatch[:PER_CAT]
         for bid in hatch[PER_CAT:]:
