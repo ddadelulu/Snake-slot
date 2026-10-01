@@ -2,10 +2,11 @@
   "name": "@budget/db",
   "version": "0.1.0",
   "private": true,
-  "description": "Supabase project: migrations, seed, database tests (schema, RLS, triggers).",
+  "description": "Supabase project: config, migrations and database tests (schema, RLS, privileges, integrity).",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:db": "vitest run"
+    "test:db": "vitest run",
+    "gen:types": "supabase gen types typescript --local --schema public | prettier --stdin-filepath ../packages/core/src/database.types.ts > ../packages/core/src/database.types.ts"
   },
   "devDependencies": {
     "@budget/core": "*",

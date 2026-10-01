@@ -93,7 +93,7 @@ Root layout ── guards (Stack.Protected) ──▶ (auth) | (tabs) | reset-pa
 | Translation keys             | `apps/mobile/src/i18n/en.ts`                  | type checker + `catalogue.test.ts`                |
 
 Changing one: open the change with the architect, update both sides (e.g. constant and CHECK),
-regenerate types (`supabase gen types typescript --local > packages/core/src/database.types.ts`),
+regenerate types (`npm run gen:types --workspace @budget/db`),
 and tell the agents whose code uses it.
 
 ## Transaction source plug-ins (spec section 6)

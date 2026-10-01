@@ -74,5 +74,5 @@ Functions: `delete_my_account()` (authenticated only). Trigger functions are not
 1. Add a new migration in `supabase/migrations/` (never edit an applied one).
 2. Grant privileges explicitly; add RLS policies.
 3. Mirror any vocabulary in `packages/core/src/constants.ts`.
-4. Regenerate types: `supabase gen types typescript --local > packages/core/src/database.types.ts`.
+4. Regenerate types: `npm run gen:types --workspace @budget/db` (Supabase CLI output, formatted with Prettier; CI fails when the file is stale).
 5. Extend `supabase/tests` (the catalog-driven tests fail until a new table is covered).
