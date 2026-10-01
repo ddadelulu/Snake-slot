@@ -2,6 +2,112 @@
 
 Resume point for any session. Update after every phase.
 
+## Handoff (2026-10-01): read this first
+
+State at commit `b6b1256` (math v2, pushed to `claude/affectionate-ride-zwi9uz`). The game is complete and playable
+end to end on real, verified books. What is left: final scene art and audio, the owner's sign-off on four decisions,
+and the upload. The phase log further down has the full history.
+
+### Task board
+
+| Status | Task | Notes |
+|---|---|---|
+| ✅ Done | P0–P9: SDKs, SPEC, math core, optimise + verify, style bible, assets, frontend, hero moments, compliance, QA, submission pack | phase log below |
+| ✅ Done | Owner round 1: taskbar (D-031 → D-034 → D-036 black and gold), Studio 12 loading screen (D-033), one-spin skip and lighter snake (D-032), final symbols and pearls (D-035), white snake with a bending neck (D-037) | |
+| ✅ Done | Owner round 2: math v2 trail refills (D-038), BALANCE/WIN inside the taskbar (D-039), polish pass (D-040) | 2.5 M books re-verified; build, 36 screenshots, MATH_REPORT, RULES, SUBMISSION regenerated |
+| 🔍 Check | Owner's play-money demo on the v2 build | `b6b1256` says "the demo follows"; no pushed commit confirms it was rebuilt. `python3 scripts/make_demo.py <outDir>`, then re-send the link |
+| ⛔ Blocked | Final scene art: background plate, frame, velvet, snake head, scales and tongue, key art | Placeholders ship. Cloud egress blocks the Higgsfield result hosts (D-020). Prompts and filenames in `art/HIGGSFIELD_PROMPTS.md`; ≈ 319 credits left |
+| ⛔ Blocked | Hero videos `vid_*` (intro, Hunt, OUROBOROS, max win) | Optional: in-engine versions ship (D-026); the clips play with no code change once in `art/final/` |
+| ⛔ Blocked | Final audio | Synthesized placeholders (D-021); brief in `art/AUDIO_SPEC.md` |
+| 👤 Owner | Coba overlap: keep the title, 7×7 and 25,000×? | D-001, D-012 (the cap is the cheapest lever) |
+| 👤 Owner | VENOM HUNT at 700× with a length-8 ×2 start | D-015 (the brief's ~400× / ×5 did not balance) |
+| 👤 Owner | Accept the SDK 3-star advisory flags on ante, hunt and venom | D-009, MATH_REPORT §3 |
+| 🔲 To do | Re-check `docs/REQUIREMENTS.md` against the live Stake Engine docs | The live sites were blocked in the cloud; the March 2026 docs repo was used |
+| 🔲 To do | Upload: `math/games/constrictor/publish/` (joined) + `frontend/apps/constrictor/build/`, then put the dashboard's version into the replay URL in SUBMISSION §4 | Needs the owner's Stake Engine account |
+
+### Decisions made (full text in `docs/DECISIONS.md`)
+
+| ID | Decision |
+|---|---|
+| D-001 | Title CONSTRICTOR kept: no slot uses it. ELK's Coba overlap flagged for the owner |
+| D-002 | Math runs on a Python 3.12 venv (`math/env`) |
+| D-003 | Control bar and loading screen built fresh (Solvent repo not reachable) |
+| D-004 | Art is generated in Higgsfield; budget ≤ 321.7 credits |
+| D-005 | All math in integer tenths of a bet (0.1× payout granularity) |
+| D-006 | Disclaimer ends "CONSTRICTOR™ and © 2026 Studio 12. All rights reserved." |
+| D-007 | Jurisdiction flags are honoured whenever they are `true` |
+| D-008 | Max win must hit at least 1 in 10M in every mode |
+| D-009 | The SDK 3-star volatility limits are secondary; violations are documented |
+| D-010 | math-sdk `a6dccd8` vendored into `/math`; game in `math/games/constrictor/` |
+| D-011 | Build wrapper for the vite exit hang; turbo telemetry off |
+| D-012 | 7×7 and 25,000× kept (brief values); the cap is the lever if more distance from Coba is wanted |
+| D-013 | Flat top end in the paytable: the multiplier, not cluster size, drives big wins |
+| D-014 | Hidden pearl tier per round (lean / normal / rich), like a reel-set choice |
+| D-015 | VENOM HUNT starts at length 8, ×2; cost set by the math (700×) |
+| D-016 | Compact book encoding + zstd level 19 (two SDK lines patched) |
+| D-017 | Own LUT weighting (bucket quotas + power tilt) → exactly 96.00000 % |
+| D-018 | Pearl-proof lookahead so the snake never boxes itself in |
+| D-019 | Rule details: bite ends the moves, buys start in the feature, Venom retriggers like the Hunt, edge entry. (Empty trail cells superseded by D-038) |
+| D-020 | Higgsfield results can't be imported in the cloud → placeholders + manifest swap |
+| D-021 | Placeholder audio synthesized in code |
+| D-022 | Frontend: web-sdk monorepo, own app, thin Pixi 8 stage + Svelte 5 UI, single-file static build |
+| D-023 | Payouts shown from book amounts × bet; balance always from the RGS |
+| D-024 | Dev mock RGS (`scripts/mock_rgs.py`), not part of the submission |
+| D-025 | Upload set committed in < 100 MB parts (`math/publish_parts.py`) |
+| D-026 | Hero transitions in-engine; video layer plays final clips when present |
+| D-027 | Guardian = a second snake wrapped around the frame |
+| D-028 | No filters in the render loop |
+| D-029 | Counters in Archivo tabular numerals, titles in the Deco face |
+| D-030 | MOVES / LENGTH plaque on the board's top rail |
+| D-031 | Owner's glass-dock taskbar adopted; all UI restyled to match |
+| D-032 | A skip fast-forwards one spin only; lighter snake shadow |
+| D-033 | Studio 12 loading screen per the owner's spec |
+| D-034 | Dark glass and brass; SPIN in the exact centre |
+| D-035 | Final symbols and pearls from the owner's Higgsfield set |
+| D-036 | Owner's layout in black with gold outlines |
+| D-037 | White (leucistic) snake; the neck bends into the body on turns |
+| D-038 | Math v2: fresh gems refill the trail; paytable × 0.83; SERPENT CALL keys ×4.90 |
+| D-039 | BALANCE and WIN inside the taskbar |
+| D-040 | Polish pass ("sand the game") |
+
+### Next steps (in order)
+
+1. **Owner sign-off** on D-001/D-012, D-015 and D-009. A change to the cap or the Venom start means a math re-run (step 6).
+2. **Final scene art.** From a machine where the Higgsfield result hosts are reachable (a local terminal should be),
+   generate the remaining prompts in `art/HIGGSFIELD_PROMPTS.md`: background, frame, velvet, snake head, scales,
+   tongue, key art. Use the style-lock drafts as references and log credits in `art/GENERATION_LOG.md`. Install
+   them with `art/pipeline/fetch_finals.py` (by URL, or `--from-dir`), then `math/env/bin/python art/pipeline/build_assets.py`.
+3. **Optional hero videos** (`vid_*` in the prompts file), then `node tests/e2e/video.mjs`.
+4. **Final audio** per `art/AUDIO_SPEC.md` (same filenames as the placeholders).
+5. **Rebuild and re-check**: build, the full test list below, regenerate `docs/screenshots/`, update
+   `docs/VISUAL_REVIEW.md` against `docs/STYLE_BIBLE.md`, rebuild the demo for the owner.
+6. Only if the math changes: production run, verifier, `make_report.py`, `publish_parts.py pack`,
+   `export_frontend_config.py`, `extract_books.py`, `replay_examples.py`, then RULES and SUBMISSION.
+7. **Re-check REQUIREMENTS.md against the live Stake docs**, then upload (task board).
+
+### How to resume
+
+```bash
+# Math (Python 3.12)
+cd math
+python3.12 -m venv env && env/bin/pip install -r requirements.txt && env/bin/pip install -e .
+env/bin/pytest tests -q                       # 132 passed
+env/bin/python publish_parts.py join          # rebuild + checksum the upload set
+env/bin/python games/constrictor/run.py       # production books (hours); --quick = 4,000 per mode
+env/bin/python verify_constrictor.py && env/bin/python make_report.py   # ~1 h on 4 cores
+
+# Frontend (Node >= 22.16, pnpm)
+cd frontend && pnpm install && pnpm build     # -> apps/constrictor/build/ (the upload)
+cd apps/constrictor
+npx vitest run                                # 30 passed + 1 skipped
+python3 scripts/mock_rgs.py                   # serves the build + real books on :8080
+node tests/e2e/smoke.mjs                      # also compliance, viewports, social, soak, screenshots, storybook
+python3 scripts/make_demo.py <outDir>         # play-money demo for the owner
+```
+
+Last green run (`b6b1256`): pytest 132, vitest 30 + 1 skipped, compliance 14/14, viewports 7/7,
+smoke clean, soak 100 rounds 0 mismatches, social 0, Storybook 44/44, verifier 2,500,000 / 2,500,000.
+
 ## Status by phase
 
 | Phase | Status | Notes |
@@ -124,12 +230,4 @@ Resume point for any session. Update after every phase.
   `math/replay_examples.py`), publish set and frontend config/books regenerated.
 - BALANCE and WIN inside the taskbar (D-039); polish pass (D-040).
 
-## Next up
-- Final art/audio when the Higgsfield CDN hosts are allowed (prompts ready; ≈ 319 credits left in budget).
-- Dylan: review D-001/D-012 (Coba overlap) and D-015 (Venom 700×) before submission.
-
-## Open issues
-- Live Stake docs sites are blocked by egress; the docs git repo (March 2026) plus math-sdk (Sept 2026) were used instead.
-- Coba similarity (D-001/D-012) needs Dylan's eye before submission.
-- Final art/video: allow the two Higgsfield CDN hosts in the environment's network settings, then run the
-  prompts in `art/HIGGSFIELD_PROMPTS.md` (budget left ≈ 319 credits).
+Next up and open issues: see the handoff at the top.
