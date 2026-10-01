@@ -12,3 +12,6 @@ own tail (**OUROBOROS**) the ring constricts everything inside into one symbol a
 | `docs/` | SPEC, REQUIREMENTS, DECISIONS, PROGRESS, STYLE_BIBLE, MATH_REPORT, SUBMISSION, screenshots |
 
 Start with `docs/PROGRESS.md`.
+
+This repository also hosts **`budget-app/`**, a separate project (a Swiss budgeting app, working
+title Batzen) with its own [README](budget-app/README.md). The two projects share nothing.
