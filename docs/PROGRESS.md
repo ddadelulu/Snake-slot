@@ -4,7 +4,7 @@ Resume point for any session. Update after every phase.
 
 ## Handoff (2026-10-01): read this first
 
-State at commit `b6b1256` (math v2, pushed to `claude/affectionate-ride-zwi9uz`). The game is complete and playable
+State at commit `b6b1256` (math v2). Work continues on `claude/admiring-gates-ol8le4`. The game is complete and playable
 end to end on real, verified books. What is left: final scene art and audio, the owner's sign-off on four decisions,
 and the upload. The phase log further down has the full history.
 
@@ -15,7 +15,7 @@ and the upload. The phase log further down has the full history.
 | ✅ Done | P0–P9: SDKs, SPEC, math core, optimise + verify, style bible, assets, frontend, hero moments, compliance, QA, submission pack | phase log below |
 | ✅ Done | Owner round 1: taskbar (D-031 → D-034 → D-036 black and gold), Studio 12 loading screen (D-033), one-spin skip and lighter snake (D-032), final symbols and pearls (D-035), white snake with a bending neck (D-037) | |
 | ✅ Done | Owner round 2: math v2 trail refills (D-038), BALANCE/WIN inside the taskbar (D-039), polish pass (D-040) | 2.5 M books re-verified; build, 36 screenshots, MATH_REPORT, RULES, SUBMISSION regenerated |
-| 🔍 Check | Owner's play-money demo on the v2 build | `b6b1256` says "the demo follows"; no pushed commit confirms it was rebuilt. `python3 scripts/make_demo.py <outDir>`, then re-send the link |
+| ✅ Done | Owner's play-money demo on the v2 build | Checked 2026-10-01: https://claude.ai/artifact/GpsfSiMxA2Cf2bHe5aSyhj runs the `b6b1256` build (version `1790811653738`) with the v2 books |
 | ⛔ Blocked | Final scene art: background plate, frame, velvet, snake head, scales and tongue, key art | Placeholders ship. Cloud egress blocks the Higgsfield result hosts (D-020). Prompts and filenames in `art/HIGGSFIELD_PROMPTS.md`; ≈ 319 credits left |
 | ⛔ Blocked | Hero videos `vid_*` (intro, Hunt, OUROBOROS, max win) | Optional: in-engine versions ship (D-026); the clips play with no code change once in `art/final/` |
 | ⛔ Blocked | Final audio | Synthesized placeholders (D-021); brief in `art/AUDIO_SPEC.md` |
