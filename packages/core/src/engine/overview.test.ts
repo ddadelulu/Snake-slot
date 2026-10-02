@@ -201,12 +201,12 @@ describe('buildOverview', () => {
   });
 
   it('includes what the previous period carried over', () => {
-    expect(buildOverview({ ...input, plan: { ...plan, carriedOverRappen: chf(120) } })).toMatchObject(
-      { spendableRappen: chf(3695), balanceRappen: chf(2566, 40) },
-    );
-    expect(buildOverview({ ...input, plan: { ...plan, carriedOverRappen: chf(-80) } })).toMatchObject(
-      { spendableRappen: chf(3495), balanceRappen: chf(2366, 40) },
-    );
+    expect(
+      buildOverview({ ...input, plan: { ...plan, carriedOverRappen: chf(120) } }),
+    ).toMatchObject({ spendableRappen: chf(3695), balanceRappen: chf(2566, 40) });
+    expect(
+      buildOverview({ ...input, plan: { ...plan, carriedOverRappen: chf(-80) } }),
+    ).toMatchObject({ spendableRappen: chf(3495), balanceRappen: chf(2366, 40) });
   });
 
   it('copes with negative spendable money (fixed costs above income)', () => {
@@ -221,6 +221,8 @@ describe('buildOverview', () => {
       spendableRappen: chf(-300),
       balanceRappen: chf(-300),
       dailyAllowanceRappen: 0,
+      // Nothing spent yet, but the balance is already negative: the status agrees with it.
+      status: 'danger',
       pace: { kind: 'no_spending' },
     });
     const someSpent = buildOverview({ ...input, plan: tight, categories: [] });

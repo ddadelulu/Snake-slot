@@ -153,7 +153,7 @@ describe('periodContaining', () => {
         // One payday per month: the period ends in the month after it starts.
         const start = parseLocalDate(period.startsOn);
         const end = parseLocalDate(period.endsOn);
-        expect((end.year * 12 + end.month) - (start.year * 12 + start.month)).toBe(1);
+        expect(end.year * 12 + end.month - (start.year * 12 + start.month)).toBe(1);
         expect(periodLength(period)).toBeGreaterThanOrEqual(28);
         expect(periodLength(period)).toBeLessThanOrEqual(31);
         expect(dayOfPeriod(date, period) + daysUntilPayday(date, period)).toBe(

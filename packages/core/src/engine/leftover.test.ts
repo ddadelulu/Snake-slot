@@ -72,6 +72,8 @@ describe('settleLeftover', () => {
   });
 
   it('rejects unknown policies', () => {
-    expect(() => settleLeftover('donate' as LeftoverPolicy, 100)).toThrow(/unknown leftover policy/);
+    expect(() => settleLeftover('donate' as LeftoverPolicy, 100)).toThrow(
+      /unknown leftover policy/,
+    );
   });
 });

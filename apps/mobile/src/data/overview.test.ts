@@ -75,3 +75,12 @@ describe('toHomeModel', () => {
     ]);
   });
 });
+
+describe('toHomeModel with a carried category deficit', () => {
+  it('never hands the engine a negative budget', () => {
+    const data = parseOverview(OVERVIEW_JSON)!;
+    data.categories[0]!.rolloverRappen = -200000;
+    const { overview } = toHomeModel(data);
+    expect(overview.categories[0]).toMatchObject({ budgetRappen: 0, status: 'danger' });
+  });
+});

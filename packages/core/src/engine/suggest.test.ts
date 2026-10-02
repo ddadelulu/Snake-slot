@@ -51,9 +51,11 @@ describe('suggestBudgets', () => {
 
   it('keeps the input order and ids', () => {
     const categories = [custom('c-climbing'), ...defaults('other', 'groceries')];
-    expect(
-      suggestBudgets({ spendableRappen: chf(1000), categories }).map(({ id }) => id),
-    ).toEqual(['c-climbing', 'other', 'groceries']);
+    expect(suggestBudgets({ spendableRappen: chf(1000), categories }).map(({ id }) => id)).toEqual([
+      'c-climbing',
+      'other',
+      'groceries',
+    ]);
   });
 
   it('weighs a custom category like a mid-sized default one', () => {

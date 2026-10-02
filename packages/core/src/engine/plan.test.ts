@@ -56,7 +56,11 @@ describe('spendableOf', () => {
 
   it('may be negative when fixed costs and savings exceed the income', () => {
     expect(
-      spendableOf({ incomeRappen: chf(3000), fixedCostsRappen: chf(2800), savingsRappen: chf(500) }),
+      spendableOf({
+        incomeRappen: chf(3000),
+        fixedCostsRappen: chf(2800),
+        savingsRappen: chf(500),
+      }),
     ).toBe(chf(-300));
     expect(spendableOf({ incomeRappen: 0, fixedCostsRappen: 0, savingsRappen: 0 })).toBe(0);
   });

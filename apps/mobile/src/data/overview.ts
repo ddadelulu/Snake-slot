@@ -187,7 +187,10 @@ export function toHomeModel(data: OverviewData): HomeModel {
     },
     categories: data.categories.map((category) => ({
       categoryId: category.categoryId,
-      budgetRappen: category.budgetAmountRappen + category.rolloverRappen,
+      // A category's budget is its amount plus what rolled over into it. The payday job only
+      // carries money at the period level today, so this is never negative; clamping keeps the
+      // home screen working should a later feature carry a category deficit.
+      budgetRappen: Math.max(0, category.budgetAmountRappen + category.rolloverRappen),
       spentRappen: category.spentRappen,
     })),
     uncategorizedSpentRappen: data.uncategorizedSpentRappen,
