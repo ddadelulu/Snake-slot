@@ -70,6 +70,17 @@ void main() {
     gl_FragColor = vec4(0.0, 0.0, 0.0, a);
 }`;
 
+// Cartoon ink line (D-042): the body strip widened a little, solid dark ink with a soft outer edge, drawn
+// under the body. Shares the body geometry like the shadow.
+const OUTLINE_FRAG = `
+in float vAcross;
+in float vT;
+uniform float uAlpha;
+void main() {
+    float a = uAlpha * smoothstep(0.0, 0.12, 1.0 - abs(vAcross));
+    gl_FragColor = vec4(vec3(0.078, 0.051, 0.02) * a, a);
+}`;
+
 const FRAG = `
 in vec2 vUV;
 in vec2 vTan;
@@ -138,6 +149,11 @@ export class SnakeView extends Container {
 	private tan = new Float32Array(N * 2 * 2);
 	private tt = new Float32Array(N * 2);
 	private shadow: Mesh<Geometry, Shader>;
+	private outline: Mesh<Geometry, Shader>;
+	/** Ink line round the head: the head strip widened a little, tinted ink. */
+	private headOutline: Mesh<MeshGeometry>;
+	private headOutlineGeom: MeshGeometry;
+	private headOutlinePos = new Float32Array(HEAD_ROWS * 4);
 	/** The head: a strip mesh that follows the path, so the neck bends into the body on turns. */
 	head: Mesh<MeshGeometry>;
 	private headGeom: MeshGeometry;
@@ -245,6 +261,19 @@ export class SnakeView extends Container {
 		this.tongue.anchor.set(0.5, 1);
 		this.tongue.scale.set(0);
 		this.tongueRig.addChild(this.tongue);
+		this.outline = new Mesh({
+			geometry: this.geom,
+			shader: Shader.from({
+				gl: { vertex: SHADOW_VERT, fragment: OUTLINE_FRAG },
+				resources: {
+					shadow: {
+						uExpand: { value: cell * 0.05, type: 'f32' },
+						uOffset: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
+						uAlpha: { value: 1, type: 'f32' },
+					},
+				},
+			}),
+		});
 		const hIdx: number[] = [];
 		const hUV = new Float32Array(HEAD_ROWS * 4);
 		for (let i = 0; i < HEAD_ROWS; i++) {
@@ -255,13 +284,18 @@ export class SnakeView extends Container {
 		this.headGeom = new MeshGeometry({ positions: this.headPos, uvs: hUV, indices: new Uint32Array(hIdx) });
 		this.headGeom.batchMode = 'no-batch'; // rewritten every frame
 		this.head = new Mesh({ geometry: this.headGeom, texture: texture('snake_head') });
-		this.addChild(this.shadow, this.mesh, this.tongueRig, this.head);
+		this.headOutlineGeom = new MeshGeometry({ positions: this.headOutlinePos, uvs: hUV, indices: new Uint32Array(hIdx) });
+		this.headOutlineGeom.batchMode = 'no-batch';
+		this.headOutline = new Mesh({ geometry: this.headOutlineGeom, texture: texture('snake_head') });
+		this.headOutline.tint = 0x140d05;
+		// ink under everything: the body covers the head's line at the neck, so no line crosses the join
+		this.addChild(this.shadow, this.outline, this.headOutline, this.mesh, this.tongueRig, this.head);
 		// eye glows in head-texture pixels relative to the anchor (placeholder/final heads share the layout)
 		for (const sx of [-1, 1]) {
 			const e = new Sprite(softDot());
 			e.anchor.set(0.5);
 			e.position.set(sx * 31, -16);
-			e.width = e.height = 46;
+			e.width = e.height = 58;
 			e.tint = 0x3dff8a;
 			e.blendMode = 'add';
 			e.alpha = 0;
@@ -314,10 +348,10 @@ export class SnakeView extends Container {
 
 	async gulp(ms: number) {
 		this.mouthOpen = true;
-		this.head.texture = texture('snake_head_open');
+		this.head.texture = this.headOutline.texture = texture('snake_head_open');
 		await clock.wait(ms);
 		this.mouthOpen = false;
-		this.head.texture = texture('snake_head');
+		this.head.texture = this.headOutline.texture = texture('snake_head');
 	}
 
 	flick() {
@@ -500,41 +534,48 @@ export class SnakeView extends Container {
 		// head: the snout rows run straight ahead of the pivot (between the eyes), the rows behind it lie on the
 		// spine (rigid to the jaw, then bending). The head texture's neck is ~35 % of its width; the scale makes
 		// that match the body width.
+		// the ink outline is the same strip a little wider and with the snout pushed forward
+		const ink = c * 0.05;
 		for (let i = 0; i < HEAD_ROWS; i++) {
 			const v = i / (HEAD_ROWS - 1);
-			const d = (v - HEAD_PIVOT) * texH; // distance behind the pivot (negative: towards the snout)
-			let px: number, py: number, tx: number, ty: number;
-			if (d <= 0) {
-				px = hp.x - hdx * d;
-				py = hp.y - hdy * d;
-				tx = -hdx;
-				ty = -hdy;
-			} else {
-				const p = spine(d), p1 = spine(Math.max(0, d - 2)), p2 = spine(d + 2);
-				px = p.x;
-				py = p.y;
-				tx = p2.x - p1.x;
-				ty = p2.y - p1.y;
-				const tl = Math.hypot(tx, ty) || 1;
-				tx /= tl;
-				ty /= tl;
+			const d0 = (v - HEAD_PIVOT) * texH; // distance behind the pivot (negative: towards the snout)
+			for (const outline of [false, true]) {
+				const d = outline && d0 < 0 ? d0 * 1.06 - ink * 0.6 : d0;
+				let px: number, py: number, tx: number, ty: number;
+				if (d <= 0) {
+					px = hp.x - hdx * d;
+					py = hp.y - hdy * d;
+					tx = -hdx;
+					ty = -hdy;
+				} else {
+					const p = spine(d), p1 = spine(Math.max(0, d - 2)), p2 = spine(d + 2);
+					px = p.x;
+					py = p.y;
+					tx = p2.x - p1.x;
+					ty = p2.y - p1.y;
+					const tl = Math.hypot(tx, ty) || 1;
+					tx /= tl;
+					ty /= tl;
+				}
+				// texture u runs to the head's right: the back-tangent turned a quarter clockwise
+				const r = headHalfU(v) * texW * (outline ? 1.06 : 1) + (outline ? ink * 0.5 : 0);
+				const buf = outline ? this.headOutlinePos : this.headPos;
+				const o = i * 4;
+				buf[o] = px - ty * r;
+				buf[o + 1] = py + tx * r;
+				buf[o + 2] = px + ty * r;
+				buf[o + 3] = py - tx * r;
 			}
-			// texture u runs to the head's right: the back-tangent turned a quarter clockwise
-			const r = headHalfU(v) * texW;
-			const o = i * 4;
-			this.headPos[o] = px - ty * r;
-			this.headPos[o + 1] = py + tx * r;
-			this.headPos[o + 2] = px + ty * r;
-			this.headPos[o + 3] = py - tx * r;
 		}
 		this.headGeom.getBuffer('aPosition').update();
+		this.headOutlineGeom.getBuffer('aPosition').update();
 		for (const rig of [this.tongueRig, this.headRig]) {
 			rig.position.set(hp.x, hp.y);
 			rig.rotation = heading + Math.PI / 2;
 			rig.scale.set(hs);
 			rig.visible = this.enterClip > 0.02;
 		}
-		this.head.visible = this.enterClip > 0.02;
+		this.head.visible = this.headOutline.visible = this.enterClip > 0.02;
 		const g = Math.round(255 * Math.max(0, Math.min(1, this.shade)));
 		this.head.tint = (g << 16) | (g << 8) | g;
 		this.tongue.y = -0.27 * tex.height;

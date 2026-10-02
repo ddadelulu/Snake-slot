@@ -217,7 +217,9 @@
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
-		filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 18px rgba(0, 0, 0, 0.7));
+		/* sticker lettering: dark ink line and a hard drop */
+		filter: drop-shadow(3px 0 0 #140d05) drop-shadow(-3px 0 0 #140d05) drop-shadow(0 3px 0 #140d05)
+			drop-shadow(0 -3px 0 #140d05) drop-shadow(0 7px 0 rgba(0, 0, 0, 0.7));
 	}
 	/* glass dock style: black glass, gold outline, round corners (matches the game UI) */
 	.bar {
@@ -317,10 +319,12 @@
 	@keyframes pulse {
 		0%,
 		100% {
-			filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+			filter: drop-shadow(2px 0 0 #140d05) drop-shadow(-2px 0 0 #140d05) drop-shadow(0 2px 0 #140d05)
+				drop-shadow(0 -2px 0 #140d05) drop-shadow(0 5px 0 rgba(0, 0, 0, 0.55));
 		}
 		50% {
-			filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 12px rgba(224, 182, 74, 0.55));
+			filter: drop-shadow(2px 0 0 #140d05) drop-shadow(-2px 0 0 #140d05) drop-shadow(0 2px 0 #140d05)
+				drop-shadow(0 -2px 0 #140d05) drop-shadow(0 5px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 0 12px rgba(224, 182, 74, 0.6));
 		}
 	}
 	.reduced * {

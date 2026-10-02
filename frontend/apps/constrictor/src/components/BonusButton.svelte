@@ -101,10 +101,6 @@
 		white-space: nowrap;
 		color: #1a1208;
 		text-shadow: 0 1px 0 rgba(255, 240, 200, 0.45);
-		transition: transform 90ms, filter 0.2s;
-	}
-	.buy-bonus:active:not(:disabled) {
-		transform: translateY(1px);
 	}
 	.chip {
 		--cut: 6px;
@@ -174,7 +170,7 @@
 			background: var(--hover);
 		}
 		.buy-bonus:hover:not(:disabled) {
-			filter: brightness(1.08) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+			filter: var(--ink-outline) var(--ink-drop) brightness(1.08);
 		}
 	}
 	.compact .buy-bonus {
@@ -198,8 +194,7 @@
 		padding: 4px 7px;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.popup,
-		.buy-bonus {
+		.popup {
 			transition: none;
 		}
 	}

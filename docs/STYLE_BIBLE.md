@@ -49,8 +49,9 @@ loading screen wordmark.
 - **White** (the owner's call, D-037). Reference animal: a **leucistic snake** (all white, not albino): pure
   white, small smooth glossy scales with soft grey seams, a faint pearl sheen that appears only where the light
   hits. Against the black velvet it is the brightest thing on the board after the gems.
-- Realistic, elegant, menacing. **Not** cartoon, **not** gory (no blood, no gaping wounds, no
-  exaggerated fangs). Eyes: small, black, glassy (leucistic, so never pink or red). No extra eyes.
+- Elegant with a light cartoon touch (owner, D-042): a thin dark ink line round body and head, and big glossy
+  black eyes with a large catchlight (leucistic, so never pink or red). **Not** gory (no blood, no gaping
+  wounds, no exaggerated fangs). No extra eyes.
 - In-engine the body is a textured rope mesh lit like the plates: cool fill in the shadows, warm tungsten key
   on the lit flank. The pearl sheen is a soft hue shift driven by segment angle, time and the blind-light slats;
   wild, glint and the OUROBOROS ring tint the white rather than add light to it. The skull is rigid to the back of
@@ -98,6 +99,10 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 - Titles and amounts are **engraved brass letters** (a vertical brass gradient in the type, a hard dark drop
   shadow); the logo and the loading title sit on the room with a pool of shadow behind them, never in a box.
   Deco rules with small diamonds frame tag lines.
+- **Light cartoon touch (D-042):** a dark ink line (`--ink-line`, 2 px; 3 px on big titles) round plaques,
+  buttons and display lettering, with a hard offset shadow instead of a soft blur; display titles tilt −3°.
+  Buttons spring up a little on hover and squash when pressed (`--bounce`); the SPIN knob has ink rings, a
+  white shine and a hard drop.
 - Venom moments swap the brass edge for venom green; nothing else changes colour.
 - SPIN sits exactly in the screen centre whenever both sides of the bar fit; on very narrow phones or with long
   amounts the bar spreads out.

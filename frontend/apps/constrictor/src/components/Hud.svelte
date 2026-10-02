@@ -96,6 +96,7 @@
 		font-size: clamp(14px, 2.8vh, 24px);
 		color: var(--brass-hi);
 		letter-spacing: 0.12em;
+		filter: var(--ink-outline);
 	}
 	.fs.venom .fs-title {
 		color: var(--venom);

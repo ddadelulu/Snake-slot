@@ -380,15 +380,33 @@
 		place-items: center;
 		border: 0;
 		border-radius: 50%;
+		position: relative;
 		color: #1a1208;
 		background: radial-gradient(circle at 34% 28%, #fdeab2 0%, #e4bb5c 34%, #b48a33 68%, #6e511d 100%);
+		/* cartoon knob: ink ring, brass rim, ink ring again, hard drop shadow */
 		box-shadow:
-			0 0 0 3px #0a0a0b,
-			0 0 0 5px var(--edge),
-			0 8px 18px rgba(0, 0, 0, 0.6),
-			inset 0 -5px 9px rgba(0, 0, 0, 0.35),
+			0 0 0 3px var(--ink-line),
+			0 0 0 6px var(--edge),
+			0 0 0 9px var(--ink-line),
+			0 7px 0 4px rgba(0, 0, 0, 0.55),
+			inset 0 -6px 0 rgba(0, 0, 0, 0.22),
 			inset 0 3px 6px rgba(255, 255, 255, 0.4);
-		transition: filter 0.2s ease, transform 90ms;
+		transition:
+			filter 0.2s ease,
+			transform 0.22s var(--bounce);
+	}
+	/* the shine: a soft white bean in the upper left */
+	.spin::before {
+		content: '';
+		position: absolute;
+		left: 18%;
+		top: 11%;
+		width: 34%;
+		height: 20%;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.55);
+		transform: rotate(-28deg);
+		pointer-events: none;
 	}
 	.spin-icon {
 		width: 56%;
@@ -396,7 +414,8 @@
 		filter: drop-shadow(0 1px 0 rgba(255, 240, 200, 0.5));
 	}
 	.spin:active:not(:disabled) {
-		transform: scale(0.96);
+		transform: scale(0.9);
+		transition-duration: 0.08s;
 	}
 	.spin.busy {
 		filter: saturate(0.75) brightness(0.82);
@@ -425,6 +444,10 @@
 		flex: 0 0 auto;
 	}
 	.adjust {
+		transition:
+			transform 0.2s var(--bounce),
+			background 0.2s ease,
+			color 0.2s ease;
 		width: var(--adj);
 		height: var(--adj);
 		flex: 0 0 auto;
@@ -437,7 +460,11 @@
 		font-size: calc(var(--adj) * 0.6);
 		font-weight: 800;
 		line-height: 1;
-		transition: background 0.2s ease, color 0.2s ease;
+		box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+	}
+	.adjust:active:not(:disabled) {
+		transform: scale(0.88);
+		transition-duration: 0.08s;
 	}
 	.betval {
 		display: flex;
@@ -477,7 +504,11 @@
 			border-color: var(--edge);
 		}
 		.spin:hover:not(:disabled):not(.busy) {
-			filter: brightness(1.1);
+			filter: brightness(1.08);
+			transform: scale(1.06) rotate(-6deg);
+		}
+		.adjust:hover:not(:disabled) {
+			transform: scale(1.1);
 		}
 	}
 

@@ -186,11 +186,14 @@
 		max-width: 94vw;
 		padding: clamp(16px, 3.4vh, 32px) clamp(24px, 4.4vw, 56px);
 	}
+	/* sticker titles: ink line, hard drop, a slight jaunty tilt */
 	.title {
 		font-size: clamp(34px, 11vmin, 120px);
 		line-height: 0.95;
 		color: var(--accent);
 		letter-spacing: 0.08em;
+		filter: var(--ink-outline-lg) drop-shadow(0 6px 0 rgba(0, 0, 0, 0.7));
+		rotate: -3deg;
 		animation: slam 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 	}
 	.lvl4 .title {
@@ -219,6 +222,7 @@
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
+		filter: var(--ink-outline-lg) drop-shadow(0 5px 0 rgba(0, 0, 0, 0.7));
 	}
 	.hint,
 	.note {

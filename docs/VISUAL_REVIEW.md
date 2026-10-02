@@ -74,6 +74,14 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 40 | Guardian serpent | Perfect even ring round the whole board | Drapes over the left rail and bottom; tail curls round the corner |
 | 41 | Rules tabs, menu | Pill chips; stack of outlined buttons | Underlined tabs; list rows |
 
+## Owner round: a bit more cartoony (D-042)
+
+| # | Where | Change |
+|---|---|---|
+| 42 | Plaques, buttons, titles | Dark ink line and hard offset shadow; titles tilt −3° |
+| 43 | Buttons, SPIN | Spring on hover, squash on press; SPIN knob with ink rings and a white shine |
+| 44 | Snake | Ink line round body and head; big glossy eyes with two catchlights |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

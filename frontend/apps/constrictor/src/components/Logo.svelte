@@ -35,7 +35,8 @@
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
-		filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 14px rgba(0, 0, 0, 0.6));
+		/* sticker lettering: a dark ink line round the brass letters and a hard drop */
+		filter: var(--ink-outline-lg) drop-shadow(0 5px 0 rgba(0, 0, 0, 0.7));
 	}
 	.sm .word {
 		font-size: clamp(20px, 3.4vh, 32px);

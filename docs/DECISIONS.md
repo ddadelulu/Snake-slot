@@ -336,3 +336,12 @@ outlined buttons, underlined rules tabs, squared secondary buttons. The guardian
 rail and the bottom of the frame (tail curling round the corner) instead of looping the whole board. On phones the
 BALANCE / WIN row moved to the bottom of the bar so the raised SPIN knob has a clear top edge. No layout, flow or
 test selector changed.
+
+### D-042: A light cartoon touch
+The owner asked for small changes to make the game a bit more cartoony. Layout, colours, art and gameplay are
+unchanged; the change is in line and motion: a dark ink line round every plaque, button and display title (stacked
+CSS drop-shadows that follow the cut corners) with a hard offset shadow in place of the soft blur; titles tilt −3°;
+buttons spring up on hover and squash on press; the SPIN knob gets ink rings, a white shine and a hard drop. The
+snake gets the same ink line (the body strip drawn a little wider in ink under the body, one extra draw sharing its
+geometry; the head strip widened and tinted ink under the head) and big glossy black eyes with two catchlights.
+The symbols (the owner's final art) are untouched. Style bible §4 and §7 updated.

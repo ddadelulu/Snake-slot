@@ -455,11 +455,12 @@ def snake_head(open_mouth=False):
     im = Image.fromarray(rgba.astype(np.uint8), "RGBA")
     d = ImageDraw.Draw(im)
     cx = n / 2
-    # eyes: amber iris, vertical slit, glossy highlight, dark socket ring
+    # eyes: big glossy cartoon eyes (D-042): ink socket ring, black glassy iris with a thin warm rim, a large
+    # catchlight and a small second one
     for sgn in (-1, 1):
         ex, ey = cx + sgn * eye_u * n, eye_v * n
-        R = 0.038 * n
-        d.ellipse([ex - R * 1.25, ey - R * 1.15, ex + R * 1.25, ey + R * 1.15], fill=(4, 4, 6, 255))
+        R = 0.052 * n
+        d.ellipse([ex - R * 1.2, ey - R * 1.14, ex + R * 1.2, ey + R * 1.14], fill=(4, 4, 6, 255))
         iris = Image.new("RGBA", (int(R * 2 + 4), int(R * 2 + 4)), (0, 0, 0, 0))
         iy, ix = np.mgrid[0 : iris.height, 0 : iris.width].astype(float)
         rr = np.hypot(ix - iris.width / 2, iy - iris.height / 2) / R
@@ -472,7 +473,8 @@ def snake_head(open_mouth=False):
         im.alpha_composite(iris, (int(ex - iris.width / 2), int(ey - iris.height / 2)))
         d = ImageDraw.Draw(im)
         d.ellipse([ex - R * 0.16, ey - R * 0.8, ex + R * 0.16, ey + R * 0.8], fill=(0, 0, 0, 255))
-        d.ellipse([ex - R * 0.62, ey - R * 0.7, ex - R * 0.18, ey - R * 0.3], fill=(255, 246, 225, 210))
+        d.ellipse([ex - R * 0.66, ey - R * 0.74, ex - R * 0.06, ey - R * 0.16], fill=(255, 250, 238, 235))
+        d.ellipse([ex + R * 0.22, ey + R * 0.3, ex + R * 0.46, ey + R * 0.54], fill=(255, 250, 238, 170))
     # nostrils
     for sgn in (-1, 1):
         nx_, ny_ = cx + sgn * 0.045 * n, 0.115 * n
