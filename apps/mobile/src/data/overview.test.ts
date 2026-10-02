@@ -41,7 +41,7 @@ describe('parseOverview', () => {
   });
 
   it('rejects anything malformed, naming the field', () => {
-    const cases: Array<[(json: ReturnType<typeof clone>) => void, string]> = [
+    const cases: [(json: ReturnType<typeof clone>) => void, string][] = [
       [(json) => Object.assign(json, { today: '2.10.2026' }), 'today'],
       [(json) => Object.assign(json.period, { income_rappen: 12.5 }), 'period.income_rappen'],
       [

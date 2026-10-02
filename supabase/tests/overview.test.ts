@@ -150,9 +150,9 @@ describe('get_overview() before onboarding', () => {
       const a = await createUser(db);
       expect(await getOverview(db, a)).toBeNull();
       await asPostgres(db);
-      expect(await countRows(db, 'select 1 from public.budget_periods where user_id = $1', [a])).toBe(
-        0,
-      );
+      expect(
+        await countRows(db, 'select 1 from public.budget_periods where user_id = $1', [a]),
+      ).toBe(0);
     });
   });
 
@@ -394,7 +394,10 @@ describe('spending rules', () => {
       await make.transaction(db, user, { amount_rappen: -1, booked_at: `${dayBefore}T21:30:00Z` });
       await make.transaction(db, user, { amount_rappen: -10, booked_at: `${dayBefore}T23:30:00Z` });
       await make.transaction(db, user, { amount_rappen: -100, booked_at: `${lastDay}T21:30:00Z` });
-      await make.transaction(db, user, { amount_rappen: -1_000, booked_at: `${lastDay}T23:30:00Z` });
+      await make.transaction(db, user, {
+        amount_rappen: -1_000,
+        booked_at: `${lastDay}T23:30:00Z`,
+      });
       expect((await mustGetOverview(db, user)).uncategorized_spent_rappen).toBe(110);
     });
   });
@@ -414,9 +417,18 @@ describe('spending rules', () => {
     await withRollback(async (db) => {
       const { user, month } = await userWithCurrentPeriod(db, 'America/New_York');
       // 03:00 UTC is 22:00 or 23:00 of the previous day in New York.
-      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${month.startsOn}T03:00:00Z` });
-      await make.transaction(db, user, { amount_rappen: -10, booked_at: `${month.endsOn}T03:00:00Z` });
-      await make.transaction(db, user, { amount_rappen: -100, booked_at: `${month.endsOn}T05:00:00Z` });
+      await make.transaction(db, user, {
+        amount_rappen: -1,
+        booked_at: `${month.startsOn}T03:00:00Z`,
+      });
+      await make.transaction(db, user, {
+        amount_rappen: -10,
+        booked_at: `${month.endsOn}T03:00:00Z`,
+      });
+      await make.transaction(db, user, {
+        amount_rappen: -100,
+        booked_at: `${month.endsOn}T05:00:00Z`,
+      });
       expect((await mustGetOverview(db, user)).uncategorized_spent_rappen).toBe(10);
     });
   });
@@ -584,12 +596,18 @@ describe('categories in the overview', () => {
     await withRollback(async (db) => {
       const { user, month } = await userWithCurrentPeriod(db);
       const archivedAt = '2026-09-01T00:00:00Z';
-      const withSpending = await make.category(db, user, { name: 'Alt mit', archived_at: archivedAt });
+      const withSpending = await make.category(db, user, {
+        name: 'Alt mit',
+        archived_at: archivedAt,
+      });
       const withBudgetOnly = await make.category(db, user, {
         name: 'Alt Budget',
         archived_at: archivedAt,
       });
-      const spentEarlier = await make.category(db, user, { name: 'Alt früher', archived_at: archivedAt });
+      const spentEarlier = await make.category(db, user, {
+        name: 'Alt früher',
+        archived_at: archivedAt,
+      });
       await make.budget(db, user, month.id, withBudgetOnly);
       await make.transaction(db, user, {
         amount_rappen: -800,

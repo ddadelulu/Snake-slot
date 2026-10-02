@@ -294,7 +294,7 @@ describe('toOnboardingPayload', () => {
 
   it('names the first incomplete step', () => {
     const context = { language: 'en' as const, timezone: 'Europe/Zurich' };
-    const cases: Array<[OnboardingDraft, string]> = [
+    const cases: [OnboardingDraft, string][] = [
       [createDraft(), 'income'],
       [{ ...anna(), fixedCosts: { ...anna().fixedCosts, rent: '?' } }, 'fixed-costs'],
       [{ ...anna(), goalName: 'Japan' }, 'savings'],

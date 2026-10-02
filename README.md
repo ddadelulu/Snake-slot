@@ -5,10 +5,10 @@ budgets once; every purchase is tracked, deducted from the right category, and t
 down like money leaving your wallet. An assistant helps along the way. iOS and Android, German and
 English, CHF 5/month.
 
-**Status: Milestone 1 (Foundations) done.** Sign-up and sign-in (email, Google, Apple), the full
-data model with row-level security, design tokens and components, navigation with five tabs,
-German/English, light/dark, account deletion. Onboarding, the budget engine and the home screen
-come next ([task board](docs/TASK_BOARD.md)).
+**Status: Milestone 2 done.** Sign-up (email, Google, Apple), a questionnaire that turns income
+and bills into a budget, and a home screen with the balance, daily allowance, days until payday,
+pace and every category. The month resets on payday. Manual entry, statement import and
+categorization come next ([task board](docs/TASK_BOARD.md)).
 
 ## Quick start
 

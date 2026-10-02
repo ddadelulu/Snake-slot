@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 · Milestone 2: Onboarding, budget engine, home screen (2026-10-02)
+
+### Added
+
+- Onboarding questionnaire: income and payday, fixed costs, saving (incl. what happens to leftover
+  money), categories (defaults and custom), budgets with sliders and a suggested split, how you
+  pay, pain level, warnings, and the "Your month" summary. Progress bar, back and skip; answers
+  kept on the device until saved; saved atomically.
+- Budget engine in `@budget/core`: payday periods (short months), spendable, allocation check,
+  suggestion in CHF 5 steps, balance, daily allowance, statuses, pace forecast, leftover rules,
+  hours of work, overspend cover. 100 % test coverage, enforced.
+- Database: spending totals per period, `get_overview`, `complete_onboarding`, `move_budget`, and
+  the monthly reset on payday (hourly job plus on demand), with time-zone validation.
+- Home: balance like a bank balance, per-day amount, days until payday, pace line, carried-over
+  money, category cards, latest purchases.
+- New components: StepProgress, DayGrid, ToggleChip/ChipGroup, SwitchRow, Stepper, AmountSlider.
+
 ## 0.1.0 · Milestone 1: Foundations (2026-10-01)
 
 ### Added

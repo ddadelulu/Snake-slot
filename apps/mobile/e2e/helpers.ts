@@ -36,17 +36,17 @@ export async function quickOnboarding(page: Page) {
   await skip(page, 'pain');
   await next(page, 'notifications');
   await skip(page, 'summary');
-  await page.getByTestId('onboarding-continue').click();
+  await page.getByTestId('onboarding-continue').filter({ visible: true }).click();
   await expect(page.getByTestId('home-balance')).toBeVisible();
 }
 
 export async function next(page: Page, step: string) {
-  await page.getByTestId('onboarding-continue').click();
+  await page.getByTestId('onboarding-continue').filter({ visible: true }).click();
   await expect(page.getByTestId(`onboarding-${step}`)).toBeVisible();
 }
 
 export async function skip(page: Page, step: string) {
-  await page.getByTestId('onboarding-skip').click();
+  await page.getByTestId('onboarding-skip').filter({ visible: true }).click();
   await expect(page.getByTestId(`onboarding-${step}`)).toBeVisible();
 }
 
@@ -85,12 +85,15 @@ export async function apiAs(request: APIRequestContext, email: string, password 
       expect(response.ok(), await response.text()).toBe(true);
       return (await response.json()) as T;
     },
+    /** Inserts rows one by one (PostgREST bulk inserts need identical keys in every row). */
     async insert(table: string, rows: object[]) {
-      const response = await request.post(`${url}/rest/v1/${table}`, {
-        headers: { ...headers, Prefer: 'return=minimal' },
-        data: rows,
-      });
-      expect(response.ok(), await response.text()).toBe(true);
+      for (const row of rows) {
+        const response = await request.post(`${url}/rest/v1/${table}`, {
+          headers: { ...headers, Prefer: 'return=minimal' },
+          data: row,
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+      }
     },
   };
 }

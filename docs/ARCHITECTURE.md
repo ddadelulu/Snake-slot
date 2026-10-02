@@ -32,6 +32,8 @@ budget-app/
 │       ├── money.ts            integer Rappen: parse, format, sum, exact division
 │       ├── budgetStatus.ts     green/orange/red thresholds (80 %, 100 %)
 │       ├── sources.ts          transaction source plug-in contract + validator
+│       ├── engine/             budget engine: dates, periods, plan, suggestion, pace,
+│       │                       overview, leftover, hours of work, overspend cover
 │       ├── model.ts            row types with narrowed vocabularies
 │       └── database.types.ts   generated from the schema (never edit by hand)
 ├── supabase/                 @budget/db: Supabase project
@@ -80,6 +82,21 @@ Root layout ── guards (Stack.Protected) ──▶ (auth) | (tabs) | reset-pa
 - **Language.** UI language = the user's pick on this device, else the phone language (German if
   unsupported). The account's `profiles.language` (used later for push texts and the assistant)
   mirrors it; a new device follows the account (see `ProfileLanguageSync`).
+
+## Budget engine and the month (Milestone 2)
+
+| Concern                                                  | Where                                                                                                                                                       | Why there                                                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Period boundaries (payday to payday, short months)       | `engine/period.ts` and `public.period_containing`                                                                                                           | The app shows the period before saving; the database creates periods. Parity-tested for every payday × every date 2024–2027. |
+| Spending totals per category (rules in DATA_MODEL.md)    | `public.get_overview` (SQL, under RLS)                                                                                                                      | One query over all transactions; the same rules close a period on payday.                                                    |
+| Balance, daily allowance, days to payday, statuses, pace | `engine/overview.ts`, `engine/pace.ts`                                                                                                                      | Derived from the totals; pure functions with 100 % coverage.                                                                 |
+| Budget suggestion, allocation check                      | `engine/suggest.ts`, `engine/plan.ts`                                                                                                                       | Onboarding works on the device before anything is saved.                                                                     |
+| Leftover on payday (rollover / savings / reset)          | `engine/leftover.ts` and `private.settle_leftover`                                                                                                          | Parity-tested.                                                                                                               |
+| Monthly reset                                            | `private.roll_periods`, run hourly (`roll_due_periods`, pg_cron) and on demand when the app loads the month (`ensure_current_period` inside `get_overview`) | Works when the app is closed; never shows a stale month when it is open.                                                     |
+
+Navigation: signed in but not onboarded → `/onboarding/*` (questionnaire, answers kept on the
+device per account until saved); onboarded → tabs. `complete_onboarding` stores profile, fixed
+costs, categories, the first period and its budgets in one transaction.
 
 ## Shared contracts
 

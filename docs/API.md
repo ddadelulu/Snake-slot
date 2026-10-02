@@ -3,7 +3,7 @@
 Owner: **Keanu Reeves** (contract), **Matt Damon** (backend). The app talks to Supabase only;
 there is no custom server yet (Edge Functions start in M2).
 
-## Server endpoints used in Milestone 1
+## Server endpoints
 
 | Endpoint                                  | Used for                                  | Auth                       |
 | ----------------------------------------- | ----------------------------------------- | -------------------------- |
@@ -57,3 +57,17 @@ Each resolves to `{ ok: true, … }` or one of:
 
 Data hooks (`apps/mobile/src/data/profile.ts`): `useProfile()` and `useUpdateProfile()`
 (optimistic, rolls back on error). Auth state: `useAuth()` from `features/auth/AuthProvider`.
+
+Data hooks for Milestone 2: `useOverview()` (`src/data/overview.ts`: parses `get_overview`,
+derives the month with the engine) and `useCompleteOnboarding()` (`src/data/onboarding.ts`).
+
+`get_overview` returns `null` before onboarding, otherwise:
+
+```json
+{ "today": "2026-10-02",
+  "period": { "id", "starts_on", "ends_on", "income_rappen", "fixed_costs_rappen", "savings_rappen", "carried_over_rappen" },
+  "categories": [ { "category_id", "default_key", "name", "icon", "sort_order", "archived",
+                    "budget_id", "budget_amount_rappen", "rollover_rappen", "spent_rappen" } ],
+  "uncategorized_spent_rappen": 0,
+  "recent_transactions": [ { "id", "amount_rappen", "booked_at", "merchant", "category_id", "is_split", "source", "note" } ] }
+```

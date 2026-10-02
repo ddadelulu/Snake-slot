@@ -53,6 +53,14 @@ email delivery) must be listed in the privacy policy.
 | Retention periods (e.g. how long transactions and consent records are kept after inactivity)         | M7        |
 | Trademark check of the final app name                                                                | M7        |
 
+## Milestone 2 review
+
+New personal data: hours worked per week (for "= X hours of work"), savings goal, payment methods
+(to suggest tracking sources), warning preferences and the device time zone (for the start of each
+month). All stay in the user's own rows, are deleted with the account and are used only for the
+stated purpose. Onboarding answers are kept on the device until saved and removed afterwards.
+Nothing new is sent to third parties. — Julia Roberts, 2026-10-02
+
 ## Milestone 1 review
 
 Data model approved: deletion is complete, consent can be proven, credentials have a server-only
