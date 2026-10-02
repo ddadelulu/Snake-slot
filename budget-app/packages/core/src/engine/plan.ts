@@ -27,7 +27,9 @@ export function spendableOf(plan: PlanInput): Rappen {
 }
 
 /** Total of the fixed costs that count this month; paused ones (`active: false`) do not. */
-export function sumFixedCosts(costs: readonly { amountRappen: Rappen; active?: boolean }[]): Rappen {
+export function sumFixedCosts(
+  costs: readonly { amountRappen: Rappen; active?: boolean }[],
+): Rappen {
   const counted = costs
     .map((cost, index) => ({
       amount: assertNonNegativeRappen(cost.amountRappen, `fixed cost ${index}`),

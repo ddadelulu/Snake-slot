@@ -23,7 +23,7 @@ export type OverviewInput = {
   today: LocalDate;
   plan: PlanInput;
   categories: readonly CategoryTotals[];
-  /** Net spending without a category yet; it counts against the total but no category. */
+  /** Purchases without a category yet (D-019: refunds count only with a category). */
   uncategorizedSpentRappen: Rappen;
 };
 
@@ -49,6 +49,7 @@ export type Overview = {
   dailyAllowanceRappen: Rappen;
   daysUntilPayday: number;
   dayOfPeriod: number;
+  /** Spent against spendable, like a category bar; always 'danger' when the balance is negative. */
   status: BudgetStatus;
   pace: PaceForecast;
   /** In input order. */
@@ -79,8 +80,9 @@ function categoryOverview(
  * Everything the home screen shows for the current period, derived from the totals the database
  * computes. Overspending is allowed (spec) and shows as a negative remainder.
  *
- * The total's pace uses the spendable money as its budget; when nothing is spendable (spendable
- * ≤ 0) any spending means the month's money is exhausted.
+ * The total's status and pace use the spendable money as their budget; when nothing is spendable
+ * (spendable ≤ 0) any spending means the month's money is exhausted. A negative balance is always
+ * 'danger', so the status agrees with the red number even before anything is spent.
  */
 export function buildOverview(input: OverviewInput): Overview {
   const { period, today } = input;
@@ -103,6 +105,7 @@ export function buildOverview(input: OverviewInput): Overview {
     'spent',
   );
   const balance = assertRappen(spendable - spent, 'balance');
+  const totalBudget = Math.max(0, spendable);
 
   return {
     period,
@@ -113,8 +116,8 @@ export function buildOverview(input: OverviewInput): Overview {
     dailyAllowanceRappen: balance > 0 ? floorDiv(balance, daysLeft) : 0,
     daysUntilPayday: daysLeft,
     dayOfPeriod: day,
-    status: budgetStatus(spent, spendable),
-    pace: forecastPace({ budgetRappen: Math.max(0, spendable), spentRappen: spent, period, today }),
+    status: balance < 0 ? 'danger' : budgetStatus(spent, totalBudget),
+    pace: forecastPace({ budgetRappen: totalBudget, spentRappen: spent, period, today }),
     categories,
   };
 }

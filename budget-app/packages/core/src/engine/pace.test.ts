@@ -20,9 +20,9 @@ describe('forecastPace', () => {
   });
 
   it('treats net refunds as no spending', () => {
-    expect(forecastPace({ budgetRappen: chf(250), spentRappen: chf(-49, 90), period, today })).toEqual(
-      { kind: 'no_spending' },
-    );
+    expect(
+      forecastPace({ budgetRappen: chf(250), spentRappen: chf(-49, 90), period, today }),
+    ).toEqual({ kind: 'no_spending' });
   });
 
   it('is exhausted once the budget is used up', () => {
@@ -39,16 +39,18 @@ describe('forecastPace', () => {
 
   it('forecasts the day the money runs out at the current rate', () => {
     // CHF 240 of 600 after 8 days is CHF 30 a day: CHF 600 is reached on day 20, 14 October.
-    expect(forecastPace({ budgetRappen: chf(600), spentRappen: chf(240), period, today })).toEqual(
-      { kind: 'runs_out', on: '2026-10-14' },
-    );
+    expect(forecastPace({ budgetRappen: chf(600), spentRappen: chf(240), period, today })).toEqual({
+      kind: 'runs_out',
+      on: '2026-10-14',
+    });
   });
 
   it('rounds the run-out day up: the budget is reached on that day, not before', () => {
     // CHF 250 in 8 days: day 19.2, so the money still lasts through day 19 and runs out on day 20.
-    expect(forecastPace({ budgetRappen: chf(600), spentRappen: chf(250), period, today })).toEqual(
-      { kind: 'runs_out', on: '2026-10-14' },
-    );
+    expect(forecastPace({ budgetRappen: chf(600), spentRappen: chf(250), period, today })).toEqual({
+      kind: 'runs_out',
+      on: '2026-10-14',
+    });
   });
 
   it('is on track when the money lasts until payday', () => {
@@ -59,9 +61,10 @@ describe('forecastPace', () => {
 
   it('runs out on the last day before payday, but is on track one day later', () => {
     // CHF 80 a day for 8 days against CHF 300: day 30, the last day of the period.
-    expect(forecastPace({ budgetRappen: chf(300), spentRappen: chf(80), period, today })).toEqual(
-      { kind: 'runs_out', on: '2026-10-24' },
-    );
+    expect(forecastPace({ budgetRappen: chf(300), spentRappen: chf(80), period, today })).toEqual({
+      kind: 'runs_out',
+      on: '2026-10-24',
+    });
     // Day 31 would be payday itself, which belongs to the next period.
     expect(forecastPace({ budgetRappen: chf(310), spentRappen: chf(80), period, today })).toEqual({
       kind: 'on_track',

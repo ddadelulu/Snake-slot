@@ -59,7 +59,7 @@ export function floorDiv(a: number, b: number): number {
   }
   const remainder = a % b;
   let q = (a - remainder) / b;
-  if (remainder !== 0 && (remainder < 0) !== (b < 0)) q -= 1;
+  if (remainder !== 0 && remainder < 0 !== b < 0) q -= 1;
   return q === 0 ? 0 : q;
 }
 

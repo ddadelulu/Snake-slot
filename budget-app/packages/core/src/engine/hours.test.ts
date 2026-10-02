@@ -36,7 +36,10 @@ describe('minutesOfWork', () => {
 
   it('stays exact at the largest amounts and working times', () => {
     expect(
-      minutesOfWork(MAX_ABS_RAPPEN, { netIncomeRappen: 1, weeklyWorkMinutes: MAX_WEEKLY_WORK_MINUTES }),
+      minutesOfWork(MAX_ABS_RAPPEN, {
+        netIncomeRappen: 1,
+        weeklyWorkMinutes: MAX_WEEKLY_WORK_MINUTES,
+      }),
     ).toBe(291_200_000_000_000);
     expect(
       minutesOfWork(-MAX_ABS_RAPPEN, {
