@@ -66,6 +66,55 @@ describe('RLS is enabled everywhere', () => {
   });
 });
 
+describe('RLS applies inside the client RPCs', () => {
+  it('the RPCs that read or write user rows run with the caller’s rights (SECURITY INVOKER)', async () => {
+    const rows = await withRollback((db) =>
+      queryRows<{ fn: string; definer: boolean }>(
+        db,
+        `select oid::regprocedure::text as fn, prosecdef as definer from pg_proc
+          where oid in ('public.get_overview()'::regprocedure,
+                        'public.complete_onboarding(jsonb)'::regprocedure,
+                        'public.move_budget(uuid, uuid, bigint)'::regprocedure)
+          order by 1`,
+      ),
+    );
+    expect(rows).toEqual([
+      { fn: 'complete_onboarding(jsonb)', definer: false },
+      { fn: 'get_overview()', definer: false },
+      { fn: 'move_budget(uuid,uuid,bigint)', definer: false },
+    ]);
+  });
+
+  it('a user cannot move budget out of or into another user’s budget (it is invisible)', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const b = await createUser(db);
+      const ofA = await seedRow(db, 'budgets', a);
+      const ofB = await seedRow(db, 'budgets', b);
+      await asUser(db, a);
+      for (const [from, to] of [
+        [ofB, ofA],
+        [ofA, ofB],
+      ]) {
+        const error = await expectSqlError(
+          db,
+          SQLSTATE.invalidParameterValue,
+          'select public.move_budget($1, $2, 1)',
+          [from, to],
+        );
+        expect(error.message).toBe('budget_not_found');
+      }
+      await asPostgres(db);
+      const amounts = await queryRows<{ amount: number }>(
+        db,
+        'select amount_rappen::int as amount from public.budgets where id in ($1, $2)',
+        [ofA, ofB],
+      );
+      expect(amounts).toEqual([{ amount: 30_000 }, { amount: 30_000 }]);
+    });
+  });
+});
+
 /** How the RLS matrix exercises one table. */
 interface TableCase {
   table: string;

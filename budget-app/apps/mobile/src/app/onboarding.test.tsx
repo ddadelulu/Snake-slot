@@ -8,6 +8,14 @@ import { getSupabase, getSupabaseIfConfigured } from '@/lib/supabase';
 import { fakeSession } from '@/test/appHarness';
 import { createFakeSupabase, type FakeSupabaseState } from '@/test/fakeSupabase';
 
+jest.mock('@react-native-community/slider', () => {
+  const { createElement } = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => createElement(View, props),
+  };
+});
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'en' }] }));
 jest.mock('@/lib/env', () => ({ ...jest.requireActual('@/lib/env'), readEnv: jest.fn() }));
 jest.mock('@/lib/supabase', () => ({
@@ -78,7 +86,12 @@ describe('onboarding', () => {
   it('sends a signed-in user without a month to the first step', async () => {
     start();
     expect(await screen.findByTestId('onboarding-income')).toBeOnTheScreen();
-    expect(screen.getByText('Step 1 of 9')).toBeOnTheScreen();
+    expect(screen.getByTestId('onboarding-progress')).toHaveAccessibilityValue({
+      min: 1,
+      max: 9,
+      now: 1,
+      text: 'Step 1 of 9',
+    });
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
 
@@ -113,7 +126,7 @@ describe('onboarding', () => {
     await continueTo('notifications');
     await continueTo('summary');
 
-    expect(screen.getByTestId('summary-spendable')).toHaveTextContent('CHF 4,350.00');
+    expect(screen.getByTestId('summary-spendable')).toHaveTextContent(/CHF 4,350\.00/);
     fireEvent.press(screen.getByTestId('onboarding-continue'));
 
     expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
@@ -126,7 +139,9 @@ describe('onboarding', () => {
       },
       fixed_costs: [{ kind: 'rent', label: null, amount_rappen: 185000 }],
     });
-    await waitFor(async () => expect(await AsyncStorage.getItem(draftStorageKey(fakeSession().user.id))).toBeNull());
+    await waitFor(async () =>
+      expect(await AsyncStorage.getItem(draftStorageKey(fakeSession().user.id))).toBeNull(),
+    );
   });
 
   it('goes back one step', async () => {
@@ -154,7 +169,10 @@ describe('onboarding', () => {
       JSON.stringify({ version: 1, netIncome: '5000', payday: 1, reached: 8 }),
     );
     start();
-    fake.state.rpc.complete_onboarding = () => ({ data: null, error: { message: 'connection lost' } });
+    fake.state.rpc.complete_onboarding = () => ({
+      data: null,
+      error: { message: 'connection lost' },
+    });
     fireEvent.press(await screen.findByTestId('onboarding-continue'));
     expect(await screen.findByTestId('onboarding-summary-error')).toBeOnTheScreen();
     expect(screen.getByTestId('onboarding-summary')).toBeOnTheScreen();

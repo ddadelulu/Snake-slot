@@ -148,6 +148,47 @@ describe('delete_my_account()', () => {
     });
   });
 
+  it('deletes everything onboarding and the payday reset created, and nothing of others', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const b = await createUser(db);
+      await seedEverything(db, b);
+      const othersBefore = await rowCounts(db, b);
+
+      await asUser(db, a);
+      await db.query('select public.complete_onboarding($1::jsonb)', [
+        JSON.stringify({
+          profile: { net_income_rappen: 520_000, payday: 25 },
+          fixed_costs: [{ kind: 'rent', label: null, amount_rappen: 185_000 }],
+          categories: [{ default_key: 'groceries', name: null, budget_rappen: 40_000 }],
+        }),
+      ]);
+      // Move the first period one month back, so the reset closes it and opens the next one.
+      await asPostgres(db);
+      await db.query(
+        `update public.budget_periods p
+            set starts_on = previous.starts_on, ends_on = previous.ends_on
+           from public.period_containing(
+                  (select starts_on - 1 from public.budget_periods where user_id = $1), 25
+                ) as previous
+          where p.user_id = $1`,
+        [a],
+      );
+      await asUser(db, a);
+      await db.query('select public.ensure_current_period()');
+      const created = await rowCounts(db, a);
+      expect([created.budget_periods, created.budgets]).toEqual([2, 2]);
+
+      await asUser(db, a);
+      await db.query('select public.delete_my_account()');
+      const remaining = Object.entries(await rowCounts(db, a)).filter(([, n]) => n > 0);
+      expect(remaining).toEqual([]);
+      await db.query('select public.roll_due_periods()');
+      expect(await rowCounts(db, b)).toEqual(othersBefore);
+      await runDeferredChecks(db);
+    });
+  });
+
   it('passes the commit-time checks (split transactions included)', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);

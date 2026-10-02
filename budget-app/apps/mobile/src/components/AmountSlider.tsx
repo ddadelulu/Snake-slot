@@ -101,7 +101,13 @@ export function AmountSlider({
         <AppText variant="bodyStrong" style={styles.label}>
           {label}
         </AppText>
-        <AppText variant="bodyStrong" numeric align="right" style={styles.amount} testID={subId('amount')}>
+        <AppText
+          variant="bodyStrong"
+          numeric
+          align="right"
+          style={styles.amount}
+          testID={subId('amount')}
+        >
           {amountText}
         </AppText>
       </View>

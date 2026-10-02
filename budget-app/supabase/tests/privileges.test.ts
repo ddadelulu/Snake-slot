@@ -57,6 +57,16 @@ const AUTHENTICATED: Readonly<
   consent_events: { table: ['SELECT', 'INSERT'] },
 };
 
+/** The RPCs the app calls: the only functions role "authenticated" may execute. */
+const CLIENT_FUNCTIONS = [
+  'complete_onboarding(jsonb)',
+  'delete_my_account()',
+  'ensure_current_period()',
+  'get_overview()',
+  'move_budget(uuid,uuid,bigint)',
+  'period_containing(date,integer)',
+];
+
 async function tablePrivileges(db: Db, role: string, table: string): Promise<TablePrivilege[]> {
   const rows = await queryRows<{ privilege: TablePrivilege }>(
     db,
@@ -147,6 +157,20 @@ describe('role anon', () => {
       await expectSqlError(db, SQLSTATE.insufficientPrivilege, 'select public.delete_my_account()');
     });
   });
+
+  it.each([
+    'select public.ensure_current_period()',
+    'select public.get_overview()',
+    `select public.complete_onboarding('{}')`,
+    'select public.move_budget(gen_random_uuid(), gen_random_uuid(), 1)',
+    `select * from public.period_containing('2026-10-02', 25)`,
+    'select public.roll_due_periods()',
+  ])('cannot run %s (42501)', async (sql) => {
+    await withRollback(async (db) => {
+      await asAnon(db);
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, sql);
+    });
+  });
 });
 
 describe('role authenticated', () => {
@@ -178,16 +202,56 @@ describe('role authenticated', () => {
     },
   );
 
-  it('can execute delete_my_account() and no other function in schema public', async () => {
+  it('can execute exactly the client RPCs and no other function in schema public', async () => {
     const executable = await withRollback((db) =>
       queryRows<{ fn: string }>(
         db,
         `select oid::regprocedure::text as fn from pg_proc
           where pronamespace = 'public'::regnamespace
-            and has_function_privilege('authenticated', oid, 'EXECUTE')`,
+            and has_function_privilege('authenticated', oid, 'EXECUTE')
+          order by 1`,
       ),
     );
-    expect(executable.map((row) => row.fn)).toEqual(['delete_my_account()']);
+    expect(executable.map((row) => row.fn)).toEqual(CLIENT_FUNCTIONS);
+  });
+
+  it('cannot run the scheduled reset for everyone (roll_due_periods, 42501)', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, 'select public.roll_due_periods()');
+    });
+  });
+});
+
+describe('functions', () => {
+  it('every function in schemas public and private pins search_path to an empty value', async () => {
+    const unpinned = await withRollback((db) =>
+      queryRows<{ fn: string }>(
+        db,
+        `select oid::regprocedure::text as fn from pg_proc
+          where pronamespace in ('public'::regnamespace, 'private'::regnamespace)
+            and not coalesce('search_path=""' = any (proconfig), false)`,
+      ),
+    );
+    expect(unpinned).toEqual([]);
+  });
+
+  it('only the reviewed functions run with their owner’s rights (SECURITY DEFINER)', async () => {
+    const definers = await withRollback((db) =>
+      queryRows<{ fn: string }>(
+        db,
+        `select oid::regprocedure::text as fn from pg_proc
+          where pronamespace in ('public'::regnamespace, 'private'::regnamespace) and prosecdef
+          order by 1`,
+      ),
+    );
+    expect(definers.map((row) => row.fn)).toEqual([
+      'delete_my_account()',
+      'ensure_current_period()',
+      'handle_new_user()',
+      'roll_due_periods()',
+    ]);
   });
 });
 
@@ -206,6 +270,41 @@ describe('schema private', () => {
       expect(row).toEqual({ usage: false, create: false });
     },
   );
+
+  it.each(['anon', 'authenticated'])(
+    '%s cannot execute any function in schema private',
+    async (role) => {
+      const executable = await withRollback((db) =>
+        queryRows<{ fn: string }>(
+          db,
+          `select oid::regprocedure::text as fn from pg_proc
+            where pronamespace = 'private'::regnamespace
+              and has_function_privilege($1, oid, 'EXECUTE')`,
+          [role],
+        ),
+      );
+      expect(executable).toEqual([]);
+    },
+  );
+
+  it('a signed-in user cannot call a private function (42501)', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        `select * from private.period_totals($1, '2026-09-25', '2026-10-25', 'Europe/Zurich')`,
+        [a],
+      );
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        'select private.roll_periods($1)',
+        [a],
+      );
+    });
+  });
 
   it.each(['anon', 'authenticated'])(
     '%s has no privilege on private.data_source_credentials',

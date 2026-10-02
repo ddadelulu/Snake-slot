@@ -50,13 +50,17 @@ describe('ToggleChip', () => {
   });
 
   it('meets the minimum touch target', async () => {
-    await renderWithTheme(<ToggleChip label="Cash" selected={false} onToggle={jest.fn()} testID="cash" />);
+    await renderWithTheme(
+      <ToggleChip label="Cash" selected={false} onToggle={jest.fn()} testID="cash" />,
+    );
     expect(screen.getByTestId('cash')).toHaveStyle({ minHeight: sizes.chipHeight });
     expect(sizes.chipHeight).toBeGreaterThanOrEqual(sizes.minTouchTarget);
   });
 
   it('has no remove button unless asked for one', async () => {
-    await renderWithTheme(<ToggleChip label="Cash" selected={false} onToggle={jest.fn()} testID="cash" />);
+    await renderWithTheme(
+      <ToggleChip label="Cash" selected={false} onToggle={jest.fn()} testID="cash" />,
+    );
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByTestId('cash-remove')).toBeNull();
   });
