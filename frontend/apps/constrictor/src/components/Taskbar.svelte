@@ -3,7 +3,7 @@
 	button on the left, SPIN in the middle and − BET + on the right, in black with gold outlines and the game's
 	fonts. The menu opens a popup (auto spin, speed, sound, rules, settings). BALANCE and WIN (always on screen,
 	a Stake requirement) live in the dock where a slot player looks for them: beside the menu, mirroring BET, on
-	wide screens; on phones as a slim row across the top of the dock.
+	wide screens; on phones as a slim row along the bottom of the dock.
 	Layouts only change sizes: wide (desktop), compact (mini-player / narrow landscape), stacked (phones).
 -->
 <script lang="ts">
@@ -143,16 +143,16 @@
 </script>
 
 <div class="tb-wrap {layout}" bind:this={wrap}>
-	<div class="popup" class:active={menuOpen} role="menu" aria-label={labels.menu} inert={!menuOpen}>
+	<div class="popup deco" class:active={menuOpen} role="menu" aria-label={labels.menu} inert={!menuOpen}>
 		{#if showAuto}
-			<button class="btn" role="menuitem" data-act="auto" onclick={() => pick(auto ? onStop : onAuto)}>{labels.auto}</button>
+			<button class="item" role="menuitem" data-act="auto" onclick={() => pick(auto ? onStop : onAuto)}>{labels.auto}</button>
 		{/if}
 		{#if showSpeed}
-			<button class="btn" role="menuitem" data-act="speed" onclick={() => pick(onSpeed, true)}>{labels.speed}</button>
+			<button class="item" role="menuitem" data-act="speed" onclick={() => pick(onSpeed, true)}>{labels.speed}</button>
 		{/if}
-		<button class="btn" role="menuitem" data-act="sound" onclick={() => pick(onSound, true)}>{labels.sound}</button>
-		<button class="btn" role="menuitem" data-act="rules" onclick={() => pick(onRules)}>{labels.rules}</button>
-		<button class="btn" role="menuitem" data-act="settings" onclick={() => pick(onSettings)}>{labels.settings}</button>
+		<button class="item" role="menuitem" data-act="sound" onclick={() => pick(onSound, true)}>{labels.sound}</button>
+		<button class="item" role="menuitem" data-act="rules" onclick={() => pick(onRules)}>{labels.rules}</button>
+		<button class="item" role="menuitem" data-act="settings" onclick={() => pick(onSettings)}>{labels.settings}</button>
 	</div>
 
 	{#snippet funds()}
@@ -163,10 +163,7 @@
 			<div class="readout win" class:hot={winHot} aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
 		{/if}
 	{/snippet}
-	<div class="dock" role="toolbar" aria-label="Game controls">
-		{#if fundsInRow && (showBalance || showWin)}
-			<div class="funds-row">{@render funds()}</div>
-		{/if}
+	<div class="dock deco" role="toolbar" aria-label="Game controls">
 		<div class="row" class:tight bind:this={rowEl}>
 		<div class="side left">
 			<div class="left-group" bind:this={leftEl}>
@@ -190,7 +187,21 @@
 					aria-label={auto ? labels.stop : busy ? labels.skip : labels.spin}
 					onclick={() => (auto ? onStop() : onSpin())}
 				>
-					{auto ? (autoText ?? labels.stop) : labels.spin}
+					{#if auto}
+						<span class="spin-auto">{autoText ?? labels.stop}</span>
+					{:else}
+						<!-- two chasing arrows, engraved into the brass -->
+						<svg class="spin-icon" viewBox="0 0 48 48" aria-hidden="true">
+							<g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round">
+								<path d="M38 20a15 15 0 0 0-26.5-5" />
+								<path d="M10 28a15 15 0 0 0 26.5 5" />
+							</g>
+							<g fill="currentColor">
+								<path d="M7.6 12.2 15.6 17.4 7.4 21.4Z" />
+								<path d="M40.4 35.8 32.4 30.6 40.6 26.6Z" />
+							</g>
+						</svg>
+					{/if}
 				</button>
 			{/if}
 		</div>
@@ -208,17 +219,18 @@
 			{/if}
 		</div>
 		</div>
+		{#if fundsInRow && (showBalance || showWin)}
+			<div class="funds-row">{@render funds()}</div>
+		{/if}
 	</div>
 </div>
 
 <style>
 	.tb-wrap {
-		--spin-font: clamp(20px, 3.8vh, 28px);
-		--spin-pad: clamp(8px, 1.5vh, 14px) clamp(28px, 4vw, 45px);
+		--spin-size: clamp(62px, 11vh, 80px);
 		--adj: 40px;
 		--amount: 24px;
 		--funds: 20px;
-		--dock-radius: 30px;
 		position: relative;
 		width: 100%;
 		max-width: 900px;
@@ -232,13 +244,9 @@
 	}
 	/* the owner's dock: glass, heavy outline, round corners; equal sides keep SPIN exactly in the middle */
 	.dock {
-		background: var(--glass);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: var(--dock-radius);
-		padding: 10px 20px;
-		box-shadow: 0 4px 15px rgba(0, 0, 0, 0.45);
+		--cut: 18px;
+		--edge-w: 2px;
+		padding: 10px 24px;
 	}
 	.row {
 		display: grid;
@@ -278,15 +286,16 @@
 	.readout.win.hot .val {
 		color: var(--gold-text);
 	}
-	/* phones: one slim row across the top of the dock, BALANCE left and WIN right */
+	/* phones: one slim row along the bottom of the dock, BALANCE left and WIN right (the spin knob rises out of
+	   the top edge) */
 	.funds-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
 		gap: 10px;
-		padding: 0 8px 7px;
-		margin-bottom: 7px;
-		border-bottom: 1px solid var(--rule);
+		padding: 7px 8px 0;
+		margin-top: 7px;
+		border-top: 1px solid var(--rule);
 	}
 	.funds-row .readout {
 		flex-direction: row;
@@ -322,18 +331,21 @@
 		outline: 2px solid var(--ink);
 		outline-offset: 3px;
 	}
-	.btn {
+	/* menu rows: one list split by hairlines, not a stack of outlined buttons */
+	.item {
 		background: transparent;
-		border: 2px solid var(--edge);
-		border-radius: 14px;
-		padding: 8px 16px;
+		border: 0;
+		padding: 10px 14px;
 		font-weight: 800;
 		font-size: 14px;
-		letter-spacing: 1px;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		text-align: left;
 		width: 100%;
-		transition: background 0.2s ease, color 0.2s ease;
+		transition: background 0.15s ease, color 0.15s ease;
+	}
+	.item + .item {
+		border-top: 1px solid var(--rule);
 	}
 	.menu-btn {
 		display: flex;
@@ -358,34 +370,53 @@
 	.menu-btn.open {
 		border-color: var(--edge);
 	}
-	/* SPIN: the owner's filled button with a double border, in gold on black */
+	/* SPIN: a round brass button with engraved arrows, raised out of the bar like a machine's spin knob */
 	.spin {
-		font-family: var(--font-display);
-		font-size: var(--spin-font);
-		font-weight: 900;
-		letter-spacing: 0.08em;
-		line-height: 1;
-		padding: var(--spin-pad);
-		background: var(--accent);
-		color: var(--paper);
-		border: 3px solid var(--edge);
-		border-radius: 24px;
-		box-shadow: inset 0 0 0 2px var(--paper);
-		white-space: nowrap;
-		transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 90ms;
+		width: var(--spin-size);
+		height: var(--spin-size);
+		margin: calc(var(--spin-size) * -0.34) 0 calc(var(--spin-size) * -0.1);
+		padding: 0;
+		display: grid;
+		place-items: center;
+		border: 0;
+		border-radius: 50%;
+		color: #1a1208;
+		background: radial-gradient(circle at 34% 28%, #fdeab2 0%, #e4bb5c 34%, #b48a33 68%, #6e511d 100%);
+		box-shadow:
+			0 0 0 3px #0a0a0b,
+			0 0 0 5px var(--edge),
+			0 8px 18px rgba(0, 0, 0, 0.6),
+			inset 0 -5px 9px rgba(0, 0, 0, 0.35),
+			inset 0 3px 6px rgba(255, 255, 255, 0.4);
+		transition: filter 0.2s ease, transform 90ms;
+	}
+	.spin-icon {
+		width: 56%;
+		height: 56%;
+		filter: drop-shadow(0 1px 0 rgba(255, 240, 200, 0.5));
 	}
 	.spin:active:not(:disabled) {
-		transform: scale(0.97);
+		transform: scale(0.96);
 	}
 	.spin.busy {
-		background: transparent;
-		color: var(--gold-text);
-		box-shadow: none;
+		filter: saturate(0.75) brightness(0.82);
 	}
-	.spin.auto {
-		font-size: calc(var(--spin-font) * 0.72);
-		background: var(--paper);
-		color: var(--gold-text);
+	.spin.busy .spin-icon {
+		animation: turn 0.9s linear infinite;
+	}
+	.spin-auto {
+		font-family: var(--font-display);
+		font-weight: 900;
+		font-size: calc(var(--spin-size) * 0.19);
+		line-height: 1.05;
+		letter-spacing: 0.06em;
+		text-align: center;
+		padding: 0 8px;
+	}
+	@keyframes turn {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	.bet {
 		display: flex;
@@ -435,7 +466,9 @@
 		font-variant-numeric: tabular-nums;
 	}
 	@media (hover: hover) {
-		.btn:hover,
+		.item:hover {
+			background: var(--hover);
+		}
 		.adjust:hover:not(:disabled) {
 			background: var(--accent);
 			color: var(--paper);
@@ -444,9 +477,7 @@
 			border-color: var(--edge);
 		}
 		.spin:hover:not(:disabled):not(.busy) {
-			background: transparent;
-			color: var(--gold-text);
-			box-shadow: none;
+			filter: brightness(1.1);
 		}
 	}
 
@@ -455,21 +486,15 @@
 		position: absolute;
 		left: 16px;
 		bottom: calc(100% + 6px);
-		min-width: 190px;
-		background: var(--glass-strong);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: 20px;
-		padding: 12px;
+		min-width: 200px;
+		--cut: 12px;
+		padding: 8px 6px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
 		opacity: 0;
 		pointer-events: none;
-		transform: translateY(10px);
-		transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		transform: translateY(8px);
+		transition: opacity 0.25s ease, transform 0.25s ease;
 		z-index: 20;
 	}
 	.popup.active {
@@ -480,12 +505,10 @@
 
 	/* phones: the owner's small-screen sizes */
 	.stacked {
-		--spin-font: 20px;
-		--spin-pad: 10px 15px;
+		--spin-size: 62px;
 		--adj: 32px;
 		--amount: 17px;
 		--funds: 15px;
-		--dock-radius: 26px;
 		padding: 0 10px calc(8px + env(safe-area-inset-bottom));
 	}
 	.stacked .dock {
@@ -510,7 +533,7 @@
 	/* very small phones: as in the owner's file, the strict centring gives way so everything fits */
 	@media (max-width: 359px) {
 		.stacked {
-			--spin-pad: 9px 13px;
+			--spin-size: 56px;
 			--adj: 30px;
 			--amount: 15px;
 		}
@@ -524,17 +547,15 @@
 
 	/* mini-player: one slim row */
 	.compact {
-		--spin-font: 16px;
-		--spin-pad: 6px 18px;
+		--spin-size: 44px;
 		--adj: 28px;
 		--amount: 14px;
 		--funds: 13px;
-		--dock-radius: 20px;
 		padding: 0 6px 5px;
 	}
 	.compact .dock {
-		padding: 4px 10px;
-		border-width: 2px;
+		--cut: 12px;
+		padding: 4px 12px;
 	}
 	.compact .row {
 		gap: 6px;
@@ -555,8 +576,7 @@
 		height: 2px;
 	}
 	.compact .spin {
-		border-width: 2px;
-		border-radius: 16px;
+		margin: calc(var(--spin-size) * -0.18) 0 -2px;
 	}
 	.compact .lbl {
 		font-size: 8px;
@@ -570,19 +590,18 @@
 	}
 	.compact .popup {
 		left: 6px;
-		padding: 8px;
-		gap: 5px;
+		padding: 4px;
 		min-width: 160px;
 	}
-	.compact .btn {
-		padding: 5px 10px;
+	.compact .item {
+		padding: 6px 10px;
 		font-size: 11px;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.popup,
 		.spin,
-		.btn,
+		.item,
 		.adjust {
 			transition: none;
 		}

@@ -18,7 +18,7 @@
 	});
 </script>
 
-<div class="plaque on-glass" aria-live="polite">
+<div class="plaque deco on-glass" aria-live="polite">
 	<span class="grp">
 		<span class="lbl">{t('hud.moves')}</span>
 		{#key movesPop}<span class="val num mv" class:pop={movesPop > 0}>{game.moves ? game.moves.left : '–'}</span>{/key}
@@ -34,16 +34,11 @@
 
 <style>
 	.plaque {
+		--cut: 8px;
 		display: inline-flex;
 		align-items: center;
 		gap: clamp(8px, 1.4vw, 16px);
-		padding: 4px clamp(12px, 1.8vw, 20px);
-		background: var(--glass);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--edge);
-		border-radius: 999px;
-		box-shadow: var(--glass-shadow);
+		padding: 5px clamp(14px, 2vw, 22px);
 		pointer-events: none;
 		white-space: nowrap;
 	}

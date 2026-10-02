@@ -31,7 +31,7 @@
 <svelte:window onkeydown={key} />
 
 <div class="backdrop" role="presentation" onclick={() => !locked && onClose?.()}></div>
-<div class="panel on-glass" class:wide role="dialog" aria-modal="true" aria-label={title} bind:this={panel}>
+<div class="panel deco on-glass" class:wide role="dialog" aria-modal="true" aria-label={title} bind:this={panel}>
 	<header>
 		<h2 class="display">{title}</h2>
 		{#if !locked && onClose}
@@ -62,12 +62,8 @@
 		max-height: min(90dvh, 720px);
 		display: flex;
 		flex-direction: column;
-		background: var(--glass-strong);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: 24px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+		--cut: 16px;
+		--face: rgba(9, 9, 10, 0.97);
 		overflow: hidden;
 		color: var(--ink);
 		animation: rise 200ms ease both;
@@ -90,8 +86,8 @@
 	.x {
 		width: 34px;
 		height: 34px;
-		border-radius: 50%;
-		border: 2px solid var(--edge);
+		border-radius: 4px;
+		border: 1.5px solid var(--edge);
 		background: none;
 		color: var(--ink);
 		flex: none;

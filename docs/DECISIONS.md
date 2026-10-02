@@ -323,3 +323,16 @@ replay card sat on top of the taskbar (now centred over the board); the free-spi
 the first spin (now "VENOM · 12 SPINS" / "HUNT · 10 SPINS"); cluster outlines stayed after the hatchling left,
 framing the fresh gems that took its place (they fade as the refill starts); the tail tapered into a long spike
 that made a hatchling look like a carrot (short rounded taper).
+
+### D-041: Less "AI-made": the UI as art-deco vault hardware
+The owner asked to make the layout look less AI-made. The tell was uniformity: every element (logo, HUD, stat
+boxes, Buy Bonus, plaque, dialogs, win banners, taskbar, SPIN) was the same black rounded card with the same 3 px
+gold outline, plus a dashed pill and a perfectly even white ring around the board. Kept the owner's layout (menu
+left, SPIN centre, bet right, balance in the bar, Buy Bonus above) and rebuilt the surfaces as one family of 1940s
+hardware: black lacquer plaques with a brushed-brass edge and 45° cut corners (`.deco`), a round raised brass SPIN
+knob with engraved arrows, a solid brass Buy Bonus ticket, engraved brass lettering for the logo, loading title and
+win amounts (no boxes), one stats plaque split by hairlines instead of three boxes, list menus instead of stacked
+outlined buttons, underlined rules tabs, squared secondary buttons. The guardian serpent now drapes over the left
+rail and the bottom of the frame (tail curling round the corner) instead of looping the whole board. On phones the
+BALANCE / WIN row moved to the bottom of the bar so the raised SPIN knob has a clear top edge. No layout, flow or
+test selector changed.

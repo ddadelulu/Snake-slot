@@ -62,6 +62,18 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 33 | Free-spin counter | "VENOM 0 / 12" before the first spin | "VENOM · 12 SPINS" until spin 1 |
 | 34 | Snake tail | Long thin spike; a hatchling looked like a carrot | Short rounded taper |
 
+## Owner round: less "AI-made" (D-041)
+
+| # | Where | Problem | Change |
+|---|---|---|---|
+| 35 | Every UI surface | All the same black rounded card with a 3 px gold outline: reads as a template | Art-deco plaques: black lacquer, brushed-brass edge, 45° cut corners |
+| 36 | SPIN | A text pill like every other button | Round raised brass knob with engraved arrows |
+| 37 | Buy Bonus | Dashed italic pill | Solid brass ticket with cut corners; its menu is a list split by hairlines |
+| 38 | Logo, loading title, win amounts | Text inside boxes / pills | Engraved brass lettering with deco rules, no box |
+| 39 | Phone HUD | Three identical stat boxes | One plaque split by hairlines |
+| 40 | Guardian serpent | Perfect even ring round the whole board | Drapes over the left rail and bottom; tail curls round the corner |
+| 41 | Rules tabs, menu | Pill chips; stack of outlined buttons | Underlined tabs; list rows |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

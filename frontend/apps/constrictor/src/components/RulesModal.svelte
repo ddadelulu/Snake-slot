@@ -117,32 +117,38 @@
 </Modal>
 
 <style>
+	/* underlined tabs along a hairline (a ledger index, not pill chips) */
 	.tabs {
 		display: flex;
-		gap: 6px;
+		gap: 2px 14px;
 		flex-wrap: wrap;
 		margin-bottom: 12px;
+		border-bottom: 1px solid var(--rule);
 	}
 	.tabs button {
 		background: none;
-		border: 2px solid var(--edge);
-		border-radius: 999px;
-		color: var(--ink);
+		border: 0;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+		color: var(--ink-dim);
 		font-family: var(--font-ui);
 		font-weight: 800;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.14em;
 		font-size: 11px;
-		padding: 6px 12px;
+		padding: 7px 2px;
 		cursor: pointer;
-		transition: background 0.2s ease, color 0.2s ease;
+		transition: color 0.2s ease, border-color 0.2s ease;
+	}
+	.tabs button:hover {
+		color: var(--ink);
 	}
 	.tabs button:focus-visible {
 		outline: 2px solid var(--ink);
 		outline-offset: 2px;
 	}
 	.tabs button.on {
-		background: var(--accent);
-		color: var(--paper);
+		color: var(--gold-text);
+		border-bottom-color: var(--edge);
 	}
 	h3 {
 		margin: 14px 0 4px;

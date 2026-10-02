@@ -1,6 +1,6 @@
 <!--
-	Floating "Buy Bonus" button above the taskbar (owner's layout): dashed, italic, opens a popup with the bonus
-	buys (price at the current bet) and the SERPENT CALL switch. A buy only asks for confirmation; the round is
+	Floating "Buy Bonus" button above the taskbar (owner's layout): a solid brass ticket with cut corners; opens a
+	list with the bonus buys (price at the current bet) and the SERPENT CALL switch. A buy only asks for confirmation; the round is
 	played by the caller. When SERPENT CALL is on, a chip beside the button says so.
 -->
 <script lang="ts">
@@ -44,21 +44,21 @@
 </script>
 
 <div class="bonus" class:compact bind:this={wrap}>
-	<div class="popup" class:active={open} role="menu" aria-label={label} inert={!open}>
+	<div class="popup deco" class:active={open} role="menu" aria-label={label} inert={!open}>
 		{#each items as it (it.id)}
-			<button class="btn item" role="menuitem" data-mode={it.id} {disabled} onclick={() => ((open = false), onPick(it.id))}>
+			<button class="item" role="menuitem" data-mode={it.id} {disabled} onclick={() => ((open = false), onPick(it.id))}>
 				<span class="main">{it.label}</span>
 				<span class="price num">{it.price}</span>
 			</button>
 		{/each}
-		<button class="btn item ante" class:on={anteOn} role="menuitemcheckbox" aria-checked={anteOn} data-act="ante" disabled={anteDisabled} onclick={() => ((open = false), onAnte())}>
+		<button class="item ante" class:on={anteOn} role="menuitemcheckbox" aria-checked={anteOn} data-act="ante" disabled={anteDisabled} onclick={() => ((open = false), onAnte())}>
 			<span class="main">{anteLabel}</span>
 			<span class="price num">{anteSub}</span>
 		</button>
 	</div>
 	<div class="buttons">
-		<button class="btn buy-bonus" aria-haspopup="menu" aria-expanded={open} disabled={disabled && anteDisabled} onclick={() => (open = !open)}>{label}</button>
-		{#if anteOn}<span class="chip">{anteChip}</span>{/if}
+		<button class="buy-bonus deco brass" aria-haspopup="menu" aria-expanded={open} disabled={disabled && anteDisabled} onclick={() => (open = !open)}>{label}</button>
+		{#if anteOn}<span class="chip deco">{anteChip}</span>{/if}
 	</div>
 </div>
 
@@ -90,55 +90,46 @@
 		outline: 2px solid var(--ink);
 		outline-offset: 3px;
 	}
-	.btn {
-		background: transparent;
-		border: 2px solid var(--edge);
-		border-radius: 14px;
-		padding: 8px 16px;
-		font-weight: 800;
-		font-size: 15px;
-		letter-spacing: 1px;
-		text-transform: uppercase;
-		transition: background 0.2s ease, color 0.2s ease, border-style 0.2s;
-	}
+	/* the ticket: solid brass, cut corners, dark engraved letters */
 	.buy-bonus {
-		font-style: italic;
-		border-style: dashed;
-		background: var(--glass);
-		box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+		--cut: 9px;
+		padding: 9px 20px 8px;
+		font-weight: 900;
+		font-size: 14px;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
 		white-space: nowrap;
+		color: #1a1208;
+		text-shadow: 0 1px 0 rgba(255, 240, 200, 0.45);
+		transition: transform 90ms, filter 0.2s;
+	}
+	.buy-bonus:active:not(:disabled) {
+		transform: translateY(1px);
 	}
 	.chip {
-		font-size: 11px;
+		--cut: 6px;
+		font-size: 10px;
 		font-weight: 800;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		background: var(--glass);
 		color: var(--gold-text);
-		border: 2px solid var(--edge);
-		border-radius: 999px;
-		padding: 4px 10px;
+		padding: 5px 10px;
 		white-space: nowrap;
 	}
+	/* the list: one deco panel, rows split by hairlines */
 	.popup {
+		--cut: 12px;
 		position: absolute;
 		left: 0;
 		bottom: calc(100% + 10px);
 		width: 270px;
-		background: var(--glass-strong);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: 20px;
-		padding: 12px;
+		padding: 8px 6px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 		opacity: 0;
 		pointer-events: none;
-		transform: translateY(10px);
-		transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		transform: translateY(8px);
+		transition: opacity 0.25s ease, transform 0.25s ease;
 		z-index: 20;
 	}
 	.popup.active {
@@ -153,50 +144,62 @@
 		gap: 10px;
 		width: 100%;
 		text-align: left;
+		background: transparent;
+		border: 0;
+		padding: 11px 12px;
+		font-weight: 800;
+		font-size: 14px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		transition: background 0.15s ease, color 0.15s ease;
+	}
+	.item + .item {
+		border-top: 1px solid var(--rule);
 	}
 	.item .price {
 		font-size: 13px;
 		letter-spacing: 0.02em;
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
+		color: var(--ink);
 	}
-	.item.ante {
-		border-style: dashed;
+	.item.ante .price {
+		color: var(--gold-text);
 	}
-	.item.ante.on {
-		border-style: solid;
-		background: var(--accent);
-		color: var(--paper);
+	.item.ante.on .price {
+		color: var(--venom);
 	}
 	@media (hover: hover) {
-		.btn:hover:not(:disabled) {
-			background: var(--accent);
-			color: var(--paper);
+		.item:hover:not(:disabled) {
+			background: var(--hover);
 		}
 		.buy-bonus:hover:not(:disabled) {
-			border-style: solid;
+			filter: brightness(1.08) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
 		}
 	}
-	.compact .btn {
-		padding: 5px 10px;
+	.compact .buy-bonus {
+		--cut: 7px;
+		padding: 6px 12px 5px;
 		font-size: 11px;
-		border-radius: 12px;
 	}
 	.compact .popup {
 		width: 210px;
-		padding: 8px;
-		gap: 5px;
+		padding: 4px;
+	}
+	.compact .item {
+		padding: 7px 8px;
+		font-size: 11px;
 	}
 	.compact .item .price {
 		font-size: 11px;
 	}
 	.compact .chip {
 		font-size: 9px;
-		padding: 3px 7px;
+		padding: 4px 7px;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.popup,
-		.btn {
+		.buy-bonus {
 			transition: none;
 		}
 	}

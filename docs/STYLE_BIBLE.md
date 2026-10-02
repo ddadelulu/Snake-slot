@@ -83,19 +83,26 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 | UI | **Archivo** (OFL, variable) | also used for the Studio 12 wordmark |
 | Counters | Archivo with **tabular numerals** (`font-variant-numeric: tabular-nums`) | wins, balance, moves, multiplier |
 
-## 7. UI (the owner's taskbar layout in black and gold, D-031 / D-034 / D-036)
-- The taskbar is the owner's layout on every screen: menu left, SPIN in the middle, − BET + right, a floating
-  dashed Buy Bonus button above it on the left and a matching BALANCE / WIN card on the right.
-- Colours: **black glass** (`rgba(8,8,9,0.9–0.96)`, 6 px blur) with **gold outlines** (`#D4AF37`; 3 px panels,
-  2 px controls) and **gold text** (`#E6C46B`); amounts in ivory `#F2EAD7`. Round corners (panels 20–30 px,
-  buttons 14 px, pills fully round), soft drop shadow. Every other UI surface (dialogs, HUD, plaque, logo, win
-  cards, loading screen) uses the same tokens.
-- Buttons: gold-outlined; they fill gold on hover. SPIN (and CONFIRM) is filled gold with a black inset ring, the
-  owner's double-border button in these colours.
-- SPIN sits exactly in the screen centre whenever − BET + fits beside it; on very narrow phones or with long
-  amounts the dock spreads out, as the owner's file does on small screens.
-- Fonts stay the game's: Archivo for UI and numbers, Big Shoulders Display for titles and SPIN, Limelight for
-  the max-win title.
+## 7. UI (the owner's taskbar layout, built as the vault's own hardware: D-031 / D-036 / D-039 / D-041)
+- The taskbar is the owner's layout on every screen: menu left, SPIN in the middle, − BET + right, BALANCE and
+  WIN inside the bar (beside the menu on wide screens, a slim row along the bottom on phones), Buy Bonus above it
+  on the left.
+- **Art-deco hardware, not generic cards.** Panels are black lacquer (`rgba(9,9,10,0.94–0.97)`) with a
+  brushed-brass edge (gradient `#F3DC9A → #B8902F → #E9C96E → #8A6A2A`, 2–3 px) and **corners cut at 45°**
+  (`.deco` in `app.css`; 6–22 px cuts by size). No rounded "pill" cards, no dashed outlines, no stacks of
+  identically outlined boxes: related values share one plaque split by hairlines (`--rule`), lists are rows split by
+  hairlines, tabs are underlined.
+- **SPIN** is a round brass knob with engraved chasing arrows, raised out of the top of the bar (it turns while a
+  round plays; it shows the count in autoplay). **Buy Bonus** and primary buttons (CONFIRM) are solid brass with dark
+  engraved letters; secondary buttons are squared (4 px radius) with a fine brass edge.
+- Titles and amounts are **engraved brass letters** (a vertical brass gradient in the type, a hard dark drop
+  shadow); the logo and the loading title sit on the room with a pool of shadow behind them, never in a box.
+  Deco rules with small diamonds frame tag lines.
+- Venom moments swap the brass edge for venom green; nothing else changes colour.
+- SPIN sits exactly in the screen centre whenever both sides of the bar fit; on very narrow phones or with long
+  amounts the bar spreads out.
+- Fonts stay the game's: Archivo for UI and numbers, Big Shoulders Display for titles, Limelight for the max-win
+  title.
 - Motion: short and purposeful (120–300 ms UI transitions); restraint except the three hero moments.
 
 ## 8. Realism rules: reject and regenerate if any of these appear

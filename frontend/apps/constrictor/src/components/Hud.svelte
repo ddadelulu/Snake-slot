@@ -28,7 +28,7 @@
 
 <div class="hud on-glass {layout}">
 	{#if game.fs}
-		<div class="fs" class:venom={game.feature === 'venom'}>
+		<div class="fs deco" class:venom={game.feature === 'venom'}>
 			<span class="fs-title display">{game.fs.current === 0
 					? t(game.feature === 'venom' ? 'hud.venomStart' : 'hud.freeSpinsStart', game.fs)
 					: t(game.feature === 'venom' ? 'hud.venomSpins' : 'hud.freeSpins', game.fs)}</span>
@@ -36,7 +36,7 @@
 		</div>
 	{/if}
 	{#if snakeOn && showStats}
-		<div class="stats">
+		<div class="stats deco">
 			<div class="stat">
 				<span class="lbl">{t('hud.moves')}</span>
 				{#key movesPop}
@@ -56,7 +56,7 @@
 		</div>
 	{/if}
 	{#if showWin}
-		<div class="win">
+		<div class="win deco">
 			<span class="lbl">{t('hud.win')}</span>
 			<span class="val num">{money(game.totalWin)}</span>
 		</div>
@@ -81,22 +81,16 @@
 		justify-content: center;
 		align-items: center;
 	}
+	/* free-spin counter: a deco plaque (cut corners, brass edge), venom-green edge in VENOM HUNT */
 	.fs {
+		--cut: 12px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 6px 16px;
-		background: var(--glass);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: 20px;
-		box-shadow: var(--glass-shadow);
+		padding: 8px 22px 9px;
 	}
-	.fs.venom {
-		box-shadow:
-			inset 0 0 0 2px #3dff8a,
-			var(--glass-shadow);
+	.fs.venom::before {
+		background: linear-gradient(160deg, #b8ffd6 0%, #1fbf62 45%, #7dffb4 70%, #0c6b34 100%);
 	}
 	.fs-title {
 		font-size: clamp(14px, 2.8vh, 24px);
@@ -110,26 +104,33 @@
 		font-size: clamp(12px, 2.2vh, 18px);
 		font-weight: 700;
 	}
+	/* MOVES · LENGTH · MULTIPLIER share one plaque, split by hairlines (not three separate boxes) */
 	.stats {
+		--cut: 9px;
 		display: flex;
-		gap: clamp(6px, 1.2vw, 14px);
 		justify-content: center;
+		padding: 5px 4px;
 	}
 	.side .stats {
 		flex-direction: column;
+		padding: 4px 10px;
 	}
 	.stat {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		min-width: 64px;
-		padding: 4px 10px;
-		background: var(--glass);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--edge);
-		border-radius: 14px;
-		box-shadow: var(--glass-shadow);
+		padding: 0 12px;
+	}
+	.stat + .stat {
+		border-left: 1px solid var(--rule);
+	}
+	.side .stat {
+		padding: 5px 0;
+	}
+	.side .stat + .stat {
+		border-left: 0;
+		border-top: 1px solid var(--rule);
 	}
 	.lbl {
 		font-size: clamp(8px, 1.3vh, 11px);
@@ -157,16 +158,11 @@
 		color: var(--venom);
 	}
 	.win {
+		--cut: 9px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 4px 12px;
-		background: var(--glass);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 2px solid var(--edge);
-		border-radius: 14px;
-		box-shadow: var(--glass-shadow);
+		padding: 5px 14px;
 	}
 	.win .val {
 		font-size: clamp(13px, 2.4vh, 20px);

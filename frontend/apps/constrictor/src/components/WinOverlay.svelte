@@ -96,7 +96,7 @@
 		onclick={requestSkip}
 	>
 		{#if card.kind === 'tier'}
-			<div class="tier on-glass lvl{card.level}">
+			<div class="tier deco on-glass lvl{card.level}">
 				<div class="title display">{t(TIER_KEYS[card.level] ?? 'win.strike')}</div>
 				<div class="amount num">{money(shown)}</div>
 				<div class="hint">{t('win.tapToSkip')}</div>
@@ -122,22 +122,22 @@
 					</g>
 				</svg>
 			</div>
-			<div class="intro on-glass" class:venom={card.feature === 'venom'}>
+			<div class="intro deco on-glass" class:venom={card.feature === 'venom'}>
 				<div class="rule"></div>
 				<div class="title display">{card.feature === 'venom' ? t('feature.venomTitle') : t('feature.huntTitle')}</div>
 				<div class="sub">{t('feature.freeSpins', { n: card.spins })}</div>
 				<div class="rule"></div>
 			</div>
 		{:else if card.kind === 'outro'}
-			<div class="intro on-glass" class:venom={card.feature === 'venom'}>
+			<div class="intro deco on-glass" class:venom={card.feature === 'venom'}>
 				<div class="sub">{t('feature.summary')}</div>
 				<div class="amount num">{money(shown)}</div>
 				{#if card.capped}<div class="note">{t('feature.maxReached')}</div>{/if}
 			</div>
 		{:else if card.kind === 'retrigger'}
-			<div class="retrigger on-glass display">{t('feature.retrigger', { n: card.added })}</div>
+			<div class="retrigger deco on-glass display">{t('feature.retrigger', { n: card.added })}</div>
 		{:else if card.kind === 'maxWin'}
-			<div class="tier on-glass lvl5">
+			<div class="tier deco on-glass lvl5">
 				<div class="title display">{t('win.vaultEmpty')}</div>
 				<div class="amount num">{money(shown)}</div>
 				<div class="note">{t('feature.maxReached')}</div>
@@ -179,15 +179,12 @@
 		align-items: center;
 		gap: clamp(4px, 1.2vh, 12px);
 		text-align: center;
-		/* glass card (taskbar style) */
+		/* deco plaque (cut corners, brass edge), like the rest of the vault's hardware */
+		--cut: 22px;
+		--edge-w: 3px;
+		--face: rgba(9, 9, 10, 0.96);
 		max-width: 94vw;
-		padding: clamp(14px, 3vh, 28px) clamp(20px, 4vw, 48px);
-		background: var(--glass-strong);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid var(--edge);
-		border-radius: 28px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+		padding: clamp(16px, 3.4vh, 32px) clamp(24px, 4.4vw, 56px);
 	}
 	.title {
 		font-size: clamp(34px, 11vmin, 120px);
@@ -205,21 +202,23 @@
 		color: var(--venom);
 		font-size: clamp(30px, 9vmin, 110px);
 	}
-	.tier.lvl5 {
-		box-shadow:
-			inset 0 0 0 3px #3dff8a,
-			0 8px 25px rgba(0, 0, 0, 0.4);
+	.tier.lvl5::before,
+	.intro.venom::before {
+		background: linear-gradient(160deg, #b8ffd6 0%, #1fbf62 45%, #7dffb4 70%, #0c6b34 100%);
 	}
-	/* the amount sits in an inverse pill, like the SPIN button */
+	/* the amount: engraved gold figures between two hairlines */
 	.amount {
-		font-size: clamp(22px, 6.4vmin, 64px);
+		font-size: clamp(24px, 6.8vmin, 68px);
 		font-weight: 800;
 		letter-spacing: 0.02em;
-		color: var(--paper);
-		background: var(--accent);
-		border-radius: 999px;
-		padding: 0.12em 0.7em;
-		box-shadow: inset 0 0 0 2px var(--paper);
+		line-height: 1.1;
+		padding: 0.08em 0.4em;
+		border-top: 1px solid var(--rule);
+		border-bottom: 1px solid var(--rule);
+		background: linear-gradient(180deg, #fbe7ab 0%, #e2b85a 48%, #a67c34 56%, #ecca72 100%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
 	}
 	.hint,
 	.note {
@@ -238,11 +237,6 @@
 	}
 	.intro.venom .title {
 		color: var(--venom);
-	}
-	.intro.venom {
-		box-shadow:
-			inset 0 0 0 3px #3dff8a,
-			0 8px 25px rgba(0, 0, 0, 0.4);
 	}
 	.sub {
 		font-weight: 800;
@@ -415,11 +409,8 @@
 	.retrigger {
 		font-size: clamp(26px, 7.5vmin, 76px);
 		color: var(--ink);
-		padding: 0.1em 0.8em;
-		background: var(--glass-strong);
-		border: 3px solid var(--edge);
-		border-radius: 999px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+		padding: 0.14em 0.9em;
+		--cut: 16px;
 		animation: slam 360ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 	}
 	.ouro {
@@ -433,8 +424,10 @@
 		letter-spacing: 0.2em;
 		color: #3dff8a;
 		background: var(--paper);
-		border: 3px solid #3dff8a;
-		border-radius: 999px;
+		border: 0;
+		border-top: 2px solid #3dff8a;
+		border-bottom: 2px solid #3dff8a;
+		border-radius: 0;
 		padding: 0.06em 0.8em;
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
 		white-space: nowrap;
@@ -450,10 +443,12 @@
 		font-weight: 800;
 		font-size: clamp(20px, 5vmin, 48px);
 		color: var(--ink);
-		background: var(--glass-strong);
-		border: 3px solid var(--edge);
-		border-radius: 999px;
-		padding: 0.1em 0.7em;
+		background: rgba(9, 9, 10, 0.92);
+		border: 0;
+		border-top: 1.5px solid var(--edge);
+		border-bottom: 1.5px solid var(--edge);
+		border-radius: 0;
+		padding: 0.1em 0.8em;
 		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 		white-space: nowrap;
 		animation: popwin 1300ms ease both;

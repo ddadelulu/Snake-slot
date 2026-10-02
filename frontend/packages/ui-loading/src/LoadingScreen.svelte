@@ -204,21 +204,20 @@
 		gap: 18px;
 		width: min(80vw, 520px);
 	}
+	/* engraved brass letters, no card */
 	.title {
 		margin: 0;
 		font-family: 'Big Shoulders Display', 'Archivo', sans-serif;
 		font-weight: 900;
 		font-size: clamp(34px, 9vw, 86px);
-		letter-spacing: 0.08em;
+		letter-spacing: 0.12em;
 		line-height: 1;
-		color: #e0b64a;
-		background: rgba(8, 8, 9, 0.9);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #d4af37;
-		border-radius: 28px;
-		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-		padding: 0.18em 0.5em;
+		padding-left: 0.12em;
+		background: linear-gradient(180deg, #fbe7ab 0%, #e2b85a 45%, #9c7433 55%, #e9c870 100%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 18px rgba(0, 0, 0, 0.7));
 	}
 	/* glass dock style: black glass, gold outline, round corners (matches the game UI) */
 	.bar {
@@ -252,25 +251,42 @@
 		padding: 6px 16px;
 		font-variant-numeric: tabular-nums;
 	}
+	/* a brass-edged plate with cut corners (same hardware as the game's plaques) */
 	.tap {
+		--c: 12px;
+		position: relative;
+		isolation: isolate;
 		font-family: inherit;
 		font-size: clamp(15px, 2.6vh, 20px);
 		font-weight: 800;
 		letter-spacing: 0.18em;
 		text-transform: uppercase;
 		color: #e6c46b;
-		background: rgba(8, 8, 9, 0.92);
-		backdrop-filter: blur(6px);
-		-webkit-backdrop-filter: blur(6px);
-		border: 3px solid #d4af37;
-		border-radius: 24px;
-		box-shadow:
-			inset 0 0 0 2px rgba(0, 0, 0, 0.35),
-			0 4px 15px rgba(0, 0, 0, 0.35);
-		padding: 14px 36px;
+		background: none;
+		border: 0;
+		padding: 15px 38px;
 		cursor: pointer;
-		transition: background 0.2s ease, color 0.2s ease;
+		transition: color 0.2s ease;
 		animation: pulse 1.8s ease-in-out infinite;
+	}
+	.tap::before,
+	.tap::after {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		clip-path: polygon(var(--k) 0, calc(100% - var(--k)) 0, 100% var(--k), 100% calc(100% - var(--k)), calc(100% - var(--k)) 100%, var(--k) 100%, 0 calc(100% - var(--k)), 0 var(--k));
+	}
+	.tap::before {
+		--k: var(--c);
+		inset: 0;
+		z-index: -2;
+		background: linear-gradient(160deg, #f3dc9a 0%, #b8902f 38%, #e9c96e 62%, #8a6a2a 100%);
+	}
+	.tap::after {
+		--k: calc(var(--c) - 1px);
+		inset: 2px;
+		background: rgba(9, 9, 10, 0.94);
+		transition: background 0.2s ease;
 	}
 	.tap:focus-visible {
 		outline: 2px solid #efebe0;
@@ -286,8 +302,10 @@
 	}
 	@media (hover: hover) {
 		.tap:hover {
-			background: #e0b64a;
 			color: #121317;
+		}
+		.tap:hover::after {
+			background: linear-gradient(160deg, #f0d48a 0%, #c99a3c 45%, #e8c66c 70%, #9c7433 100%);
 		}
 	}
 	@keyframes fadein {
@@ -295,12 +313,14 @@
 			opacity: 0;
 		}
 	}
+	/* a slow glow behind the plate (drop-shadow follows the cut corners; no movement, so it is easy to tap) */
 	@keyframes pulse {
+		0%,
+		100% {
+			filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+		}
 		50% {
-			box-shadow:
-				inset 0 0 0 2px rgba(0, 0, 0, 0.35),
-				0 4px 15px rgba(0, 0, 0, 0.35),
-				0 0 0 7px rgba(224, 182, 74, 0.3);
+			filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 12px rgba(224, 182, 74, 0.55));
 		}
 	}
 	.reduced * {

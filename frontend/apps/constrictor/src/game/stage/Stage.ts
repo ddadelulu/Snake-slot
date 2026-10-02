@@ -94,10 +94,12 @@ export class Stage {
 	}
 
 	private buildGuardian() {
-		// A coil of the same scales around the frame (static rope), with the head resting top-left.
+		// The same serpent draped over the vault frame (static rope): along the left rail and the bottom, head raised
+		// at the top-left corner, tail trailing off round the bottom-right corner. Not a closed loop: a perfect ring
+		// of even tube read as machine-made.
 		const coil = new SnakeView(CELL * 1.25);
 		const m = 22, L = BOARD - 22, R = 70;
-		// rounded rectangle, clockwise from the top edge; corners are arcs so the mesh never folds
+		// rounded corners are arcs so the mesh never folds
 		const path: Pt[] = [];
 		const line = (x0: number, y0: number, x1: number, y1: number, n: number) => {
 			for (let i = 0; i < n; i++) path.push({ x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n });
@@ -108,9 +110,9 @@ export class Stage {
 				path.push({ x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) });
 			}
 		};
-		line(m + 90, m, L - R, m, 9);
-		arc(L - R, m + R, -Math.PI / 2);
-		line(L, m + R, L, L - R, 9);
+		// clockwise from the tail (curling just round the bottom-right corner) to the head; reversed below so the
+		// head is first
+		line(L, L - R - 40, L, L - R, 2);
 		arc(L - R, L - R, 0);
 		line(L - R, L, m + R, L, 9);
 		arc(m + R, L - R, Math.PI / 2);
