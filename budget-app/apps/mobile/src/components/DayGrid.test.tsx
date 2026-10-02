@@ -43,11 +43,14 @@ describe('DayGrid', () => {
   it('lays the days out in rows of seven', async () => {
     await renderWithTheme(<PaydayPicker initial={null} onSelect={jest.fn()} />);
 
-    const rowOf = (day: number) => screen.getByTestId(`payday-${day}`).parent;
-    expect(rowOf(1)).toBe(rowOf(7));
-    expect(rowOf(8)).not.toBe(rowOf(7));
-    expect(rowOf(29)).toBe(rowOf(31));
-    expect(rowOf(28)).not.toBe(rowOf(29));
+    const daysInWeek = (week: number) =>
+      within(screen.getByTestId(`payday-week-${week}`))
+        .getAllByRole('radio')
+        .map((radio) => radio.props.accessibilityLabel);
+    expect(daysInWeek(1)).toEqual(['1.', '2.', '3.', '4.', '5.', '6.', '7.']);
+    expect(daysInWeek(4)).toEqual(['22.', '23.', '24.', '25.', '26.', '27.', '28.']);
+    expect(daysInWeek(5)).toEqual(['29.', '30.', '31.']);
+    expect(screen.queryByTestId('payday-week-6')).toBeNull();
   });
 
   it('selects a day and moves the check', async () => {
@@ -76,18 +79,21 @@ describe('DayGrid', () => {
     await renderWithTheme(<PaydayPicker initial={25} onSelect={jest.fn()} />);
 
     const { colors } = lightTheme;
-    const selectedNumber = screen.getByText('25');
-    expect(selectedNumber).toHaveStyle({ color: colors.textOnAccent, fontVariant: ['tabular-nums'] });
-    expect(selectedNumber.parent?.parent).toHaveStyle({ backgroundColor: colors.accent });
-    const otherNumber = screen.getByText('24');
-    expect(otherNumber).toHaveStyle({ color: colors.textPrimary });
-    expect(otherNumber.parent?.parent).toHaveStyle({ backgroundColor: colors.surface });
+    expect(screen.getByTestId('payday-25')).toHaveStyle({ backgroundColor: colors.accent });
+    expect(screen.getByText('25')).toHaveStyle({
+      color: colors.textOnAccent,
+      fontVariant: ['tabular-nums'],
+    });
+    expect(screen.getByTestId('payday-24')).toHaveStyle({ backgroundColor: colors.surface });
+    expect(screen.getByText('24')).toHaveStyle({ color: colors.textPrimary });
   });
 
-  it('gives every day at least the minimum touch height', async () => {
+  it('gives every day at least the minimum touch height and the gutter as extra target', async () => {
     await renderWithTheme(<PaydayPicker initial={null} onSelect={jest.fn()} />);
-    const { sizes } = lightTheme;
-    expect(screen.getByTestId('payday-1')).toHaveStyle({ minHeight: sizes.dayCellHeight, flex: 1 });
+    const { sizes, spacing } = lightTheme;
+    const day = screen.getByTestId('payday-1');
+    expect(day).toHaveStyle({ minHeight: sizes.dayCellHeight, flex: 1 });
+    expect(day).toHaveProp('hitSlop', spacing.xxs);
     expect(sizes.dayCellHeight).toBeGreaterThanOrEqual(sizes.minTouchTarget);
   });
 });

@@ -512,22 +512,33 @@ describe('complete_onboarding() and other users', () => {
       const before = await footprint(db, b);
       await completeOnboarding(db, a, payload());
       expect(await footprint(db, b)).toEqual(before);
+      // Rows created in this transaction (created_at = now()), by table and owner.
       await asPostgres(db);
-      const owners = await queryRows<{ table: string; owner: string }>(
+      const created = await queryRows<{ table: string; owner: string; rows: number }>(
         db,
-        `select 'fixed_costs' as table, user_id::text as owner from public.fixed_costs
-          where id in (select id from public.fixed_costs where user_id <> $2 and created_at = now())
+        `select 'fixed_costs' as table, user_id::text as owner, count(*)::int as rows
+           from public.fixed_costs where created_at = now() group by user_id
          union all
-         select 'categories', user_id::text from public.categories
-          where created_at = now() and user_id <> $2
+         select 'categories', user_id::text, count(*)::int
+           from public.categories where created_at = now() group by user_id
          union all
-         select 'budget_periods', user_id::text from public.budget_periods where created_at = now()
+         select 'budget_periods', user_id::text, count(*)::int
+           from public.budget_periods where created_at = now() group by user_id
          union all
-         select 'budgets', user_id::text from public.budgets where created_at = now()`,
-        [a, b],
+         select 'budgets', user_id::text, count(*)::int
+           from public.budgets where created_at = now() group by user_id`,
       );
-      expect(new Set(owners.map((row) => row.owner))).toEqual(new Set([a]));
-      expect(owners.length).toBe(FIXED_COSTS.length + CATEGORIES.length + 1 + CATEGORIES.length);
+      const byKey = (x: { table: string; owner: string }, y: { table: string; owner: string }) =>
+        `${x.table}/${x.owner}`.localeCompare(`${y.table}/${y.owner}`);
+      expect(created.sort(byKey)).toEqual(
+        [
+          { table: 'fixed_costs', owner: a, rows: FIXED_COSTS.length },
+          { table: 'categories', owner: a, rows: CATEGORIES.length },
+          { table: 'categories', owner: b, rows: 1 }, // B's own, created before the call
+          { table: 'budget_periods', owner: a, rows: 1 },
+          { table: 'budgets', owner: a, rows: CATEGORIES.length },
+        ].sort(byKey),
+      );
     });
   });
 });

@@ -235,6 +235,25 @@ describe('buildOverview', () => {
     });
   });
 
+  it('colours the total like a category bar, and red whenever the balance is negative', () => {
+    const statusAt = (uncategorizedSpentRappen: number, carriedOverRappen = 0) =>
+      buildOverview({
+        ...input,
+        plan: { ...plan, carriedOverRappen },
+        categories: [],
+        uncategorizedSpentRappen,
+      }).status;
+    // 80 % of CHF 3'575 is CHF 2'860.
+    expect(statusAt(chf(2859, 95))).toBe('ok');
+    expect(statusAt(chf(2860))).toBe('warning');
+    expect(statusAt(chf(3574, 95))).toBe('warning');
+    expect(statusAt(chf(3575))).toBe('danger');
+    expect(statusAt(chf(3575) + 1)).toBe('danger');
+    // A deficit of CHF 3'675 carried over leaves CHF −100; a CHF 150 refund brings it to +50.
+    expect(statusAt(0, chf(-3675))).toBe('danger');
+    expect(statusAt(chf(-150), chf(-3675))).toBe('ok');
+  });
+
   it('keeps the input order of the categories', () => {
     const reversed = [clothes, goingOut, eatingOut, groceries];
     expect(

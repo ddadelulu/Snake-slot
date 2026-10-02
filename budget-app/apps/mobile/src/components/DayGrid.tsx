@@ -1,6 +1,6 @@
 import { Pressable, View } from 'react-native';
 
-import { makeStyles } from '@/theme';
+import { makeStyles, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
@@ -12,7 +12,7 @@ export type DayGridProps = {
   dayLabel: (day: number) => string;
   /** Names the group for screen readers, e.g. "Payday". */
   accessibilityLabel: string;
-  /** Each day gets `${testID}-${day}`. */
+  /** Each day gets `${testID}-${day}`, each row of seven `${testID}-week-${n}` (n = 1–5). */
   testID?: string;
 };
 
@@ -31,10 +31,10 @@ const WEEKS: (number | null)[][] = Array.from(
 const useStyles = makeStyles((theme) => ({
   grid: { gap: theme.spacing.xxs },
   week: { flexDirection: 'row' },
-  // The whole seventh of the row is the touch target; the drawn cell sits inside it.
-  slot: { flex: 1, minHeight: theme.sizes.dayCellHeight, padding: theme.spacing.xxs },
+  slot: { flex: 1, padding: theme.spacing.xxs },
   cell: {
     flex: 1,
+    minHeight: theme.sizes.dayCellHeight,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radii.md,
@@ -59,6 +59,11 @@ export function DayGrid({
   testID,
 }: DayGridProps) {
   const styles = useStyles();
+  const theme = useTheme();
+  // The gutter between cells still counts as part of the day, so the whole seventh is touchable.
+  const hitSlop = theme.spacing.xxs;
+  const subId = (suffix: string) => (testID === undefined ? undefined : `${testID}-${suffix}`);
+
   return (
     <View
       testID={testID}
@@ -67,45 +72,41 @@ export function DayGrid({
       style={styles.grid}
     >
       {WEEKS.map((week, index) => (
-        <View key={`week-${index}`} style={styles.week}>
+        <View key={`week-${index}`} testID={subId(`week-${index + 1}`)} style={styles.week}>
           {week.map((day, column) => {
             if (day === null) return <View key={`empty-${column}`} style={styles.slot} />;
             const checked = day === selected;
             return (
-              <Pressable
-                key={day}
-                onPress={() => {
-                  if (!checked) onSelect(day);
-                }}
-                accessibilityRole="radio"
-                accessibilityLabel={dayLabel(day)}
-                accessibilityState={{ checked }}
-                testID={testID === undefined ? undefined : `${testID}-${day}`}
-                style={styles.slot}
-              >
-                {({ pressed }) => (
-                  <View
-                    style={[
-                      styles.cell,
-                      pressed && styles.pressed,
-                      checked && styles.selected,
-                      checked && pressed && styles.selectedPressed,
-                    ]}
+              <View key={day} style={styles.slot}>
+                <Pressable
+                  onPress={() => {
+                    if (!checked) onSelect(day);
+                  }}
+                  hitSlop={hitSlop}
+                  accessibilityRole="radio"
+                  accessibilityLabel={dayLabel(day)}
+                  accessibilityState={{ checked }}
+                  testID={subId(String(day))}
+                  style={({ pressed }) => [
+                    styles.cell,
+                    pressed && styles.pressed,
+                    checked && styles.selected,
+                    checked && pressed && styles.selectedPressed,
+                  ]}
+                >
+                  {/* Follows the text size, shrinking only where a seventh of the row runs out. */}
+                  <AppText
+                    variant={checked ? 'bodyStrong' : 'body'}
+                    tone={checked ? 'onAccent' : 'primary'}
+                    numeric
+                    align="center"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
                   >
-                    {/* Follows the text size, shrinking only where a seventh of the row runs out. */}
-                    <AppText
-                      variant={checked ? 'bodyStrong' : 'body'}
-                      tone={checked ? 'onAccent' : 'primary'}
-                      numeric
-                      align="center"
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {String(day)}
-                    </AppText>
-                  </View>
-                )}
-              </Pressable>
+                    {String(day)}
+                  </AppText>
+                </Pressable>
+              </View>
             );
           })}
         </View>
