@@ -3,5 +3,6 @@ export * from './constants';
 export * from './money';
 export * from './budgetStatus';
 export * from './sources';
+export * from './engine';
 export type * from './model';
 export type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types';

@@ -67,11 +67,21 @@ const NON_TEXT: Pair[] = [
   ['statusWarning', 'statusWarningSurface'],
   ['statusDanger', 'statusDangerSurface'],
   ['accent', 'accentSurface'],
+  // The onboarding step bar and the slider's filled track use the accent on the track.
+  ['accent', 'progressTrack'],
   // Outlines that identify a control (WCAG 1.4.11).
   ['borderStrong', 'background'],
   ['borderStrong', 'surface'],
   ['focus', 'background'],
   ['focus', 'surface'],
+  // A switch must stand out from its row in both states, and its thumb from the track,
+  // because the thumb's position is what shows on or off.
+  ['switchTrackOff', 'background'],
+  ['switchTrackOff', 'surface'],
+  ['switchTrackOn', 'background'],
+  ['switchTrackOn', 'surface'],
+  ['switchThumb', 'switchTrackOff'],
+  ['switchThumb', 'switchTrackOn'],
 ];
 
 const SCHEMES: ColorScheme[] = ['light', 'dark'];

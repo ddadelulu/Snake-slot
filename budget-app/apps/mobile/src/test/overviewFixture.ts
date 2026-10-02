@@ -1,0 +1,77 @@
+/**
+ * A realistic get_overview answer: Anna, payday the 25th, today the 2nd of October.
+ * Spendable 6'200 − 2'335.50 fixed − 500 saving + 45 carried = 3'409.50; spent 650.00.
+ */
+export const OVERVIEW_JSON = {
+  today: '2026-10-02',
+  period: {
+    id: '0b6b5c1e-0000-4000-8000-0000000000aa',
+    starts_on: '2026-09-25',
+    ends_on: '2026-10-25',
+    income_rappen: 620000,
+    fixed_costs_rappen: 233550,
+    savings_rappen: 50000,
+    carried_over_rappen: 4500,
+  },
+  categories: [
+    {
+      category_id: 'c-groceries',
+      default_key: 'groceries',
+      name: null,
+      icon: null,
+      sort_order: 0,
+      archived: false,
+      budget_id: 'b-groceries',
+      budget_amount_rappen: 90000,
+      rollover_rappen: 0,
+      spent_rappen: 23000,
+    },
+    {
+      category_id: 'c-eating-out',
+      default_key: 'eating_out',
+      name: null,
+      icon: null,
+      sort_order: 1,
+      archived: false,
+      budget_id: 'b-eating-out',
+      budget_amount_rappen: 40000,
+      rollover_rappen: 0,
+      spent_rappen: 41000,
+    },
+    {
+      category_id: 'c-dog',
+      default_key: null,
+      name: 'Dog',
+      icon: null,
+      sort_order: 2,
+      archived: false,
+      budget_id: 'b-dog',
+      budget_amount_rappen: 10000,
+      rollover_rappen: 0,
+      spent_rappen: -500,
+    },
+  ],
+  uncategorized_spent_rappen: 1500,
+  recent_transactions: [
+    {
+      id: 't-1',
+      amount_rappen: -4250,
+      booked_at: '2026-10-02T10:15:00+00:00',
+      merchant: 'Migros',
+      category_id: 'c-groceries',
+      is_split: false,
+      source: 'manual',
+      note: null,
+    },
+    {
+      id: 't-2',
+      amount_rappen: 500,
+      booked_at: '2026-10-01T16:00:00+00:00',
+      merchant: 'Fressnapf',
+      category_id: 'c-dog',
+      is_split: false,
+      source: 'manual',
+      note: null,
+    },
+  ],
+};

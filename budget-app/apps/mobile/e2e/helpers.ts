@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 export const PASSWORD = 'correct-horse-battery-9';
 
@@ -7,12 +7,47 @@ export function uniqueEmail(label: string): string {
   return `e2e-${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 }
 
-export async function signUp(page: Page, email: string, password = PASSWORD) {
+/**
+ * Creates an account. By default it also runs through the questionnaire on the quickest path
+ * (income CHF 5'000, payday the 1st, everything else as suggested) and ends on Home.
+ */
+export async function signUp(
+  page: Page,
+  email: string,
+  options: { password?: string; onboard?: boolean } = {},
+) {
+  const { password = PASSWORD, onboard = true } = options;
   await page.goto('/sign-up');
   await page.getByTestId('sign-up-email').fill(email);
   await page.getByTestId('sign-up-password').fill(password);
   await page.getByTestId('sign-up-submit').click();
-  await expect(page.getByTestId('home-screen')).toBeVisible();
+  await expect(page.getByTestId('onboarding-income')).toBeVisible();
+  if (onboard) await quickOnboarding(page);
+}
+
+export async function quickOnboarding(page: Page) {
+  await page.getByTestId('onboarding-net-income').fill('5000');
+  await page.getByTestId('onboarding-payday-1').click();
+  await next(page, 'fixed-costs');
+  await next(page, 'savings');
+  await skip(page, 'categories');
+  await next(page, 'budgets');
+  await next(page, 'payment');
+  await skip(page, 'pain');
+  await next(page, 'notifications');
+  await skip(page, 'summary');
+  await page.getByTestId('onboarding-continue').click();
+  await expect(page.getByTestId('home-balance')).toBeVisible();
+}
+
+export async function next(page: Page, step: string) {
+  await page.getByTestId('onboarding-continue').click();
+  await expect(page.getByTestId(`onboarding-${step}`)).toBeVisible();
+}
+
+export async function skip(page: Page, step: string) {
+  await page.getByTestId('onboarding-skip').click();
+  await expect(page.getByTestId(`onboarding-${step}`)).toBeVisible();
 }
 
 export async function signIn(page: Page, email: string, password = PASSWORD) {
@@ -25,4 +60,37 @@ export async function signIn(page: Page, email: string, password = PASSWORD) {
 export async function openTab(page: Page, tab: string) {
   await page.getByTestId(`tab-${tab}`).click();
   await expect(page.getByTestId(`${tab}-screen`)).toBeVisible();
+}
+
+/**
+ * Talks to the same Supabase API the app uses, signed in as the test user, to book transactions
+ * the way a data source will (sources arrive in later milestones). Needs the URL and key the web
+ * build was made with: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY.
+ */
+export async function apiAs(request: APIRequestContext, email: string, password = PASSWORD) {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+  if (!url || !key) throw new Error('Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY');
+  const token = await request.post(`${url}/auth/v1/token?grant_type=password`, {
+    headers: { apikey: key },
+    data: { email, password },
+  });
+  expect(token.ok()).toBe(true);
+  const { access_token: accessToken } = (await token.json()) as { access_token: string };
+  const headers = { apikey: key, Authorization: `Bearer ${accessToken}` };
+
+  return {
+    async get<T>(path: string): Promise<T> {
+      const response = await request.get(`${url}/rest/v1/${path}`, { headers });
+      expect(response.ok(), await response.text()).toBe(true);
+      return (await response.json()) as T;
+    },
+    async insert(table: string, rows: object[]) {
+      const response = await request.post(`${url}/rest/v1/${table}`, {
+        headers: { ...headers, Prefer: 'return=minimal' },
+        data: rows,
+      });
+      expect(response.ok(), await response.text()).toBe(true);
+    },
+  };
 }

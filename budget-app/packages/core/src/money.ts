@@ -49,21 +49,17 @@ export function sumRappen(values: Iterable<Rappen>): Rappen {
 }
 
 /**
- * Exact floor division of integers. `Math.floor(a / b)` alone can be off by one for large
- * operands, so the quotient is corrected with integer multiplication.
+ * Exact floor division of integers, without relying on floating-point rounding: `a % b` is exact
+ * for safe integers and `a - a % b` is an exact multiple of `b`, so dividing it is exact too. The
+ * quotient then moves down by one when the remainder and the divisor have opposite signs.
  */
 export function floorDiv(a: number, b: number): number {
   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || b === 0) {
     throw new RangeError('floorDiv() takes safe integers and a non-zero divisor');
   }
-  let q = Math.floor(a / b);
-  if (b > 0) {
-    while (q * b > a) q -= 1;
-    while ((q + 1) * b <= a) q += 1;
-  } else {
-    while (q * b < a) q -= 1;
-    while ((q + 1) * b >= a) q += 1;
-  }
+  const remainder = a % b;
+  let q = (a - remainder) / b;
+  if (remainder !== 0 && (remainder < 0) !== (b < 0)) q -= 1;
   return q === 0 ? 0 : q;
 }
 
@@ -132,8 +128,9 @@ export function parseChf(input: string): Rappen | null {
     }
   }
 
+  // Every path above keeps all digits of `text`, which has at least one, so the two parts are
+  // never both empty here.
   if (decimalPart.length > 2 || !/^[0-9]*$/.test(decimalPart)) return null;
-  if (integerPart === '' && decimalPart === '') return null;
   if (integerPart.length > 13) return null;
 
   const francs = integerPart === '' ? 0 : Number(integerPart);

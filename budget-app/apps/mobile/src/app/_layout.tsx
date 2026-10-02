@@ -15,6 +15,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthNoticeProvider } from '@/features/auth/AuthNotice';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { ConfigErrorScreen } from '@/features/config/ConfigErrorScreen';
+import { StartupErrorScreen } from '@/features/config/StartupErrorScreen';
+import { useProfile } from '@/data/profile';
 import { LanguageProvider, ProfileLanguageSync, useLanguage } from '@/i18n';
 import { readEnv } from '@/lib/env';
 import { createQueryClient } from '@/lib/queryClient';
@@ -49,16 +51,21 @@ export default function RootLayout() {
 
 /**
  * Which part of the app is reachable follows the auth state (expo-router protected routes):
- * signed out → sign-in screens; signed in → the five tabs; signed in through a password reset
- * link → only the new-password screen until a new password is saved. The auth callback (deep
- * links from emails and OAuth) is reachable in every state.
+ * signed out → sign-in screens; signed in but not set up → the onboarding questionnaire; set up →
+ * the five tabs; signed in through a password reset link → only the new-password screen until a
+ * new password is saved. The auth callback (deep links from emails and OAuth) is reachable in
+ * every state.
  */
 function AppNavigator() {
   const { status, isPasswordRecovery } = useAuth();
   const { theme, scheme, loaded: themeLoaded } = useAppearance();
   const { loaded: languageLoaded } = useLanguage();
-  const ready = status !== 'loading' && themeLoaded && languageLoaded;
+  const profile = useProfile();
   const signedIn = status === 'signed_in';
+  const profileKnown = !signedIn || profile.data !== undefined;
+  const ready =
+    status !== 'loading' && themeLoaded && languageLoaded && (profileKnown || profile.isError);
+  const onboarded = profile.data?.onboarding_completed_at != null;
 
   useEffect(() => {
     if (ready) SplashScreen.hide();
@@ -87,6 +94,10 @@ function AppNavigator() {
   // The navigator mounts only once the auth state is known, so the URL the app was opened with
   // (a deep link, later a push notification) is resolved against the right guards instead of
   // being replaced by the sign-in screen while the stored session loads.
+  if (ready && !profileKnown) {
+    return <StartupErrorScreen onRetry={() => void profile.refetch()} />;
+  }
+
   if (!ready) {
     return (
       <View
@@ -108,8 +119,11 @@ function AppNavigator() {
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
-        <Stack.Protected guard={signedIn && !isPasswordRecovery}>
+        <Stack.Protected guard={signedIn && !isPasswordRecovery && onboarded}>
           <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+        <Stack.Protected guard={signedIn && !isPasswordRecovery && !onboarded}>
+          <Stack.Screen name="onboarding" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn && isPasswordRecovery}>
           <Stack.Screen name="reset-password" />
