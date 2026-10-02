@@ -29,6 +29,10 @@ export const SQLSTATE = {
   uniqueViolation: '23505',
   checkViolation: '23514',
   exclusionViolation: '23P01',
+  invalidParameterValue: '22023',
+  invalidTextRepresentation: '22P02',
+  numericValueOutOfRange: '22003',
+  objectNotInPrerequisiteState: '55000',
 } as const;
 export type SqlState = (typeof SQLSTATE)[keyof typeof SQLSTATE];
 
@@ -388,6 +392,48 @@ export const make = {
       ...values,
     }),
 };
+
+// ---------------------------------------------------------------------------------------------
+// Onboarded users and local dates
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Marks `userId` as onboarded (as postgres) without calling complete_onboarding: income, payday,
+ * time zone and leftover policy as given, onboarding_completed_at = now(). Leaves the connection
+ * acting as postgres.
+ */
+export async function onboard(db: Db, userId: string, values: Row = {}): Promise<void> {
+  await asPostgres(db);
+  const profile: Row = {
+    net_income_rappen: 520_000,
+    payday: 25,
+    savings_monthly_rappen: 50_000,
+    leftover_policy: 'rollover',
+    timezone: 'Europe/Zurich',
+    ...values,
+  };
+  const columns = Object.keys(profile);
+  await db.query(
+    `update public.profiles
+        set ${columns.map((column, i) => `${quoteIdentifier(column)} = $${i + 2}`).join(', ')},
+            onboarding_completed_at = now()
+      where id = $1`,
+    [userId, ...Object.values(profile)],
+  );
+}
+
+/**
+ * Today's date in `timeZone` as the database sees it: now() is the transaction's start time, so
+ * the answer stays the same for the whole test, even across midnight.
+ */
+export async function todayIn(db: Db, timeZone: string): Promise<string> {
+  const row = await queryOne<{ today: string }>(
+    db,
+    `select (now() at time zone $1)::date::text as today`,
+    [timeZone],
+  );
+  return row.today;
+}
 
 // ---------------------------------------------------------------------------------------------
 // One row per user table

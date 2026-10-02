@@ -22,10 +22,20 @@ jest.mock('@/lib/supabase', () => ({
   authRedirectUrl: jest.fn(() => 'batzen://auth/callback'),
 }));
 
-jest.mock('@/data/profile', () => ({
-  useProfile: () => ({ data: undefined }),
-  useUpdateProfile: () => ({ mutate: jest.fn(), isPending: false }),
-}));
+jest.mock('@/data/profile', () => {
+  const onboarded = {
+    language: 'en',
+    onboarding_completed_at: '2026-09-25T08:00:00.000000+00:00',
+    created_at: '2026-09-25T08:00:00.000000+00:00',
+    updated_at: '2026-09-25T08:00:00.000000+00:00',
+    timezone: 'Europe/Zurich',
+  };
+  return {
+    profileKeys: { all: ['profile'], detail: (id: string) => ['profile', id] },
+    useProfile: () => ({ data: onboarded, isError: false, refetch: jest.fn() }),
+    useUpdateProfile: () => ({ mutate: jest.fn(), isPending: false }),
+  };
+});
 
 jest.mock('@/features/auth/authApi', () => {
   const actual = jest.requireActual('@/features/auth/authApi');

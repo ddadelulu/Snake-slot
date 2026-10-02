@@ -56,9 +56,26 @@ describe('design tokens', () => {
   });
 
   it('keeps every control at least 44 pt tall', () => {
-    const { minTouchTarget, buttonHeight, inputHeight, rowHeight } = lightTheme.sizes;
+    const {
+      minTouchTarget,
+      buttonHeight,
+      inputHeight,
+      rowHeight,
+      dayCellHeight,
+      chipHeight,
+      stepperButton,
+      sliderHeight,
+    } = lightTheme.sizes;
     expect(minTouchTarget).toBe(44);
-    for (const size of [buttonHeight, inputHeight, rowHeight]) {
+    for (const size of [
+      buttonHeight,
+      inputHeight,
+      rowHeight,
+      dayCellHeight,
+      chipHeight,
+      stepperButton,
+      sliderHeight,
+    ]) {
       expect(size).toBeGreaterThanOrEqual(minTouchTarget);
     }
   });

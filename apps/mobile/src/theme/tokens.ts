@@ -50,6 +50,12 @@ export type ColorRoles = {
   statusDangerSurface: string;
   /** Unfilled part of a progress bar. */
   progressTrack: string;
+  /** Track of a switch that is off; at least 3:1 against the row so the control is visible. */
+  switchTrackOff: string;
+  /** Track of a switch that is on. */
+  switchTrackOn: string;
+  /** Switch thumb; at least 3:1 against both tracks, because its position shows the state. */
+  switchThumb: string;
   /** Dims the screen behind a bottom sheet or dialog. */
   scrim: string;
   /** Focus ring for keyboard and switch access. */
@@ -76,6 +82,9 @@ const lightColors: ColorRoles = {
   statusWarningSurface: '#FBEEDD',
   statusDangerSurface: '#FBE8E8',
   progressTrack: '#E1E5EB',
+  switchTrackOff: '#7C8594',
+  switchTrackOn: '#1F55C9',
+  switchThumb: '#FFFFFF',
   scrim: 'rgba(12, 14, 18, 0.45)',
   focus: '#1F55C9',
 };
@@ -100,6 +109,9 @@ const darkColors: ColorRoles = {
   statusWarningSurface: '#2E2313',
   statusDangerSurface: '#341B1C',
   progressTrack: '#2D323A',
+  switchTrackOff: '#717986',
+  switchTrackOn: '#4170DB',
+  switchThumb: '#F1F3F6',
   scrim: 'rgba(0, 0, 0, 0.6)',
   focus: '#7EA6FF',
 };
@@ -190,8 +202,20 @@ const sizes = {
   inputHeight: 48,
   rowHeight: 56,
   progressBarHeight: 8,
+  /** The thin "step 3 of 9" bar of the onboarding questionnaire. */
+  stepProgressHeight: 4,
   radioOuter: 22,
   radioInner: 10,
+  /** Day cells of the payday grid (7 per row, so the width is a seventh of the row). */
+  dayCellHeight: 48,
+  /** Selection chips (payment methods, categories) and their remove buttons. */
+  chipHeight: 44,
+  /** The round minus and plus buttons of a stepper. */
+  stepperButton: 44,
+  /** Keeps the stepper buttons still while the value changes width, e.g. from "9" to "10". */
+  stepperValueMinWidth: 64,
+  /** Touch height of a slider; the drawn track is thinner and centred in it. */
+  sliderHeight: 44,
   /** Readable line length on tablets and the web build. */
   maxContentWidth: 640,
 };

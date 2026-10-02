@@ -63,6 +63,13 @@ describe('sumRappen', () => {
   it('rejects invalid members', () => {
     expect(() => sumRappen([1, 0.5])).toThrow(RangeError);
   });
+
+  it('throws when the total leaves the safe integer range', () => {
+    // 900'720 × CHF 100 million is just above Number.MAX_SAFE_INTEGER.
+    const amounts = new Array<number>(900_720).fill(MAX_ABS_RAPPEN);
+    expect(() => sumRappen(amounts)).toThrow(/safe integer range/);
+    expect(sumRappen(amounts.slice(1))).toBe(900_719 * MAX_ABS_RAPPEN);
+  });
 });
 
 describe('floorDiv', () => {
@@ -85,6 +92,32 @@ describe('floorDiv', () => {
   it('rejects zero divisors and non-integers', () => {
     expect(() => floorDiv(1, 0)).toThrow(RangeError);
     expect(() => floorDiv(1.5, 1)).toThrow(RangeError);
+    expect(() => floorDiv(1, 0.5)).toThrow(RangeError);
+    expect(() => floorDiv(Number.MAX_SAFE_INTEGER + 1, 3)).toThrow(RangeError);
+  });
+
+  it('matches exact BigInt floor division at the edges of the safe range', () => {
+    const max = Number.MAX_SAFE_INTEGER;
+    const dividends = [0, 1, 2, 7, 999, max, max - 1, max - 2, 2 ** 52, 2 ** 52 + 1, 10 ** 15 + 7];
+    const divisors = [1, 2, 3, 7, 10, 100, 9999, 2 ** 26 + 1, 10 ** 10, 2 ** 52, max - 1, max];
+    const exactFloor = (a: number, b: number): number => {
+      const quotient = BigInt(a) / BigInt(b);
+      const remainder = BigInt(a) % BigInt(b);
+      const floored = remainder !== 0n && remainder < 0n !== b < 0 ? quotient - 1n : quotient;
+      return Number(floored);
+    };
+    for (const a of dividends) {
+      for (const b of divisors) {
+        for (const [x, y] of [
+          [a, b],
+          [-a, b],
+          [a, -b],
+          [-a, -b],
+        ] as const) {
+          expect(floorDiv(x, y)).toBe(exactFloor(x, y));
+        }
+      }
+    }
   });
 });
 
@@ -146,6 +179,11 @@ describe('parseChf', () => {
     '1.2.3',
     '12,50.00',
     '1.240.5',
+    '1,240.50.5',
+    '1.240,50,5',
+    '12.5050',
+    '12,5050',
+    '1,240.505',
     ',',
     '.',
     '--12',

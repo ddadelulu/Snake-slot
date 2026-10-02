@@ -88,3 +88,63 @@ _Tests:_ `e2e/auth.spec.ts`, `account.test.ts` (every table emptied), `navigatio
 Checked every M1 screen in English and German, light and dark (screenshots in the M1 review).
 Clear, calm and honest: empty tabs describe what will appear rather than promising features, error
 messages say what to do next, and destructive actions are red and confirmed. Approved.
+
+## Milestone 2 · Onboarding, budget engine, home screen
+
+### US-2.1 Set up my month in under five minutes
+
+As a new user, I want a short questionnaire that turns my income and bills into a budget, so I
+start with a plan instead of a blank screen.
+
+- One topic per screen, with a progress bar ("Step 3 of 9"), a back button on every step after the
+  first, and Skip on optional steps (saving, how I pay, warnings).
+- Steps: income (net income, payday, irregular income, hours per week), fixed costs (rent, health
+  insurance, phone/internet, travel pass, other insurance, subscriptions, tax provision,
+  leasing/debts, other), saving (monthly amount and/or a goal; what happens to money left at the
+  end of the month), categories (the ten defaults plus my own), budgets, how I pay, pain level,
+  warnings, summary.
+- Amounts accept Swiss and English notation (`1’250.50`, `1250,50`, `1,250`).
+- Closing the app keeps my answers; I continue where I stopped.
+- A new user can go from sign-up to a correct budget in under five minutes (tested end to end).
+
+_Tests:_ `draft.test.ts`, `onboarding.test.tsx`, `e2e/onboarding.spec.ts`.
+
+### US-2.2 A sensible budget suggestion I can adjust
+
+- After fixed costs and saving, what is left is split across my categories (in CHF 5 steps,
+  weighted by typical spending), and I adjust each with a slider.
+- I always see what there is to spend and how much is in budgets. If budgets exceed what I have,
+  I see by how much; if fixed costs and saving exceed my income, I am told to check my numbers.
+- "Use the suggested split" undoes my changes.
+
+_Tests:_ `suggest.test.ts`, `plan.test.ts`, `draft.test.ts`, `onboarding.test.tsx`.
+
+### US-2.3 "Your month" before I commit
+
+- The summary shows the period (payday to the day before the next payday), income, fixed costs,
+  saving, what is left to spend and every budget. "Start my month" saves everything at once;
+  if saving fails nothing is half-stored and I can try again.
+
+_Tests:_ `onboarding.test.ts` (database: atomic), `onboarding.test.tsx`, E2E.
+
+### US-2.4 My balance like a bank balance
+
+- Home shows "CHF … left this month", what I can spend per day and the days until payday.
+- Each category shows what is left of its budget with a bar that turns orange at 80 % and red at
+  100 %; overspending shows in red with the amount over.
+- A line tells me whether my money lasts until payday at the current pace, or the date it runs
+  out.
+- The last five purchases are listed with category and date.
+- Refunds give money back to their category; purchases not yet categorized still reduce my
+  balance; incoming money that is not a refund does not inflate it.
+
+_Tests:_ `overview.test.ts` (engine and database), `home.test.tsx`, E2E.
+
+### US-2.5 The month resets on payday
+
+- On payday a new month starts automatically with the same budgets. Money left over is carried
+  into the new month, moved to savings, or dropped, as I chose; with "carry over", a deficit is
+  carried too.
+- Missing several paydays (app not opened) rolls each month in turn; nothing is skipped.
+
+_Tests:_ `rollover.test.ts` (database), `leftover.test.ts`, `period.test.ts`.
