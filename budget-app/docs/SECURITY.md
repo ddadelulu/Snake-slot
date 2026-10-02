@@ -23,6 +23,20 @@ foundations honest. Report a vulnerability privately to the repository owner, no
 | Account deletion        | Deletes the auth user and cascades every table (tested table by table)                                                                                                                       | ✅     |
 | Rate limits             | Supabase Auth limits per IP for sign-in, sign-up, email sending; app shows `rate_limited`                                                                                                    | ✅     |
 
+## Milestone 2 review (2026-10-02)
+
+| Area         | Check                                                                                                                                                                                                                                                                                         | Result |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| New RPCs     | `complete_onboarding`, `get_overview`, `move_budget` run with the caller's rights under RLS; `ensure_current_period` and `roll_due_periods` are SECURITY DEFINER, use only `auth.uid()` (or run as the scheduler) and pin `search_path`; a catalog test allows exactly four definer functions | ✅     |
+| Grants       | anon executes nothing; authenticated executes exactly six RPCs; nothing in `private` is executable by clients (tested)                                                                                                                                                                        | ✅     |
+| Integrity    | Time zones validated by trigger; an onboarded profile must keep income and payday (CHECK); budget moves only inside the open period, rows locked in id order                                                                                                                                  | ✅     |
+| Concurrency  | The payday reset takes a per-user advisory lock; tested with two concurrent connections                                                                                                                                                                                                       | ✅     |
+| Client input | Onboarding payload read through a whitelist of keys; every value bounded by table constraints                                                                                                                                                                                                 | ✅     |
+
+**Accepted for M3:** clients still hold the Milestone 1 table grants, so they could set
+`onboarding_completed_at` or delete their own periods directly. This only affects their own data;
+M3 narrows `profiles` and `budget_periods` to column-level grants.
+
 ## Known limits, accepted for M1
 
 - **Access token after deletion or sign-out.** Supabase access tokens are JWTs valid up to one

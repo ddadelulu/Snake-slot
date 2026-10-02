@@ -387,13 +387,7 @@ describe('complete_onboarding() refuses', () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
       const { profile: _profile, ...rest } = payload();
-      await expectRejected(
-        db,
-        a,
-        rest,
-        SQLSTATE.invalidParameterValue,
-        'net_income_required',
-      );
+      await expectRejected(db, a, rest, SQLSTATE.invalidParameterValue, 'net_income_required');
     });
   });
 
@@ -438,9 +432,21 @@ describe('complete_onboarding() refuses', () => {
   it.each([
     ['payday 32', { profile: { payday: 32 } }, SQLSTATE.checkViolation],
     ['a negative net income', { profile: { net_income_rappen: -1 } }, SQLSTATE.checkViolation],
-    ['net income in francs', { profile: { net_income_rappen: 5200.5 } }, SQLSTATE.invalidTextRepresentation],
-    ['an unknown leftover policy', { profile: { leftover_policy: 'yolo' } }, SQLSTATE.checkViolation],
-    ['an unknown payment method', { profile: { payment_methods: ['bitcoin'] } }, SQLSTATE.checkViolation],
+    [
+      'net income in francs',
+      { profile: { net_income_rappen: 5200.5 } },
+      SQLSTATE.invalidTextRepresentation,
+    ],
+    [
+      'an unknown leftover policy',
+      { profile: { leftover_policy: 'yolo' } },
+      SQLSTATE.checkViolation,
+    ],
+    [
+      'an unknown payment method',
+      { profile: { payment_methods: ['bitcoin'] } },
+      SQLSTATE.checkViolation,
+    ],
     ['an unsupported language', { profile: { language: 'fr' } }, SQLSTATE.checkViolation],
     ['a null pain level', { profile: { pain_level: null } }, SQLSTATE.notNullViolation],
     [

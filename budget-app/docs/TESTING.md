@@ -66,6 +66,27 @@ Bugs found and fixed during M1 QA:
 5. A second device's default language overwrote the language chosen on the first device (E2E →
    sync rule now respects an account that was ever changed).
 
+## Milestone 2 results
+
+Run on 2026-10-02 against the same local stack:
+
+| Suite                                | Result                                                                                              |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Core (`@budget/core`)                | 14 files, 229 tests; coverage 100 % statements, branches, functions, lines (enforced by `npm test`) |
+| App (`@budget/mobile`, Jest)         | 44 suites, 706 tests                                                                                |
+| Database (`@budget/db`)              | 12 files, 510 tests (incl. engine ↔ SQL parity for every payday × every date 2024–2027)             |
+| End-to-end (Playwright)              | 15 tests                                                                                            |
+| Format, lint (0 warnings), typecheck | clean                                                                                               |
+
+New end-to-end proof: sign-up → all nine onboarding screens → Home shows CHF 3’429.50 left
+(6’200 − 2’270.50 fixed − 500 saving) in well under five minutes; then a purchase, a refund, an
+uncategorized purchase, the rent payment and the salary are booked through the API and Home shows
+exactly 3’350.50 left, with the groceries budget down by 64.00 and rent and salary changing nothing.
+Also: answers survive closing the app; over-commitment is flagged.
+
+Bugs found and fixed during M2 QA: moving budget inside a closed period (now refused); the total status not turning red with a
+negative balance; a duplicate test id on the pain-level step; `settleLeftover` returning −0.
+
 ## Edge cases owned by later milestones
 
 These are in the plan now so each milestone's sign-off checks them:
@@ -83,6 +104,10 @@ These are in the plan now so each milestone's sign-off checks them:
 | Several transactions arriving at once (queued cash moments)  | M4        | component + E2E                     |
 | Alert thresholds crossed twice, quiet hours, daily cap       | M4        | alert engine tests                  |
 | Expired subscription: read-only mode                         | M7        | E2E                                 |
+
+## QA sign-off, Milestone 2
+
+Signed off by Daniel Craig on 2026-10-02: all suites green, the bugs above fixed and covered.
 
 ## QA sign-off, Milestone 1
 

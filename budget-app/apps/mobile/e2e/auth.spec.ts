@@ -7,7 +7,7 @@ test.describe('account lifecycle', () => {
     const email = uniqueEmail('lifecycle');
     await signUp(page, email);
 
-    await expect(page.getByText('Your month starts here')).toBeVisible();
+    await expect(page.getByTestId('home-balance')).toContainText('left this month');
     for (const tab of ['transactions', 'assistant', 'insights', 'settings', 'home']) {
       await openTab(page, tab);
     }

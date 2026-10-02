@@ -340,12 +340,20 @@ comment on function public.roll_due_periods() is
 -- Onboarding (spec section 3): everything the nine steps collected, in one atomic call
 -- ---------------------------------------------------------------------------------------------
 
--- Input: { profile: {...}, fixed_costs: [...], categories: [...], notification_settings: {...} }
--- (docs/DATA_MODEL.md). Writes the profile fields, the fixed costs, the categories (sort_order =
--- 0-based position in the list), the first period (the one containing today in the given time
--- zone) with one budget per category, and the notification settings (missing keys keep their
--- current values). Values are checked by the tables' constraints and the time zone trigger; any
--- failure leaves nothing behind. Runs with the caller's rights, so RLS applies to every write.
+-- Input (keys as the columns they fill; other keys are ignored):
+--   profile:               net_income_rappen, payday (both required), irregular_income,
+--                          weekly_work_minutes, savings_monthly_rappen, savings_goal_name,
+--                          savings_goal_rappen, savings_goal_date, leftover_policy,
+--                          payment_methods, pain_level, sound_enabled, language, timezone
+--   fixed_costs:           [{ kind, label, amount_rappen }]            (optional)
+--   categories:            [{ default_key, name, budget_rappen }]      (at least one)
+--   notification_settings: { <alert type toggles>, quiet_hours_enabled, quiet_hours_start "HH:MM",
+--                            quiet_hours_end "HH:MM", max_per_day }    (optional)
+-- Writes the profile fields, the fixed costs, the categories (sort_order = 0-based position in
+-- the list), the first period (the one containing today in the given time zone) with one budget
+-- per category, and the notification settings (missing keys keep their current values). Values
+-- are checked by the tables' constraints and the time zone trigger; any failure leaves nothing
+-- behind. Runs with the caller's rights, so RLS applies to every write.
 create function public.complete_onboarding(p jsonb)
 returns uuid
 language plpgsql
@@ -624,6 +632,7 @@ declare
   from_row public.budgets;
   to_row public.budgets;
   locked_row public.budgets;
+  period_closed_at timestamptz;
 begin
   if p_amount_rappen is null or p_amount_rappen <= 0 then
     raise exception 'invalid_amount'
@@ -661,6 +670,16 @@ begin
     raise exception 'different_periods'
       using errcode = '22023', detail = 'Budget can only move between budgets of the same period.';
   end if;
+  -- Only the open period's plan can change. FOR SHARE waits for a payday reset that is closing
+  -- the period right now and then sees its result.
+  select bp.closed_at into period_closed_at
+    from public.budget_periods bp
+   where bp.id = from_row.period_id
+     for share;
+  if period_closed_at is not null then
+    raise exception 'period_closed'
+      using errcode = '22023', detail = 'Budget can only move within a period that is still open.';
+  end if;
   if p_amount_rappen > from_row.amount_rappen then
     raise exception 'insufficient_budget'
       using errcode = '22023',
@@ -676,7 +695,7 @@ end;
 $$;
 
 comment on function public.move_budget(uuid, uuid, bigint) is
-  'Moves an amount from one budget to another budget of the same period, atomically.';
+  'Moves an amount from one budget to another budget of the same open period, atomically.';
 
 -- ---------------------------------------------------------------------------------------------
 -- Schedule: the payday reset runs hourly (at minute 5) for everyone whose period has ended

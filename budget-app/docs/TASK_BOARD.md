@@ -42,19 +42,19 @@ Not active in M1 (no work assigned, by design): Jim Carrey (M4), Anthony Hopkins
 DiCaprio (M6), Benedict Cumberbatch (M3, M6), Scarlett Johansson (M2 budget suggestions, M5),
 Liam Neeson (M4), Brad Pitt (M7).
 
-## Milestone 2 · Onboarding + budget engine + home screen ⏳
+## Milestone 2 · Onboarding + budget engine + home screen ✅ (approved, see sign-off below)
 
-| ID    | Task                                                                                                                                                                                                         | Owner                              | Review                    |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- | ------------------------- |
-| M2-01 | M2 user stories (questionnaire, summary "Your month", home)                                                                                                                                                  | Tom Hanks                          | Samuel L. Jackson         |
-| M2-02 | Budget engine: spendable, per-category remaining, main balance, daily allowance, pace forecast, payday period boundaries (incl. months without the payday), rollover/savings/reset, refunds, overspend cover | Russell Crowe                      | Daniel Craig              |
-| M2-03 | Onboarding flow: 9 steps, one topic per screen, progress bar, back, skip where optional; writes profile, fixed costs, categories, first period and budgets                                                   | Anthony Hopkins                    | Tom Hanks                 |
-| M2-04 | Budget split suggestion (rules-based now, assistant later) with sliders and over-allocation warning                                                                                                          | Scarlett Johansson + Russell Crowe | Tom Hanks                 |
-| M2-05 | Home screen: BalanceHeader, category cards, last 5 transactions, "+" button slot, AI bar slot                                                                                                                | Robert Downey Jr.                  | Tom Hanks                 |
-| M2-06 | Payday period job (create next period, apply leftover policy) as a scheduled Edge Function                                                                                                                   | Matt Damon                         | Russell Crowe, Tom Cruise |
-| M2-07 | Onboarding gate in navigation (signed in but not onboarded → onboarding)                                                                                                                                     | Robert Downey Jr.                  | Samuel L. Jackson         |
-| M2-08 | Tests: engine 100 % coverage, onboarding E2E "sign-up to correct budget in under 5 minutes"                                                                                                                  | Daniel Craig                       | –                         |
-| M2-09 | Docs + help texts for onboarding                                                                                                                                                                             | Morgan Freeman                     | Tom Hanks                 |
+| ID    | Task                                                                                                                                                                                                                                                | Owner                              | Review                    | Status |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------- | ------ |
+| M2-01 | M2 user stories (questionnaire, summary "Your month", home)                                                                                                                                                                                         | Tom Hanks                          | Samuel L. Jackson         | ✅     |
+| M2-02 | Budget engine: spendable, per-category remaining, main balance, daily allowance, pace forecast, payday period boundaries (incl. months without the payday), rollover/savings/reset, refunds, overspend cover                                        | Russell Crowe                      | Daniel Craig              | ✅     |
+| M2-03 | Onboarding flow: 8 question steps + summary (step 9 "connect sources" arrives with the first source in M3, D-024), one topic per screen, progress bar, back, skip where optional; writes profile, fixed costs, categories, first period and budgets | Anthony Hopkins                    | Tom Hanks                 | ✅     |
+| M2-04 | Budget split suggestion (rules-based now, assistant later) with sliders and over-allocation warning                                                                                                                                                 | Scarlett Johansson + Russell Crowe | Tom Hanks                 | ✅     |
+| M2-05 | Home screen: BalanceHeader, pace line, category cards, last 5 transactions ("+" button in M3, AI bar in M5, D-027)                                                                                                                                  | Robert Downey Jr.                  | Tom Hanks                 | ✅     |
+| M2-06 | Payday period job (create next period, apply leftover policy): `roll_due_periods` hourly via pg_cron, plus on demand at app start (D-022)                                                                                                           | Matt Damon                         | Russell Crowe, Tom Cruise | ✅     |
+| M2-07 | Onboarding gate in navigation (signed in but not onboarded → onboarding)                                                                                                                                                                            | Robert Downey Jr.                  | Samuel L. Jackson         | ✅     |
+| M2-08 | Tests: engine 100 % coverage, onboarding E2E "sign-up to correct budget in under 5 minutes"                                                                                                                                                         | Daniel Craig                       | –                         | ✅     |
+| M2-09 | Docs + help texts for onboarding                                                                                                                                                                                                                    | Morgan Freeman                     | Tom Hanks                 | ✅     |
 
 ## Milestone 3 · Manual add + CSV/camt.053 import + categorization ⏳
 
@@ -120,6 +120,18 @@ Liam Neeson (M4), Brad Pitt (M7).
 | Apple App Store / Google Play developer accounts, RevenueCat project                  | Store billing                                                   | M7        |
 | Legal review of privacy policy and terms (revDSG + GDPR)                              | Julia: needs a lawyer                                           | M7        |
 | Trademark check for the final app name                                                | Julia                                                           | M7        |
+
+## M2 sign-off
+
+- **Daniel Craig (QA):** signed off. Engine 229 tests at 100 % coverage (enforced), app 706 tests,
+  database 510 tests, end-to-end 15 tests incl. sign-up → full questionnaire → correct Home and
+  booked transactions updating every number ([TESTING.md](TESTING.md#milestone-2-results)).
+- **Tom Cruise (security):** M2 review passed; one accepted item for M3 (column-level grants),
+  [SECURITY.md](SECURITY.md#milestone-2-review-2026-10-02).
+- **Julia Roberts (privacy):** new fields are purpose-bound; nothing new leaves Supabase;
+  [PRIVACY.md](PRIVACY.md).
+- **Tom Hanks (product):** questionnaire and Home reviewed in English and German, light and dark.
+- **Samuel L. Jackson:** Milestone 2 approved. Milestone 3 may start on the product owner's go.
 
 ## M1 sign-off
 

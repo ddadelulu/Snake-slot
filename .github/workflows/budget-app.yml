@@ -82,9 +82,11 @@ jobs:
       - name: Build the web app against it
         run: |
           eval "$(supabase status -o env)"
-          export EXPO_PUBLIC_SUPABASE_URL="$API_URL"
-          export EXPO_PUBLIC_SUPABASE_KEY="${PUBLISHABLE_KEY:-$ANON_KEY}"
-          npm run build:web --workspace @budget/mobile
+          # The end-to-end tests also call the API directly (to book transactions), so keep both.
+          echo "EXPO_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_KEY=${PUBLISHABLE_KEY:-$ANON_KEY}" >> "$GITHUB_ENV"
+          EXPO_PUBLIC_SUPABASE_URL="$API_URL" EXPO_PUBLIC_SUPABASE_KEY="${PUBLISHABLE_KEY:-$ANON_KEY}" \
+            npm run build:web --workspace @budget/mobile
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
         working-directory: budget-app/apps/mobile

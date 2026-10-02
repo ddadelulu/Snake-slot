@@ -762,7 +762,22 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      complete_onboarding: { Args: { p: Json }; Returns: string };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
+      ensure_current_period: { Args: Record<PropertyKey, never>; Returns: string };
+      get_overview: { Args: Record<PropertyKey, never>; Returns: Json };
+      move_budget: {
+        Args: { p_amount_rappen: number; p_from_budget: string; p_to_budget: string };
+        Returns: undefined;
+      };
+      period_containing: {
+        Args: { p_date: string; p_payday: number };
+        Returns: {
+          ends_on: string;
+          starts_on: string;
+        }[];
+      };
+      roll_due_periods: { Args: Record<PropertyKey, never>; Returns: number };
     };
     Enums: {
       [_ in never]: never;

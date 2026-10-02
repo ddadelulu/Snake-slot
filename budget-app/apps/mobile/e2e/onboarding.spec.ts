@@ -52,7 +52,7 @@ test.describe('onboarding to a correct month', () => {
 
     // Summary "Your month", then Home.
     await expect(page.getByTestId('summary-spendable')).toContainText('CHF 3,429.50');
-    await page.getByTestId('onboarding-continue').click();
+    await page.getByTestId('onboarding-continue').filter({ visible: true }).click();
     await expect(page.getByTestId('home-balance')).toContainText('3,429.50');
     await expect(page.getByTestId('home-no-transactions')).toBeVisible();
     expect(Date.now() - started).toBeLessThan(5 * 60_000);
@@ -69,15 +69,25 @@ test.describe('onboarding to a correct month', () => {
 
     // Book what sources will deliver later: a purchase, a refund, an uncategorized purchase, the
     // rent payment (a fixed cost, already planned) and the salary (income, not a refund).
-    const [groceries] = await api.get<{ id: string }[]>('categories?select=id&default_key=eq.groceries');
+    const [groceries] = await api.get<{ id: string }[]>(
+      'categories?select=id&default_key=eq.groceries',
+    );
     const [rent] = await api.get<{ id: string }[]>('fixed_costs?select=id&kind=eq.rent');
-    const groceriesBudget = budgets.find((budget) => budget.category_id === groceries!.id)!.amount_rappen;
+    const groceriesBudget = budgets.find(
+      (budget) => budget.category_id === groceries!.id,
+    )!.amount_rappen;
     const now = new Date().toISOString();
     const user = (await api.get<{ id: string }[]>('profiles?select=id'))[0]!.id;
     const base = { user_id: user, booked_at: now, source: 'manual' };
     await api.insert('transactions', [
       { ...base, amount_rappen: -8400, merchant: 'Migros', category_id: groceries!.id },
-      { ...base, amount_rappen: 2000, merchant: 'Migros', category_id: groceries!.id, note: 'Refund' },
+      {
+        ...base,
+        amount_rappen: 2000,
+        merchant: 'Migros',
+        category_id: groceries!.id,
+        note: 'Refund',
+      },
       { ...base, amount_rappen: -1500, merchant: 'Kiosk' },
       { ...base, amount_rappen: -185000, merchant: 'Verwaltung AG', fixed_cost_id: rent!.id },
       { ...base, amount_rappen: 620000, merchant: 'Employer' },
@@ -87,7 +97,9 @@ test.describe('onboarding to a correct month', () => {
     await page.reload();
     await expect(page.getByTestId('home-balance')).toContainText('3,350.50');
     const remaining = ((groceriesBudget - 6400) / 100).toFixed(2);
-    await expect(page.getByTestId('home-category-groceries')).toContainText(`CHF ${remaining.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} left`);
+    await expect(page.getByTestId('home-category-groceries')).toContainText(
+      `CHF ${remaining.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} left`,
+    );
     await expect(page.getByTestId('home-uncategorized')).toContainText('CHF 15.00');
     await expect(page.getByTestId('home-transaction-0')).toBeVisible();
   });

@@ -20,7 +20,7 @@ test.describe('language and appearance', () => {
     const otherPage = await otherDevice.newPage();
     await signIn(otherPage, email);
     await expect(otherPage.getByTestId('home-screen')).toBeVisible();
-    await expect(otherPage.getByText('Hier beginnt dein Monat')).toBeVisible();
+    await expect(otherPage.getByTestId('home-balance')).toContainText('übrig diesen Monat');
     await otherDevice.close();
   });
 

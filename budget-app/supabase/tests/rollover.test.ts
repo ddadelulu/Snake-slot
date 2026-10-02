@@ -90,7 +90,8 @@ async function ensureCurrentPeriod(db: Db, userId: string): Promise<string | nul
 /** The period `count` periods before the one containing `today` (payday unchanged). */
 function periodsBefore(today: string, payday: number, count: number): Period {
   let period = periodContaining(today, payday);
-  for (let i = 0; i < count; i += 1) period = periodContaining(addDays(period.startsOn, -1), payday);
+  for (let i = 0; i < count; i += 1)
+    period = periodContaining(addDays(period.startsOn, -1), payday);
   return period;
 }
 
@@ -291,22 +292,19 @@ describe('ensure_current_period()', () => {
     ['rollover', 247_000],
     ['savings', 0],
     ['reset', 0],
-  ] as const)(
-    'with policy %s records the leftover and carries %i',
-    async (policy, carried) => {
-      await withRollback(async (db) => {
-        const { user } = await lapsedUser(db, { policy });
-        await ensureCurrentPeriod(db, user);
-        const [closed, opened] = await periodsOf(db, user);
-        expect([closed?.closed_now, closed?.leftover_action, closed?.leftover_rappen]).toEqual([
-          true,
-          policy,
-          247_000,
-        ]);
-        expect(opened?.carried_over_rappen).toBe(carried);
-      });
-    },
-  );
+  ] as const)('with policy %s records the leftover and carries %i', async (policy, carried) => {
+    await withRollback(async (db) => {
+      const { user } = await lapsedUser(db, { policy });
+      await ensureCurrentPeriod(db, user);
+      const [closed, opened] = await periodsOf(db, user);
+      expect([closed?.closed_now, closed?.leftover_action, closed?.leftover_rappen]).toEqual([
+        true,
+        policy,
+        247_000,
+      ]);
+      expect(opened?.carried_over_rappen).toBe(carried);
+    });
+  });
 
   it.each([
     ['rollover', -53_000],
@@ -516,7 +514,10 @@ describe('roll_due_periods()', () => {
   ): Promise<{ user: string; periodId: string }> {
     const user = await createUser(db);
     await onboard(db, user, profile);
-    const periodId = await make.period(db, user, { starts_on: addDays(endsOn, -30), ends_on: endsOn });
+    const periodId = await make.period(db, user, {
+      starts_on: addDays(endsOn, -30),
+      ends_on: endsOn,
+    });
     return { user, periodId };
   }
 
@@ -686,6 +687,55 @@ describe('move_budget()', () => {
       ]);
       expect(error.message).toBe(message);
       expect(await amounts(db, all)).toEqual(before);
+    });
+  });
+
+  it('refuses to move within a closed period (22023 period_closed)', async () => {
+    await withRollback(async (db) => {
+      const { a, groceries, velo } = await budgets(db);
+      await db.query(
+        `update public.budget_periods
+            set closed_at = now(), leftover_action = 'rollover', leftover_rappen = 0
+          where id = (select period_id from public.budgets where id = $1)`,
+        [groceries],
+      );
+      await asUser(db, a);
+      const error = await expectSqlError(db, SQLSTATE.invalidParameterValue, MOVE, [
+        groceries,
+        velo,
+        100,
+      ]);
+      expect(error.message).toBe('period_closed');
+      expect(await amounts(db, [groceries, velo])).toEqual([40_000, 10_000]);
+    });
+  });
+
+  it('after the payday reset, only the new period’s budgets can move', async () => {
+    await withRollback(async (db) => {
+      const { user, firstId, categories } = await lapsedUser(db);
+      const currentId = (await ensureCurrentPeriod(db, user)) ?? '';
+      await asPostgres(db);
+      const budgetIn = async (periodId: string, categoryId: string) =>
+        (
+          await queryOne<{ id: string }>(
+            db,
+            'select id::text from public.budgets where period_id = $1 and category_id = $2',
+            [periodId, categoryId],
+          )
+        ).id;
+      const old = [
+        await budgetIn(firstId, categories.groceries),
+        await budgetIn(firstId, categories.velo),
+      ];
+      const current = [
+        await budgetIn(currentId, categories.groceries),
+        await budgetIn(currentId, categories.velo),
+      ];
+      await asUser(db, user);
+      const error = await expectSqlError(db, SQLSTATE.invalidParameterValue, MOVE, [...old, 5_000]);
+      expect(error.message).toBe('period_closed');
+      await db.query(MOVE, [...current, 5_000]);
+      expect(await amounts(db, [...old, ...current])).toEqual([40_000, 20_000, 35_000, 25_000]);
     });
   });
 

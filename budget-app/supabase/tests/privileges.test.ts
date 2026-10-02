@@ -297,12 +297,9 @@ describe('schema private', () => {
         `select * from private.period_totals($1, '2026-09-25', '2026-10-25', 'Europe/Zurich')`,
         [a],
       );
-      await expectSqlError(
-        db,
-        SQLSTATE.insufficientPrivilege,
-        'select private.roll_periods($1)',
-        [a],
-      );
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, 'select private.roll_periods($1)', [
+        a,
+      ]);
     });
   });
 
