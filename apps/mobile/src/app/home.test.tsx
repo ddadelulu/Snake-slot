@@ -54,12 +54,16 @@ describe('home', () => {
     expect(screen.getByTestId('home-pace')).toHaveTextContent(
       'At this pace, your money lasts until payday.',
     );
-    expect(screen.getByTestId('home-carried')).toHaveTextContent('Includes CHF 45.00 from last month.');
+    expect(screen.getByTestId('home-carried')).toHaveTextContent(
+      'Includes CHF 45.00 from last month.',
+    );
   });
 
   it('shows each category with what is left, and overspending in red', async () => {
     start(() => ({ data: OVERVIEW_JSON, error: null }));
-    expect(await screen.findByTestId('home-category-groceries')).toHaveTextContent(/CHF 670\.00 left/);
+    expect(await screen.findByTestId('home-category-groceries')).toHaveTextContent(
+      /CHF 670\.00 left/,
+    );
     expect(screen.getByTestId('home-category-eating_out')).toHaveTextContent(/CHF 10\.00 over/);
     expect(screen.getByTestId('home-category-Dog')).toHaveTextContent(/CHF 105\.00 left/);
     expect(screen.getByTestId('home-uncategorized')).toHaveTextContent(

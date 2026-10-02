@@ -28,7 +28,11 @@ describe('parseOverview', () => {
       rolloverRappen: 0,
       spentRappen: -500,
     });
-    expect(data?.recentTransactions[0]).toMatchObject({ merchant: 'Migros', amountRappen: -4250, isSplit: false });
+    expect(data?.recentTransactions[0]).toMatchObject({
+      merchant: 'Migros',
+      amountRappen: -4250,
+      isSplit: false,
+    });
   });
 
   it('returns null when there is no month yet', () => {
@@ -40,10 +44,19 @@ describe('parseOverview', () => {
     const cases: Array<[(json: ReturnType<typeof clone>) => void, string]> = [
       [(json) => Object.assign(json, { today: '2.10.2026' }), 'today'],
       [(json) => Object.assign(json.period, { income_rappen: 12.5 }), 'period.income_rappen'],
-      [(json) => Object.assign(json.categories[0]!, { default_key: 'casino' }), 'categories[0].default_key'],
+      [
+        (json) => Object.assign(json.categories[0]!, { default_key: 'casino' }),
+        'categories[0].default_key',
+      ],
       [(json) => Object.assign(json.categories[1]!, { archived: 'no' }), 'categories[1]'],
-      [(json) => Object.assign(json.recent_transactions[0]!, { source: 'telepathy' }), 'recent_transactions[0].source'],
-      [(json) => Object.assign(json.recent_transactions[1]!, { is_split: 1 }), 'recent_transactions[1].is_split'],
+      [
+        (json) => Object.assign(json.recent_transactions[0]!, { source: 'telepathy' }),
+        'recent_transactions[0].source',
+      ],
+      [
+        (json) => Object.assign(json.recent_transactions[1]!, { is_split: 1 }),
+        'recent_transactions[1].is_split',
+      ],
       [(json) => Object.assign(json, { categories: {} }), 'categories'],
     ];
     for (const [mutate, field] of cases) {

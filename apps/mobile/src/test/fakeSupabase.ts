@@ -35,7 +35,10 @@ export function profileRow(overrides: Partial<Tables<'profiles'>> = {}): Tables<
   };
 }
 
-export type RpcHandler = (args: unknown) => { data: unknown; error: { message: string; code?: string } | null };
+export type RpcHandler = (args: unknown) => {
+  data: unknown;
+  error: { message: string; code?: string } | null;
+};
 
 export type FakeSupabaseState = {
   profile: Tables<'profiles'>;
@@ -67,7 +70,11 @@ export function createFakeSupabase(options: {
           eq: () => ({
             select: () => ({
               single: async () => {
-                state.profile = { ...state.profile, ...patch, updated_at: new Date().toISOString() };
+                state.profile = {
+                  ...state.profile,
+                  ...patch,
+                  updated_at: new Date().toISOString(),
+                };
                 return ok({ ...state.profile });
               },
             }),

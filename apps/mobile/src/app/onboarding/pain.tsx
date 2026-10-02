@@ -24,7 +24,7 @@ export default function PainStep() {
         selected={draft.painLevel}
         onSelect={(painLevel) => update({ painLevel })}
         accessibilityLabel={t('onboarding.pain.title')}
-        testID="onboarding-pain"
+        testID="onboarding-pain-levels"
       />
     </OnboardingScreen>
   );
