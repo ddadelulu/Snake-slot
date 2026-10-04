@@ -90,8 +90,7 @@ Every board is drawn by this algorithm. The weights and tables depend on the **m
    qualifying bite: **OUROBOROS** (§6).
 3. If a snake is on the board: its body cells become WILD (`snakeWild`).
 4. **Evaluate** clusters (§7). Spin win = Σ cluster pays × multiplier. Apply the win cap (§9).
-5. If a snake was present: it slithers off the board (`snakeExit`) and fresh gems fill its cells (§5.6).
-   Nothing carries over.
+5. If a snake was present: `snakeExit` (§5.6). Nothing carries over.
 6. If `k ≥ 3` KEYs landed: **THE HUNT** is awarded (§8.1): 3→10, 4→12, 5→15 free spins.
 7. `finalWin`.
 
@@ -173,6 +172,9 @@ each cell it uncovers (`snakeExit.fill`, in that order). The spin's win is alrea
 drawn so that **each differs from every orthogonal neighbour** (already-filled ones included): none can form
 or extend a cluster, so the board never shows an unpaid win. After a max win there is no exit fill (the vault
 stays empty). Nothing carries over.
+
+Presentation (§13, D-044): the frontend keeps the hatchling on the board after the round and does not draw the
+exit fill; the next reveal replaces the whole board. The book still carries `snakeExit.fill` (math unchanged).
 
 ---
 
@@ -410,6 +412,9 @@ it is, that is recorded in DECISIONS.
   max **THE VAULT IS EMPTY**. The counters count up and can be skipped with a tap or spacebar.
 - Anticipation: once 2 KEYs have landed during the drop, the guardian's eye opens, the lights dim and
   a heartbeat plays. The frontend reads this from the reveal board (presentation only).
+- End of a base game round (D-044): the hatchling stays where it finished (breathing, flicking its tongue,
+  win outlines kept) until the next spin starts, then fades as the new board drops (or as THE HUNT starts).
+  `snakeExit.fill` is not drawn: those cells stay under the snake and the next reveal replaces the board.
 - The frontend never decides outcomes and never uses `Math.random()` for results. Randomness is allowed
   only for cosmetics (dust, particles).
 

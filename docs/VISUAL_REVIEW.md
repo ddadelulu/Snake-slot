@@ -89,6 +89,12 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 45 | Symbols | Saturation × 0.7, contrast × 0.94; dark ink outline with a fine gold hairline |
 | 46 | Background | Moonlit vault: steel-blue walls, cool blind light, teal rim, mist and soft gold glints; brass door stays warm |
 
+## Owner round: the snake stays (D-044)
+
+| # | Where | Change |
+|---|---|---|
+| 47 | End of a base game round | The hatchling rests where it finished (breathing, tongue flicks, outlines kept) until the next spin, then fades as the new board drops; replaces the slither-off and exit refill (#28, #29) |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

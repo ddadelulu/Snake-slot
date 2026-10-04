@@ -382,17 +382,6 @@ export class SnakeView extends Container {
 		this.enterClip = 1;
 	}
 
-	/** Slither off in one continuous glide (linear per cell, about a second in total). onStep(k) fires as the
-	 * k-th step completes, i.e. once the tail has uncovered its k-th cell (counted from the tail). */
-	async exitAlong(points: Pt[], msPerCell: number, onStep?: (k: number) => void) {
-		const ms = Math.min(msPerCell, 1100 / Math.max(1, points.length));
-		for (let k = 0; k < points.length; k++) {
-			await this.step(points[k], false, ms, false, ease.linear);
-			onStep?.(k);
-		}
-		this.visible = false;
-	}
-
 	/** Positions of the (possibly moving) head and body polyline for this frame. */
 	private currentPolyline(): Pt[] {
 		const pts: Pt[] = [];

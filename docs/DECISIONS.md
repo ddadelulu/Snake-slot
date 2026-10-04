@@ -354,3 +354,12 @@ fine gold hairline outside it), so every symbol reads crisply on the dark velvet
 steel-blue riveted walls, cool moonlight through the blinds from the upper left, a teal rim on the right, low mist
 over the counter and a few soft gold glints; the brass vault door and trim stay warm against it. The in-engine
 blind light, floating dust and the light pool on the velvet follow (cool). Style bible §2 updated.
+
+### D-044: The hatchling stays on the board after a base game round
+The owner could not see the snake at all with fast spin: in turbo the whole hatch, walk and exit took well under
+two seconds, and the snake slithered off at the end of every round. Now the round ends with the hatchling resting
+where it finished (still breathing and flicking its tongue, the win outlines kept, its wild glow eased off). It
+leaves only when the next spin starts, fading in 120 ms (turbo) / 300 ms as the new board drops, or as THE HUNT
+starts. Presentation only: the books, RTP and verification are unchanged. The book's `snakeExit.fill` (fresh gems
+for the hatchling's cells) is still produced and checked, but no longer drawn, because those cells stay under the
+snake until the next reveal replaces the whole board. Rules text, SPEC §5.6 and §13 updated.

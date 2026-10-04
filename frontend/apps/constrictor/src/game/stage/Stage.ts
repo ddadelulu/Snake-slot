@@ -44,6 +44,8 @@ export class Stage {
 	snake!: SnakeView;
 	private guardian = new Container();
 	private eyeOpen = 0;
+	private parked = false; // a finished base-game hatchling resting on the board until the next spin
+	private snakeToken = 0; // bumped whenever a new snake takes the board (cancels a parked fade)
 	private slot: SlotRect = { x: 0, y: 0, size: 100 };
 	private camZoom = 1;
 	private camFocus = { x: BOARD / 2, y: BOARD / 2 };
@@ -224,6 +226,7 @@ export class Stage {
 
 	async reveal(board: (SymbolCode | null)[][], keys: Cell[], gameType: string) {
 		this.board.clearWins();
+		void this.releaseSnake(); // last round's hatchling fades as the new board drops
 		// the post-OUROBOROS venom sheen and the wild glow settle as the next board drops
 		const ring0 = this.snake.ring, wild0 = this.snake.wild;
 		if (ring0 > 0 || wild0 > 0) void clock.tween(400, (t) => ((this.snake.ring = ring0 * (1 - t)), (this.snake.wild = wild0 * (1 - t))));
@@ -250,6 +253,7 @@ export class Stage {
 		await this.board.eggCrack(at);
 		sound.play('hatch_hiss', { volume: 0.8 });
 		const p = center(at);
+		this.claimSnake();
 		this.snake.setPath([p]);
 		this.snake.visible = true;
 		await this.snake.enter(this.speedMs(360, 120));
@@ -258,6 +262,7 @@ export class Stage {
 
 	async snakeEnter(body: Cell[], edge: string) {
 		const pts = body.map((c) => center(c));
+		this.claimSnake();
 		// start off-board beyond the tail edge and slide in along the body path
 		this.snake.setPath(pts);
 		sound.loop('slither_loop', { volume: 0.5 });
@@ -361,45 +366,44 @@ export class Stage {
 		await this.board.showWins(wins, this.speedMs(900, 380));
 	}
 
-	async snakeExit(fill: { at: Cell; sym: SymbolCode }[] = []) {
-		this.snake.wild = 0;
-		this.snake.ring = 0;
-		const head = this.snake.path[0];
-		if (!head) return;
-		// slither off the nearest edge, one cell at a time
-		const c = this.cellAt(head);
-		const dists = [c[0], 6 - c[0], c[1], 6 - c[1]];
-		const k = dists.indexOf(Math.min(...dists));
-		const dir = [[-1, 0], [1, 0], [0, -1], [0, 1]][k];
-		const out: Pt[] = [];
-		let cur: [number, number] = [c[0], c[1]];
-		const n = this.snake.path.length + dists[k] + 2;
-		for (let i = 0; i < n; i++) {
-			cur = [cur[0] + dir[0], cur[1] + dir[1]];
-			out.push(center(cur));
-		}
-		sound.loop('slither_loop', { volume: 0.3 });
-		// the tail leaves the body cells first to last; each gets its fresh gem as it is uncovered. The win
-		// outlines (which counted the wild body) fade as the refill starts, so they never frame fresh gems.
-		const ms = this.speedMs(120, 45);
-		const drops: Promise<void>[] = fill.length ? [this.board.fadeWins(this.speedMs(300, 120))] : [];
-		await this.snake.exitAlong(out, ms, (k) => {
-			const f = fill[k];
-			if (f) {
-				drops.push(this.board.dropIn(f.at, f.sym, this.speedMs(260, 110)));
-				sound.play('gem_tick', { volume: 0.22, rate: 0.9 + 0.05 * (k % 3) });
-			}
-		});
-		sound.stop('slither_loop');
-		this.snake.setPath([]);
-		await Promise.all(drops);
+	/**
+	 * End of a base game round: the hatchling stays where it finished (breathing, flicking its tongue) so the
+	 * player sees it even in turbo, and leaves when the next spin starts (releaseSnake). Its cells stay under it
+	 * (the book's exit fill is not drawn): the next reveal drops a whole new board as the snake fades.
+	 */
+	async snakeExit() {
+		if (!this.snake.path.length) return;
+		this.parked = true;
+		const wild0 = this.snake.wild, ring0 = this.snake.ring;
+		await clock.tween(this.speedMs(400, 150), (t) => ((this.snake.wild = wild0 * (1 - t)), (this.snake.ring = ring0 * (1 - t))));
+		this.snake.flick();
+	}
+
+	/** The parked hatchling fades away (the next board is dropping, or the feature is starting). */
+	async releaseSnake() {
+		if (!this.parked) return;
+		this.parked = false;
+		const token = this.snakeToken;
+		await clock.tween(this.speedMs(300, 120), (t) => {
+			if (token === this.snakeToken) this.snake.alpha = 1 - t;
+		}, ease.in);
+		if (token === this.snakeToken) this.clearSnake();
+	}
+
+	/** A new snake takes the board: cancel a parked one's fade and restore full opacity. */
+	private claimSnake() {
+		this.snakeToken++;
+		this.parked = false;
+		this.snake.alpha = 1;
 	}
 
 	setSnakeImmediate(cells: Cell[]) {
+		this.claimSnake();
 		this.snake.setPath(cells.map((c) => center(c)));
 	}
 
 	clearSnake() {
+		this.claimSnake();
 		this.snake.setPath([]);
 		this.snake.wild = 0;
 		this.snake.ring = 0;

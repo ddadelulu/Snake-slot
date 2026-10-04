@@ -310,13 +310,6 @@ export class BoardView extends Container {
 		for (const cv of this.cells) cv.scale.set(1);
 	}
 
-	/** Fade the win outlines out (the snake is leaving: its cells refill, so the outlines no longer fit). */
-	async fadeWins(ms: number) {
-		if (!this.winLayer.children.length) return;
-		await clock.tween(ms, (t) => (this.winLayer.alpha = 1 - t));
-		this.clearWins();
-	}
-
 	/** Brass outline around the union of each winning cluster. */
 	async showWins(clusters: { positions: Cell[]; symbol: string }[], ms: number) {
 		this.clearWins();

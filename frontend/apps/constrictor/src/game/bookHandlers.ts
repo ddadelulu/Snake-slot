@@ -33,6 +33,7 @@ export function createBookPlayer(stage: Stage) {
 			game.feature = ev.reason;
 		},
 		freeSpinTrigger: async (ev) => {
+			void stage.releaseSnake(); // a base-game hatchling resting on the board gives way to the feature
 			if (ev.positions.length) {
 				sound.play('key_land');
 				await stage.board.pulseKeys(ev.positions);
@@ -127,8 +128,9 @@ export function createBookPlayer(stage: Stage) {
 			await stage.board.pulseKeys(ev.positions);
 			await eventEmitter.broadcastAsync({ type: 'retrigger', added: ev.added, total: ev.totalFs });
 		},
-		snakeExit: async (ev) => {
-			await stage.snakeExit(ev.fill ?? []);
+		snakeExit: async () => {
+			// the hatchling stays on the board until the next spin; its exit fill (ev.fill) is not drawn
+			await stage.snakeExit();
 			game.moves = null;
 			game.snakeLen = 0;
 			game.snakeMult = 1;

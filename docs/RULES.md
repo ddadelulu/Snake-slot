@@ -20,7 +20,7 @@ When the snake's tail leaves a cell, a fresh gem drops into it at once, so the b
 
 The snake's whole body is WILD. Wild cells substitute for every paying symbol and can be part of clusters of several different symbols in the same spin. A cluster must contain at least one real symbol; a group made only of wild cells does not pay. KEYs and uneaten PEARLs block clusters.
 
-At the end of a base game spin the snake slithers off the board and fresh gems fill the cells it leaves (except after a max win). They arrive after the spin's win is counted: none of them matches a neighbouring symbol, so they never form or extend a cluster. Nothing carries over to the next spin.
+At the end of a base game spin the snake stays where it finished, so you can see it, until your next spin starts; then it fades away as the new board drops. It takes no part in the next spin: nothing carries over.
 
 ## PEARLS AND THE MULTIPLIER
 
