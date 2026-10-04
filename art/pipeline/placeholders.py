@@ -610,9 +610,10 @@ def shed():
 
 
 def room(w, h, portrait=False):
-    """1940s strongroom plate (STYLE_BIBLE): riveted steel wall panels, a round vault door ajar, a brass-trimmed
-    counter, warm tungsten key from the upper left, cool moon rim from the right, blind-light slats, dust.
-    The centre stays calm and darker for the board."""
+    """1940s strongroom plate after midnight (STYLE_BIBLE, D-043): riveted steel wall panels in cool steel blue,
+    a round brass vault door ajar, a brass-trimmed counter, moonlight through the blinds from the upper left,
+    a teal rim from the right, low mist over the counter and a few gold glints. The centre stays calm and darker
+    for the board; the brass stays warm against the cool room."""
     yy, xx = np.mgrid[0:h, 0:w].astype(float)
     u, v = xx / w, yy / h
     S0 = min(w, h)
@@ -627,12 +628,12 @@ def room(w, h, portrait=False):
     wall = wall - 16 * np.exp(-(seam / 2.5) ** 2)  # dark seam
     wall = wall + 9 * np.exp(-((fx * pw - 5) / 3) ** 2) + 7 * np.exp(-((fy * ph - 5) / 3) ** 2)  # bevel catch-light (top/left)
     wall = wall - 6 * np.exp(-(((1 - fx) * pw - 5) / 3) ** 2) - 6 * np.exp(-(((1 - fy) * ph - 5) / 3) ** 2)
-    base = np.stack([wall * 0.98, wall * 1.0, wall * 1.08], -1)
-    # --- light: warm tungsten key (upper left), cool moon rim (right), calm darker centre
+    base = np.stack([wall * 0.84, wall * 0.97, wall * 1.18], -1)
+    # --- light: moonlight key (upper left), teal rim (right), calm darker centre
     key = np.exp(-(((u - 0.08) / 0.5) ** 2 + ((v - 0.05) / 0.55) ** 2))
-    base = base * (0.55 + 0.9 * key[..., None]) + np.array([62, 40, 16]) * key[..., None] * 0.55
+    base = base * (0.55 + 0.9 * key[..., None]) + np.array([20, 38, 62]) * key[..., None] * 0.6
     moon = np.exp(-(((u - 1.02) / 0.22) ** 2)) * (0.6 + 0.4 * (1 - v))
-    base = base + np.array([10, 18, 32]) * moon[..., None]
+    base = base + np.array([6, 30, 38]) * moon[..., None]
     centre = np.exp(-(((u - 0.5) / 0.26) ** 2 + ((v - 0.48) / 0.34) ** 2))
     base = base * (1 - 0.35 * centre[..., None])
     img = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
@@ -673,7 +674,7 @@ def room(w, h, portrait=False):
     col += np.array([150, 112, 58]) * (lip * (0.6 + 0.4 * bev))[..., None]
     inner_lip = np.exp(-((dd - 0.36) / 0.01) ** 2)
     col += np.array([120, 90, 46]) * (inner_lip * (0.6 + 0.4 * bev))[..., None]
-    col = col * (0.6 + 0.8 * key[..., None]) + np.array([30, 20, 8]) * key[..., None]
+    col = col * (0.6 + 0.8 * key[..., None]) + np.array([10, 18, 30]) * key[..., None]
     door[..., :3] = col
     door[..., 3] = 255 * inside
     dimg = Image.fromarray(np.clip(door, 0, 255).astype(np.uint8), "RGBA")
@@ -697,21 +698,40 @@ def room(w, h, portrait=False):
     arr[band, :3] = arr[band, :3] * 0.35 + 6
     trim = np.exp(-((v - ctop) * h / 3.0) ** 2)
     arr[..., :3] += np.array([150, 112, 56]) * (trim * (0.35 + 0.65 * np.clip(1 - u, 0, 1)))[..., None]
-    # --- blind-light slats (soft, warm, upper left, falling across wall and door)
+    # --- blind-light slats (moonlight, upper left, falling across wall and door)
     a30 = math.radians(30)
     # bands at ~30 deg from horizontal, falling left-high to right-low (STYLE_BIBLE 2)
     pp = (yy * math.cos(a30) - xx * math.sin(a30)) / (S0 * 0.085)
     slat = np.clip(np.sin(pp * math.pi) * 1.6 - 0.25, 0, 1) ** 1.4
     fall = np.exp(-(((u - 0.18) / 0.36) ** 2 + ((v - 0.18) / 0.48) ** 2)) * (1 - 0.7 * centre)
     lightk = (slat * fall)[..., None]
-    arr[..., :3] = arr[..., :3] * (1 + 0.85 * lightk) + np.array([34, 22, 8]) * lightk
+    arr[..., :3] = arr[..., :3] * (1 + 1.0 * lightk) + np.array([16, 34, 58]) * lightk
+    # --- low mist over the counter, drifting in soft banks
+    mist_n = rng.random((max(2, h // 90), max(2, w // 90)))
+    mist_n = np.array(Image.fromarray((mist_n * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC), float) / 255
+    mist = np.clip((v - (ctop - 0.2)) / 0.3, 0, 1) ** 1.3 * (0.55 + 0.45 * mist_n) * (1 - 0.5 * centre)
+    arr[..., :3] += np.array([22, 36, 50]) * mist[..., None]
     # --- vignette + dust
     vig = np.clip(1 - 0.7 * (((u - 0.5) / 0.72) ** 2 + ((v - 0.5) / 0.72) ** 2), 0.2, 1)
     arr[..., :3] *= vig[..., None]
     dust = rng.random((h, w)) > 0.99965
     arr[dust, :3] += 34
-    out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA").convert("RGB")
-    return out.filter(ImageFilter.GaussianBlur(0.8))
+    out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA").convert("RGB").filter(ImageFilter.GaussianBlur(0.8))
+    # --- gold glints along the counter (jewels catching the moon), kept clear of the board in the centre
+    glow = Image.new("RGB", (w, h), (0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    for _ in range(9):
+        gx = rng.uniform(0.03, 0.97) * w
+        if abs(gx / w - 0.5) < 0.22 and not portrait:
+            continue
+        gy = (ctop + rng.uniform(0.01, 0.05)) * h
+        r = S0 * rng.uniform(0.0025, 0.005)
+        gd.ellipse([gx - r * 3, gy - r * 3, gx + r * 3, gy + r * 3], fill=(60, 44, 20))  # soft warm halo
+        gd.line([(gx - r * 3.5, gy), (gx + r * 3.5, gy)], fill=(150, 120, 74), width=1)
+        gd.line([(gx, gy - r * 2.5), (gx, gy + r * 2.5)], fill=(150, 120, 74), width=1)
+        gd.ellipse([gx - r * 0.7, gy - r * 0.7, gx + r * 0.7, gy + r * 0.7], fill=(230, 200, 150))
+    glow = glow.filter(ImageFilter.GaussianBlur(S0 * 0.0028))
+    return Image.fromarray(np.clip(np.array(out, float) + np.array(glow, float), 0, 255).astype(np.uint8), "RGB")
 
 
 def velvet(n=1024):

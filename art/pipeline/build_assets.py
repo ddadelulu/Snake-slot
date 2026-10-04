@@ -13,7 +13,7 @@ import json
 import os
 import shutil
 
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 FINAL = os.path.join(ROOT, "art", "final")
@@ -81,6 +81,31 @@ def fit(im: Image.Image, size, mode):
     return canvas
 
 
+# Symbol look (D-043): the owner's finals are kept as delivered in art/final/; the game copies are toned down and
+# outlined here. Saturation and contrast a little lower (rich, not neon), then a sticker edge: a dark ink line
+# hugging the silhouette and a fine gold hairline outside it, so every shape reads crisply on the dark board.
+SYMBOL_SATURATION = 0.7
+SYMBOL_CONTRAST = 0.94
+INK = (20, 13, 5)
+GOLD = (217, 178, 111)
+
+
+def grade_symbol(im: Image.Image) -> Image.Image:
+    im = im.convert("RGBA")
+    alpha = im.getchannel("A")
+    rgb = ImageEnhance.Contrast(ImageEnhance.Color(im.convert("RGB")).enhance(SYMBOL_SATURATION)).enhance(SYMBOL_CONTRAST)
+    body = Image.merge("RGBA", (*rgb.split(), alpha))
+    # outline from the solid part of the silhouette (soft sparkle halos do not make the edge lumpy)
+    solid = alpha.point(lambda a: 255 if a > 110 else 0)
+    ink = solid.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(0.7))  # ~3 px at 256
+    rim = solid.filter(ImageFilter.MaxFilter(11)).filter(ImageFilter.GaussianBlur(0.9))  # ~5 px
+    out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    out.alpha_composite(Image.merge("RGBA", (*Image.new("RGB", im.size, GOLD).split(), rim.point(lambda a: a * 150 // 255))))
+    out.alpha_composite(Image.merge("RGBA", (*Image.new("RGB", im.size, INK).split(), ink)))
+    out.alpha_composite(body)
+    return out
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     for sub in ("img", "audio", "video"):
@@ -98,6 +123,8 @@ def main():
         if kind == "tile":  # tile layers are delivered for the dashboard, not used in-game
             continue
         im = fit(im.convert("RGBA") if im.mode in ("P", "LA") else im, size, mode)
+        if kind == "symbol":
+            im = grade_symbol(im)
         if kind == "plate" and im.mode != "RGBA":
             out = f"img/{aid}.jpg"
             im.convert("RGB").save(os.path.join(OUT, out), quality=86, optimize=True, progressive=True)

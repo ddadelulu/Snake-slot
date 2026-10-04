@@ -155,8 +155,8 @@ export class BoardView extends Container {
 		pool.position.set(BOARD / 2, BOARD / 2 - CELL * 0.4);
 		pool.width = INNER * 1.5;
 		pool.height = INNER * 1.25;
-		pool.tint = 0xb89868;
-		pool.alpha = 0.16;
+		pool.tint = 0xa8b6c8; // a cool pool of moonlight on the velvet (the gems bring the warmth)
+		pool.alpha = 0.14;
 		const poolMask = new Graphics().rect(ORIGIN, ORIGIN, INNER, INNER).fill(0xffffff);
 		pool.mask = poolMask;
 		this.addChild(this.velvet, pool, poolMask, grid, this.keyGlows, this.fxUnder, this.cellsLayer, this.winLayer, this.snakeLayer, this.frame, this.fxOver);

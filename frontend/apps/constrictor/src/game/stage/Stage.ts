@@ -18,10 +18,11 @@ function blindsTexture(): Texture {
 	c.height = 64;
 	const g = c.getContext('2d')!;
 	const grd = g.createLinearGradient(0, 0, 0, 64);
-	grd.addColorStop(0, 'rgba(255,214,150,0)');
-	grd.addColorStop(0.35, 'rgba(255,214,150,0.9)');
-	grd.addColorStop(0.62, 'rgba(255,214,150,0.9)');
-	grd.addColorStop(0.8, 'rgba(255,214,150,0)');
+	// moonlight through the blinds (D-043: the room is cool; brass and gems stay warm)
+	grd.addColorStop(0, 'rgba(170,200,255,0)');
+	grd.addColorStop(0.35, 'rgba(170,200,255,0.9)');
+	grd.addColorStop(0.62, 'rgba(170,200,255,0.9)');
+	grd.addColorStop(0.8, 'rgba(170,200,255,0)');
 	g.fillStyle = grd;
 	g.fillRect(0, 0, 256, 64);
 	return Texture.from(c);
@@ -129,7 +130,7 @@ export class Stage {
 
 	private buildDust() {
 		for (let i = 0; i < 40; i++) {
-			const d = new Graphics().circle(0, 0, 1 + (i % 3)).fill({ color: 0xffe2b0, alpha: 0.25 });
+			const d = new Graphics().circle(0, 0, 1 + (i % 3)).fill({ color: 0xd2e2ff, alpha: 0.25 });
 			d.position.set((i * 97) % 1000, (i * 61) % 1000);
 			(d as Graphics & { v?: number }).v = 4 + (i % 7);
 			this.dust.addChild(d);

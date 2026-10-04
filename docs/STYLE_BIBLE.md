@@ -13,9 +13,9 @@ pearl-sheen scales is loose inside and swallowing the collection.
 ## 2. Lighting (the signature, shared by every asset)
 | Light | Spec |
 |---|---|
-| Key | Hard warm **tungsten ~3200 K from the upper left**, about 45° elevation. Casts crisp shadows toward the lower right. |
+| Key | Hard light **from the upper left**, about 45° elevation, crisp shadows toward the lower right. On symbols and brass it reads warm (tungsten ~3200 K); in the room it is **cool moonlight** (D-043), so the gems and brass carry the warmth. |
 | Rim | Faint **cool moonlight (~6500 K) from the right**. A thin edge highlight only, never a fill. |
-| Blinds | Slatted light bands, **~30° from horizontal, falling left-high to right-low**. On the board they drift slowly (code). In stills they are baked only into environment plates. |
+| Blinds | Slatted **moonlight** bands, **~30° from horizontal, falling left-high to right-low**. On the board they drift slowly (code). In stills they are baked only into environment plates. Low mist over the counter. |
 | Blacks | Deep. Shadows go to near-black `#07080A`, never grey fog. |
 | Forbidden | Front/flat lighting, multiple competing key lights, coloured gel lighting, lens flares, bokeh orbs, glowing auras (except venom green). |
 

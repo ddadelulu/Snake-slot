@@ -345,3 +345,12 @@ buttons spring up on hover and squash on press; the SPIN knob gets ink rings, a 
 snake gets the same ink line (the body strip drawn a little wider in ink under the body, one extra draw sharing its
 geometry; the head strip widened and tinted ink under the head) and big glossy black eyes with two catchlights.
 The symbols (the owner's final art) are untouched. Style bible §4 and §7 updated.
+
+### D-043: Softer symbols with an outline; a cool moonlit room
+The owner found the symbol colours too strong and asked for a better outline and a cooler background. The
+owner's finals stay untouched in `art/final/`; `build_assets.py` now grades the game copies: saturation × 0.7 and
+contrast × 0.94 (rich, not neon), then a sticker edge (a ~3 px dark ink line hugging the solid silhouette and a
+fine gold hairline outside it), so every symbol reads crisply on the dark velvet. The room plate is now moonlit:
+steel-blue riveted walls, cool moonlight through the blinds from the upper left, a teal rim on the right, low mist
+over the counter and a few soft gold glints; the brass vault door and trim stay warm against it. The in-engine
+blind light, floating dust and the light pool on the velvet follow (cool). Style bible §2 updated.

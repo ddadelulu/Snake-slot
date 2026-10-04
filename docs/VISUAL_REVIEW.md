@@ -82,6 +82,13 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 43 | Buttons, SPIN | Spring on hover, squash on press; SPIN knob with ink rings and a white shine |
 | 44 | Snake | Ink line round body and head; big glossy eyes with two catchlights |
 
+## Owner round: softer symbols, cooler room (D-043)
+
+| # | Where | Change |
+|---|---|---|
+| 45 | Symbols | Saturation × 0.7, contrast × 0.94; dark ink outline with a fine gold hairline |
+| 46 | Background | Moonlit vault: steel-blue walls, cool blind light, teal rim, mist and soft gold glints; brass door stays warm |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield
