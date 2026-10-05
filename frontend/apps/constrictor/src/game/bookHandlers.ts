@@ -146,7 +146,8 @@ export function createBookPlayer(stage: Stage) {
 			game.moves = null;
 			game.snakeLen = 0;
 			game.snakeMult = 1;
-			stage.clearSnake();
+			// the Hunt's snake rests on the board (covering its cells) until the next spin, like the hatchling
+			await stage.snakeExit();
 			stage.board.clearWins();
 		},
 		finalWin: async (ev) => {

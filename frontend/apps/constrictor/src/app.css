@@ -8,8 +8,12 @@
 	--ivory-dim: #a39c8c;
 	--venom: #3dff8a;
 	--ruby: #b0122e;
-	--font-ui: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-display: 'Big Shoulders Display', 'Archivo', sans-serif;
+	/* type (D-048): Limelight, an Art Deco display face, for the logo, titles and win banners; Josefin Sans, a
+	   1920s geometric sans, for labels, numbers and buttons; Archivo for running text (rules, dialogs), where
+	   plain legibility matters most */
+	--font-display: 'Limelight', 'Josefin Sans', sans-serif;
+	--font-ui: 'Josefin Sans', 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-body: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
 	/* glass dock style (owner's taskbar, D-031/D-036): black glass, gold outlines and gold text,
 	   gold fills for SPIN and active buttons, round corners */
 	--glass: rgba(8, 8, 9, 0.9);
@@ -47,6 +51,8 @@ html, body {
 	background: var(--void);
 	color: var(--ivory);
 	font-family: var(--font-ui);
+	/* every face ships the weights it is used at; never fake a bold (Limelight has a single weight) */
+	font-synthesis: none;
 	-webkit-font-smoothing: antialiased;
 	touch-action: manipulation;
 	overscroll-behavior: none;
@@ -54,7 +60,8 @@ html, body {
 *, *::before, *::after { box-sizing: border-box; }
 button { font-family: var(--font-ui); }
 .num { font-variant-numeric: tabular-nums; }
-.display { font-family: var(--font-display); font-weight: 900; letter-spacing: 0.06em; }
+.display { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.03em; }
+p, dd, td, th, li { font-family: var(--font-body); }
 
 /* shared buttons (modals, panels): squared brass-edged hardware, not pills */
 .btn {

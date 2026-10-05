@@ -415,6 +415,7 @@ it is, that is recorded in DECISIONS.
 - End of a base game round (D-044): the hatchling stays where it finished (breathing, flicking its tongue,
   win outlines kept) until the next spin starts, then fades as the new board drops (or as THE HUNT starts).
   `snakeExit.fill` is not drawn: those cells stay under the snake and the next reveal replaces the board.
+  The Hunt's snake does the same when the feature ends (`freeSpinEnd`, D-049), so its cells never show as holes.
 - The frontend never decides outcomes and never uses `Math.random()` for results. Randomness is allowed
   only for cosmetics (dust, particles).
 

@@ -109,7 +109,7 @@
 		z-index: 100;
 		background: #07080a;
 		color: #ede6d6;
-		font-family: 'Archivo', system-ui, sans-serif;
+		font-family: 'Josefin Sans', 'Archivo', system-ui, sans-serif;
 		display: grid;
 		cursor: pointer;
 	}
@@ -207,12 +207,12 @@
 	/* engraved brass letters, no card */
 	.title {
 		margin: 0;
-		font-family: 'Big Shoulders Display', 'Archivo', sans-serif;
-		font-weight: 900;
-		font-size: clamp(34px, 9vw, 86px);
-		letter-spacing: 0.12em;
-		line-height: 1;
-		padding-left: 0.12em;
+		font-family: 'Limelight', 'Josefin Sans', sans-serif;
+		font-weight: 400;
+		font-size: clamp(30px, 8vw, 78px);
+		letter-spacing: 0.06em;
+		line-height: 1.1;
+		padding-left: 0.06em;
 		background: linear-gradient(180deg, #fbe7ab 0%, #e2b85a 45%, #9c7433 55%, #e9c870 100%);
 		-webkit-background-clip: text;
 		background-clip: text;

@@ -401,3 +401,22 @@ standing a little ajar so gold light leaks round its rim; and a polished black c
 mirrors the room and catches a few gold glints. Composition is unchanged (board centre calm and darker, door right
 in landscape and top in portrait, behind the logo). `room()` now has its own seeded generator; the key art, which
 composes the room, was regenerated with it.
+
+### D-048: Type with character: Limelight and Josefin Sans
+The owner found the type too plain and asked for something that fits and looks special. Archivo (a plain grotesk)
+set nearly every label and number and Big Shoulders (a condensed industrial face) set the titles. Candidates were
+compared on the game's black and gold at real sizes. Fascinate was the first pick (bold, very Deco), but its
+stylised capital S reads as "ʃ" at game sizes ("CONʃTRICTOR"), so it was dropped. Now: **Limelight** (Art Deco,
+1930s–40s) for the logo, win tiers, feature titles, dialog titles, HUD titles and the WILD label; **Josefin Sans**
+(1920s geometric) for labels, buttons and readouts; **Archivo** stays for running text (rules, dialog copy, tables)
+and the Studio 12 wordmark. All are OFL, self-hosted (`static/fonts`, licences alongside); Big Shoulders and
+Fascinate were removed. Neither new face has tabular figures, so the win-banner counters render each digit in a
+fixed-width cell (`Digits.svelte`; screen readers get the plain text). `font-synthesis: none` stops faux bold on the
+single-weight display face. The logo and titles were resized for the wider letters (the logo scales with the
+viewport's height and width so it always fits beside the board). The loading screen title and the in-canvas
+texts (WILD, pearl tags) follow. Style bible §6 and §7 updated.
+
+### D-049: The Hunt's snake also stays when the feature ends
+While checking banners, the end of a feature showed holes in the board: `freeSpinEnd` removed the Hunt's snake,
+and the cells under its body (hidden while it was on the board) stayed empty until the next spin. It now rests on
+the board like the base game's hatchling (D-044) and fades as the next board drops. Presentation only.

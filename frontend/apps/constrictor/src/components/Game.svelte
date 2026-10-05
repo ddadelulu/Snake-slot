@@ -154,8 +154,8 @@
 		await loadTextures((x) => (progress = 0.1 + 0.7 * x));
 		try {
 			await Promise.all([
-				document.fonts.load('900 64px "Big Shoulders Display"'),
-				document.fonts.load('700 32px "Archivo"'),
+				document.fonts.load('400 64px "Limelight"'),
+				document.fonts.load('700 32px "Josefin Sans"'),
 			]);
 		} catch {
 			/* system fallback */

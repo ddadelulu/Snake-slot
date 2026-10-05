@@ -94,7 +94,7 @@ class CellView extends Container {
 		if (!this.tag) {
 			this.tag = new Container();
 			this.tagBg = new Graphics();
-			this.tagLabel = new Text({ text: '', style: { fontFamily: 'Archivo', fontWeight: '800', fontSize: CELL * 0.2, fill: 0x1a1208 } });
+			this.tagLabel = new Text({ text: '', style: { fontFamily: 'Josefin Sans', fontWeight: '700', fontSize: CELL * 0.2, fill: 0x1a1208 } });
 			this.tagLabel.anchor.set(0.5);
 			this.tag.addChild(this.tagBg, this.tagLabel);
 			this.tag.position.set(CELL * 0.24, CELL * 0.28);

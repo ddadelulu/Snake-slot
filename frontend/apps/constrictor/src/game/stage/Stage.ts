@@ -80,7 +80,7 @@ export class Stage {
 		this.board.snakeLayer.addChild(this.snake);
 		this.buildGuardian();
 		this.world.addChild(this.board, this.guardian, this.sparks); // the guardian coils over the frame
-		this.wildLabel = new Text({ text: 'WILD', style: { fontFamily: 'Big Shoulders Display', fontWeight: '900', fontSize: 64, fill: 0xd9b26f, letterSpacing: 6 } });
+		this.wildLabel = new Text({ text: 'WILD', style: { fontFamily: 'Limelight', fontWeight: '400', fontSize: 64, fill: 0xd9b26f, letterSpacing: 3 } });
 		this.wildLabel.anchor.set(0.5);
 		this.wildLabel.alpha = 0;
 		this.board.fxOver.addChild(this.wildLabel);

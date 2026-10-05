@@ -83,9 +83,10 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 ## 6. Typography (all self-hosted, OFL)
 | Role | Face | Notes |
 |---|---|---|
-| Display: titles, win tiers | **Limelight**-style condensed Art-Deco (OFL). Final pick recorded in DECISIONS once licensed files are in `frontend/.../fonts` | uppercase, generous tracking |
-| UI | **Archivo** (OFL, variable) | also used for the Studio 12 wordmark |
-| Counters | Archivo with **tabular numerals** (`font-variant-numeric: tabular-nums`) | wins, balance, moves, multiplier |
+| Display: logo, titles, win tiers, dialog titles, WILD | **Limelight** (OFL), Art Deco, single weight (D-048) | uppercase, light tracking (it is wide); never faux-bold (`font-synthesis: none`) |
+| UI: labels, buttons, readouts, numbers | **Josefin Sans** (OFL) 400 / 600 / 700, a 1920s geometric sans (D-048) | uppercase labels with wide tracking |
+| Running text: rules, dialog copy, tables | **Archivo** (OFL) | also the Studio 12 wordmark |
+| Counting amounts | Josefin Sans in fixed-width digit cells (`Digits.svelte`): neither face has tabular figures | win banners count up without jiggling |
 
 ## 7. UI (the owner's taskbar layout, built as the vault's own hardware: D-031 / D-036 / D-039 / D-041)
 - The taskbar is the owner's layout on every screen: menu left, SPIN in the middle, − BET + right, BALANCE and
@@ -111,8 +112,8 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 - Venom moments swap the brass edge for venom green; nothing else changes colour.
 - SPIN sits exactly in the screen centre whenever both sides of the bar fit; on very narrow phones or with long
   amounts the bar spreads out.
-- Fonts stay the game's: Archivo for UI and numbers, Big Shoulders Display for titles, Limelight for the max-win
-  title.
+- Fonts (D-048): Limelight for the logo and every title, Josefin Sans for the controls and numbers, Archivo for
+  running text (§6).
 - Motion: short and purposeful (120–300 ms UI transitions); restraint except the three hero moments.
 
 ## 8. Realism rules: reject and regenerate if any of these appear

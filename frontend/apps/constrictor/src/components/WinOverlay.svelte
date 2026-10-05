@@ -8,6 +8,7 @@
 	import { clock, ease } from '$game/stage/clock';
 	import { sound } from '$game/sound';
 	import { requestSkip } from '$game/round';
+	import Digits from './Digits.svelte';
 
 	type Card =
 		| { kind: 'tier'; level: number; amount: number }
@@ -98,7 +99,7 @@
 		{#if card.kind === 'tier'}
 			<div class="tier deco on-glass lvl{card.level}">
 				<div class="title display">{t(TIER_KEYS[card.level] ?? 'win.strike')}</div>
-				<div class="amount num">{money(shown)}</div>
+				<div class="amount num"><Digits text={money(shown)} /></div>
 				<div class="hint">{t('win.tapToSkip')}</div>
 			</div>
 		{:else if card.kind === 'intro'}
@@ -131,7 +132,7 @@
 		{:else if card.kind === 'outro'}
 			<div class="intro deco on-glass" class:venom={card.feature === 'venom'}>
 				<div class="sub">{t('feature.summary')}</div>
-				<div class="amount num">{money(shown)}</div>
+				<div class="amount num"><Digits text={money(shown)} /></div>
 				{#if card.capped}<div class="note">{t('feature.maxReached')}</div>{/if}
 			</div>
 		{:else if card.kind === 'retrigger'}
@@ -139,7 +140,7 @@
 		{:else if card.kind === 'maxWin'}
 			<div class="tier deco on-glass lvl5">
 				<div class="title display">{t('win.vaultEmpty')}</div>
-				<div class="amount num">{money(shown)}</div>
+				<div class="amount num"><Digits text={money(shown)} /></div>
 				<div class="note">{t('feature.maxReached')}</div>
 			</div>
 		{/if}
@@ -188,22 +189,21 @@
 	}
 	/* sticker titles: ink line, hard drop, a slight jaunty tilt */
 	.title {
-		font-size: clamp(34px, 11vmin, 120px);
-		line-height: 0.95;
+		font-size: clamp(30px, 9.5vmin, 108px);
+		line-height: 1;
 		color: var(--accent);
-		letter-spacing: 0.08em;
+		letter-spacing: 0.03em;
 		filter: var(--ink-outline-lg) drop-shadow(0 6px 0 rgba(0, 0, 0, 0.7));
 		rotate: -3deg;
 		animation: slam 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 	}
 	.lvl4 .title {
-		font-size: clamp(38px, 12.5vmin, 140px);
+		font-size: clamp(32px, 10.5vmin, 124px);
 	}
 	.lvl5 .title {
-		font-family: 'Limelight', var(--font-display);
 		font-weight: 400;
 		color: var(--venom);
-		font-size: clamp(30px, 9vmin, 110px);
+		font-size: clamp(26px, 7.6vmin, 96px);
 	}
 	.tier.lvl5::before,
 	.intro.venom::before {
@@ -211,8 +211,10 @@
 	}
 	/* the amount: engraved gold figures between two hairlines */
 	.amount {
+		--digit-w: 0.64em;
+		position: relative;
 		font-size: clamp(24px, 6.8vmin, 68px);
-		font-weight: 800;
+		font-weight: 700;
 		letter-spacing: 0.02em;
 		line-height: 1.1;
 		padding: 0.08em 0.4em;
@@ -237,7 +239,7 @@
 		max-width: 420px;
 	}
 	.intro .title {
-		font-size: clamp(40px, 13vmin, 150px);
+		font-size: clamp(36px, 11.5vmin, 132px);
 	}
 	.intro.venom .title {
 		color: var(--venom);
@@ -424,8 +426,8 @@
 		transform: translateX(-50%);
 		z-index: 29;
 		pointer-events: none;
-		font-size: clamp(30px, 10vmin, 110px);
-		letter-spacing: 0.2em;
+		font-size: clamp(28px, 9vmin, 100px);
+		letter-spacing: 0.12em;
 		color: #3dff8a;
 		background: var(--paper);
 		border: 0;
@@ -490,12 +492,12 @@
 	@keyframes ouro {
 		0% {
 			opacity: 0;
-			letter-spacing: 0.6em;
+			letter-spacing: 0.4em;
 		}
 		20%,
 		75% {
 			opacity: 1;
-			letter-spacing: 0.2em;
+			letter-spacing: 0.12em;
 		}
 		100% {
 			opacity: 0;

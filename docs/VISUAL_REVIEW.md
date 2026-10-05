@@ -113,6 +113,13 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 |---|---|---|
 | 50 | Background | Art-deco panelled strongroom: lacquer panels with brass pinstripes, fluted pilasters, fan sconces with warm pools, a detailed vault door ajar with gold light at its rim, a polished counter; softer moon shafts |
 
+## Owner round: type with character (D-048, D-049)
+
+| # | Where | Change |
+|---|---|---|
+| 51 | All text | Limelight (Art Deco) for the logo and titles, Josefin Sans for controls and numbers, Archivo for running text; titles and logo resized to fit on every viewport; counters do not jiggle |
+| 52 | End of a feature | The Hunt's snake stays on its cells until the next spin (no holes in the board) |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

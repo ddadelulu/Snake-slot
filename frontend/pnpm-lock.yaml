@@ -57,7 +57,7 @@ importers:
       '@fontsource/archivo':
         specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/big-shoulders-display':
+      '@fontsource/josefin-sans':
         specifier: ^5.3.0
         version: 5.3.0
       '@fontsource/limelight':
@@ -1568,8 +1568,8 @@ packages:
   '@fontsource/archivo@5.3.0':
     resolution: {integrity: sha512-5DIMgPVJRi62OqdOVoogCFxP73EkNM/E0YVTSDIQlDEJfDbxqZduwM/YoNZwC9Sx1CDgpKinqf8ckRY1QNIecw==}
 
-  '@fontsource/big-shoulders-display@5.3.0':
-    resolution: {integrity: sha512-d4+Tcsq/WfoKeqWfB6wFdeNDsSYYnilJbSNNpf5w53MlWrGHAc9YvkAjC6id6PgFDiGaFKsXfP0RFAQtpt0bog==}
+  '@fontsource/josefin-sans@5.3.0':
+    resolution: {integrity: sha512-N2xY1l8gBCNrlRa0tMnjUtbSJb/rqWmPLgLSMq6H+EY2/uerAHtbyoHsQQKwhMA8hJat7S+OSk6saxGMceKKvA==}
 
   '@fontsource/limelight@5.3.0':
     resolution: {integrity: sha512-jiuuCdbk9/u0TA/bIZfp35cvJrfz1CJFSEFh4lk5Ma8Nh42897GbF0ny85emdYiJ6WJQjnD/BK/X0D5Oe6bxbg==}
@@ -4393,7 +4393,7 @@ snapshots:
 
   '@fontsource/archivo@5.3.0': {}
 
-  '@fontsource/big-shoulders-display@5.3.0': {}
+  '@fontsource/josefin-sans@5.3.0': {}
 
   '@fontsource/limelight@5.3.0': {}
 

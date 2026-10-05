@@ -27,10 +27,12 @@
 		background: radial-gradient(ellipse 60% 55% at center, rgba(4, 4, 5, 0.75), rgba(4, 4, 5, 0) 100%);
 	}
 	.word {
-		font-size: clamp(24px, 5.2vh, 52px);
-		letter-spacing: 0.14em;
-		line-height: 1;
-		padding-left: 0.14em; /* optically centre the tracked letters */
+		/* Limelight is wide (CONSTRICTOR ≈ 7.9 em tracked): sized by the viewport's height and width so it always fits
+		   the side column beside the board */
+		font-size: clamp(20px, min(4.4vh, 2.5vw), 46px);
+		letter-spacing: 0.04em;
+		line-height: 1.1;
+		padding-left: 0.04em; /* optically centre the tracked letters */
 		background: linear-gradient(180deg, #fbe7ab 0%, #e2b85a 45%, #9c7433 55%, #e9c870 100%);
 		-webkit-background-clip: text;
 		background-clip: text;
@@ -39,7 +41,7 @@
 		filter: var(--ink-outline-lg) drop-shadow(0 5px 0 rgba(0, 0, 0, 0.7));
 	}
 	.sm .word {
-		font-size: clamp(20px, 3.4vh, 32px);
+		font-size: clamp(18px, 3.4vh, 30px);
 	}
 	.tag {
 		display: flex;
