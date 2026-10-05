@@ -363,3 +363,20 @@ leaves only when the next spin starts, fading in 120 ms (turbo) / 300 ms as the 
 starts. Presentation only: the books, RTP and verification are unchanged. The book's `snakeExit.fill` (fresh gems
 for the hatchling's cells) is still produced and checked, but no longer drawn, because those cells stay under the
 snake until the next reveal replaces the whole board. Rules text, SPEC §5.6 and §13 updated.
+
+### D-045: Head and body as one piece
+The owner asked to fix the neck on turns and make the head and the body one piece. The head was a separate
+textured strip (its own baked lighting and diamond scales) laid over the body strip; on a sharp turn its stiff
+neck folded over itself just behind the jaw (a crumpled, torn-looking join) and the change of material at the
+neck read as two parts. Now one mesh runs from the snout tip to the tail: the head is the front of the body
+strip, shaped by a width profile (rounded snout, broad jaw, taper into the neck) and drawn with the same scale
+texture, shader light and ink line (the outline and contact shadow round the snout too). The skull stays rigid
+to the back of the jaw; behind it a Hermite curve leaves the jaw along the head's heading and joins the body
+path, tangent to it, 0.75 cells further back, so the neck has no kink. Tangents span a tenth of a cell, so normals
+turn smoothly over the path's sample points, and on a bend tighter than the strip is wide the inner edge is held
+inside the radius of curvature (eased along the strip, a soft dent rather than a fold). The eyes (ink socket,
+glossy black eye, thin warm rim, two catchlights), nostrils and the gulp gape are vector shapes on the head's
+design grid, so they stay crisp at any size; the eye glows and tongue keep their places. The guardian on the
+frame is the same snake and gets the same head. `snake_head.png` / `snake_head_open.png` are no longer drawn in
+the game (the head is part of the body); the placeholder pipeline still uses `snake_head` for the key art, and it
+stays the style reference for the snake parts in `art/HIGGSFIELD_PROMPTS.md`. Presentation only.

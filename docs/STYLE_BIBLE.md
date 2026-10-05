@@ -54,9 +54,11 @@ loading screen wordmark.
   wounds, no exaggerated fangs). No extra eyes.
 - In-engine the body is a textured rope mesh lit like the plates: cool fill in the shadows, warm tungsten key
   on the lit flank. The pearl sheen is a soft hue shift driven by segment angle, time and the blind-light slats;
-  wild, glint and the OUROBOROS ring tint the white rather than add light to it. The skull is rigid to the back of
-  the jaw and the neck bends into the body on turns (one spine drives body and head); the tongue flicks every
-  3–6 s. The guardian coil around the board is the same snake, drawn a little dimmer so the hunting snake leads.
+  wild, glint and the OUROBOROS ring tint the white rather than add light to it. Head and body are **one piece**
+  (D-045): the head is the front of the same rope mesh, shaped by a width profile (rounded snout, broad jaw,
+  taper into the neck), with the same scales, light and ink line; only the eyes, nostrils and the gulp gape are
+  drawn on top. The skull is rigid to the back of the jaw; behind it the neck curves smoothly into the body on
+  turns and never folds over itself. The tongue flicks every 3–6 s. The guardian coil around the board is the same snake, drawn a little dimmer so the hunting snake leads.
 
 ## 5. Symbols (read at 48 px, colour-blind safe)
 Each gem has a **distinct cut silhouette**, so they read without colour:

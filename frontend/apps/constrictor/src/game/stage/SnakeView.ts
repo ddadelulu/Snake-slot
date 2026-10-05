@@ -1,28 +1,44 @@
-// The snake renderer (brief §8): a custom mesh along a smoothed path through cell centres, tapered,
-// breathing, with swallow bulges, a head that bends into the body on turns, tongue flicks, a contact shadow
-// and a scale shader (white scales, pearl sheen driven by angle, time and the blind-light slats).
+// The snake renderer (brief §8): one custom mesh from the snout to the tail along a smoothed path through cell
+// centres. The head is the front of the same strip (one piece: same scales, same light, one ink line), with a
+// rigid skull and a neck that curves smoothly into the body on turns. Breathing, swallow bulges, tongue flicks,
+// a contact shadow and a scale shader (white scales, pearl sheen driven by angle, time and the blind-light slats).
 // It only animates what the book says: positions come from book cells, never from randomness.
 
-import { Container, Geometry, Mesh, MeshGeometry, Shader, Sprite, Texture } from 'pixi.js';
+import { Container, Geometry, Graphics, Mesh, Shader, Sprite, Texture } from 'pixi.js';
 import { softDot } from './BoardView';
 import { clock, ease } from './clock';
 import { texture } from './assets';
 
 export type Pt = { x: number; y: number };
 
-const N = 96; // samples along the body
-const HEAD_ROWS = 26; // rows of the head strip (snout to neck)
-const HEAD_PIVOT = 0.34; // head texture v between the eyes: the head's anchor on the path
-const HEAD_JAW = 0.57; // head texture v at the back of the jaw: rigid ahead of it, the neck bends behind it
-/** Half-width of the head strip in texture u per row: the whole head down to the jaw, only the neck behind it
- * (a narrow neck strip cannot fold over itself on a tight turn). */
-const headHalfU = (v: number) => (v < 0.58 ? 0.31 : v > 0.7 ? 0.23 : 0.31 - ((v - 0.58) / 0.12) * 0.08);
-const NECK = 0.7; // cells behind the jaw over which the neck bends from the head's heading into the body curve
+const NB = 96; // samples along the body, behind the neck
+const NH = 34; // samples along the head and neck (snout tip to where the neck meets the body path)
+const NT = NH + NB;
+// The head's design grid: HEAD_PX units = HEAD_CELLS cells (times headScale), v from 0 at the snout end to 1 at the
+// neck end. The head's width profile, the eyes, nostrils, mouth and tongue are all placed on it.
+const HEAD_PX = 256;
+const HEAD_CELLS = 1.8;
+const HEAD_TIP = 0.07; // v of the snout tip
+const HEAD_PIVOT = 0.34; // v between the eyes: the head's anchor on the path
+const HEAD_JAW = 0.57; // v at the back of the jaw: rigid ahead of it, the neck bends behind it
+const NECK = 0.75; // cells behind the jaw over which the neck curves from the head's heading into the body path
+const EYE_X = 34.6, EYE_Y = -7.7, EYE_R = 13.3; // eye centre and radius on the grid, relative to the pivot
+const smooth = (a: number, b: number, x: number) => {
+	const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+	return t * t * (3 - 2 * t);
+};
+/** Half-width of the head as a fraction of the grid at v: rounded snout, broad jaw, taper into the neck. */
+const headHalf = (v: number) =>
+	v < 0.2
+		? 0.14 * Math.sqrt(Math.max(0, 1 - ((0.2 - v) / (0.2 - HEAD_TIP)) ** 2))
+		: v < 0.5
+			? 0.14 + 0.11 * smooth(0.2, 0.5, v)
+			: 0.25 - 0.085 * smooth(0.5, 0.72, v);
 const VERT = `
 in vec2 aPosition;
 in vec2 aUV;
 in vec2 aTan;
-in float aT;
+in vec2 aT;                                         // x: 0..1 snout to tail, y: snout cap (see SHADOW_VERT)
 out vec2 vUV;
 out vec2 vTan;
 out float vT;
@@ -34,7 +50,7 @@ void main() {
     gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vTan = aTan;
-    vT = aT;
+    vT = aT.x;
 }`;
 
 // Soft contact shadow: the body strip itself, pushed down-right and widened in the vertex shader, fading to
@@ -43,22 +59,24 @@ const SHADOW_VERT = `
 in vec2 aPosition;
 in vec2 aUV;
 in vec2 aTan;
-in float aT;
+in vec2 aT;
 out float vAcross;
 out float vT;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform mat3 uTransformMatrix;
 uniform float uExpand;
+uniform float uCap;
 uniform vec2 uOffset;
 void main() {
     float side = 1.0 - 2.0 * aUV.y;                 // +1 on the +normal edge, -1 on the other
     vec2 nrm = vec2(-aTan.y, aTan.x);
-    vec2 p = aPosition + nrm * side * uExpand + uOffset;
+    // aT.y: 1 at the snout tip fading to 0 just behind it; pushes the edge forward so it rounds the snout too
+    vec2 p = aPosition + nrm * side * uExpand - aTan * uExpand * aT.y * uCap + uOffset;
     mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
     gl_Position = vec4((mvp * vec3(p, 1.0)).xy, 0.0, 1.0);
     vAcross = side;
-    vT = aT;
+    vT = aT.x;
 }`;
 
 const SHADOW_FRAG = `
@@ -66,7 +84,7 @@ in float vAcross;
 in float vT;
 uniform float uAlpha;
 void main() {
-    float a = uAlpha * smoothstep(0.0, 0.85, 1.0 - abs(vAcross)) * smoothstep(0.0, 0.04, vT);
+    float a = uAlpha * smoothstep(0.0, 0.85, 1.0 - abs(vAcross));
     gl_FragColor = vec4(0.0, 0.0, 0.0, a);
 }`;
 
@@ -144,22 +162,29 @@ export class SnakeView extends Container {
 	cell: number;
 	private mesh: Mesh<Geometry, Shader>;
 	private geom: Geometry;
-	private pos = new Float32Array(N * 2 * 2);
-	private uv = new Float32Array(N * 2 * 2);
-	private tan = new Float32Array(N * 2 * 2);
-	private tt = new Float32Array(N * 2);
+	private pos = new Float32Array(NT * 2 * 2);
+	private uv = new Float32Array(NT * 2 * 2);
+	private tan = new Float32Array(NT * 2 * 2);
+	private tt = new Float32Array(NT * 2 * 2); // per vertex: along (0..1), snout cap
+	/** Per-row scratch for the strip: distance along, centre, unit tangent, half-width, inner-edge cuts. */
+	private rows = {
+		rs: new Float32Array(NT),
+		rx: new Float32Array(NT),
+		ry: new Float32Array(NT),
+		rtx: new Float32Array(NT),
+		rty: new Float32Array(NT),
+		rh: new Float32Array(NT),
+		cut0: new Float32Array(NT), // inner-edge cut on the +normal side
+		cut1: new Float32Array(NT), // and on the other side
+	};
 	private shadow: Mesh<Geometry, Shader>;
 	private outline: Mesh<Geometry, Shader>;
-	/** Ink line round the head: the head strip widened a little, tinted ink. */
-	private headOutline: Mesh<MeshGeometry>;
-	private headOutlineGeom: MeshGeometry;
-	private headOutlinePos = new Float32Array(HEAD_ROWS * 4);
-	/** The head: a strip mesh that follows the path, so the neck bends into the body on turns. */
-	head: Mesh<MeshGeometry>;
-	private headGeom: MeshGeometry;
-	private headPos = new Float32Array(HEAD_ROWS * 4);
+	/** Eyes and nostrils, drawn over the head end of the strip on the head's design grid. */
+	private face = new Graphics();
+	/** The gape shown while the snake gulps a pearl. */
+	private mouth = new Graphics();
 	private tongueRig = new Container(); // under the head
-	private headRig = new Container(); // eye glows, over the head; both rigs sit on the pivot between the eyes
+	private headRig = new Container(); // face and eye glows, over the head; both rigs sit on the pivot between the eyes
 	private eyes: Sprite[] = [];
 	/** 0..1: venom-green glow in the eyes (guardian anticipation). */
 	eyeGlow = 0;
@@ -205,7 +230,7 @@ export class SnakeView extends Container {
 		super();
 		this.cell = cell;
 		const idx: number[] = [];
-		for (let i = 0; i < N - 1; i++) {
+		for (let i = 0; i < NT - 1; i++) {
 			const a = i * 2;
 			idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
 		}
@@ -214,7 +239,7 @@ export class SnakeView extends Container {
 				aPosition: { buffer: this.pos, format: 'float32x2' },
 				aUV: { buffer: this.uv, format: 'float32x2' },
 				aTan: { buffer: this.tan, format: 'float32x2' },
-				aT: { buffer: this.tt, format: 'float32' },
+				aT: { buffer: this.tt, format: 'float32x2' },
 			},
 			indexBuffer: new Uint32Array(idx),
 		});
@@ -251,6 +276,7 @@ export class SnakeView extends Container {
 				resources: {
 					shadow: {
 						uExpand: { value: cell * 0.1, type: 'f32' },
+						uCap: { value: 0.3, type: 'f32' },
 						uOffset: { value: new Float32Array([cell * 0.06, cell * 0.1]), type: 'vec2<f32>' },
 						uAlpha: { value: 0.5, type: 'f32' },
 					},
@@ -268,33 +294,22 @@ export class SnakeView extends Container {
 				resources: {
 					shadow: {
 						uExpand: { value: cell * 0.05, type: 'f32' },
+						uCap: { value: 1, type: 'f32' },
 						uOffset: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
 						uAlpha: { value: 1, type: 'f32' },
 					},
 				},
 			}),
 		});
-		const hIdx: number[] = [];
-		const hUV = new Float32Array(HEAD_ROWS * 4);
-		for (let i = 0; i < HEAD_ROWS; i++) {
-			const v = i / (HEAD_ROWS - 1), hu = headHalfU(v);
-			hUV.set([0.5 - hu, v, 0.5 + hu, v], i * 4);
-			if (i < HEAD_ROWS - 1) hIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-		}
-		this.headGeom = new MeshGeometry({ positions: this.headPos, uvs: hUV, indices: new Uint32Array(hIdx) });
-		this.headGeom.batchMode = 'no-batch'; // rewritten every frame
-		this.head = new Mesh({ geometry: this.headGeom, texture: texture('snake_head') });
-		this.headOutlineGeom = new MeshGeometry({ positions: this.headOutlinePos, uvs: hUV, indices: new Uint32Array(hIdx) });
-		this.headOutlineGeom.batchMode = 'no-batch';
-		this.headOutline = new Mesh({ geometry: this.headOutlineGeom, texture: texture('snake_head') });
-		this.headOutline.tint = 0x140d05;
-		// ink under everything: the body covers the head's line at the neck, so no line crosses the join
-		this.addChild(this.shadow, this.outline, this.headOutline, this.mesh, this.tongueRig, this.head);
-		// eye glows in head-texture pixels relative to the anchor (placeholder/final heads share the layout)
+		this.drawFace();
+		// ink and shadow under the body; the tongue comes out from under the snout
+		this.addChild(this.shadow, this.tongueRig, this.outline, this.mesh);
+		this.headRig.addChild(this.face, this.mouth);
+		// eye glows on the head grid, relative to the anchor
 		for (const sx of [-1, 1]) {
 			const e = new Sprite(softDot());
 			e.anchor.set(0.5);
-			e.position.set(sx * 31, -16);
+			e.position.set(sx * EYE_X, EYE_Y);
 			e.width = e.height = 58;
 			e.tint = 0x3dff8a;
 			e.blendMode = 'add';
@@ -304,6 +319,27 @@ export class SnakeView extends Container {
 		}
 		this.addChild(this.headRig);
 		this.visible = false;
+	}
+
+	/** Big glossy cartoon eyes (D-042) and nostrils, plus the gape for a gulp, on the head grid. */
+	private drawFace() {
+		const f = this.face;
+		const R = EYE_R;
+		for (const sx of [-1, 1]) {
+			const ex = sx * EYE_X, ey = EYE_Y;
+			f.ellipse(ex, ey, R * 1.2, R * 1.14).fill(0x040406); // ink socket
+			f.circle(ex, ey, R).fill(0x0a0807); // black glassy eye
+			f.circle(ex, ey, R * 0.86).stroke({ width: R * 0.16, color: 0x805928, alpha: 0.85 }); // thin warm iris rim
+			f.ellipse(ex, ey, R * 0.16, R * 0.8).fill(0x000000); // slit pupil
+			f.ellipse(ex - R * 0.36, ey - R * 0.45, R * 0.3, R * 0.29).fill({ color: 0xfffaee, alpha: 0.92 }); // catchlights
+			f.circle(ex + R * 0.34, ey + R * 0.42, R * 0.12).fill({ color: 0xfffaee, alpha: 0.67 });
+			f.ellipse(sx * 11.5, -57.6, 2.4, 1.6).fill(0x3a3634); // nostril
+		}
+		const m = this.mouth;
+		m.poly([-13, -64, 13, -64, 7, -40, -7, -40]).fill(0x58121e);
+		m.poly([-8, -61, 8, -61, 4, -45, -4, -45]).fill(0x8c2838);
+		for (const sx of [-1, 1]) m.poly([sx * 12, -63, sx * 8.5, -63, sx * 10.2, -52]).fill(0xece4d2); // fangs
+		m.visible = false;
 	}
 
 	setPixelRatio(px: number) {
@@ -348,10 +384,8 @@ export class SnakeView extends Container {
 
 	async gulp(ms: number) {
 		this.mouthOpen = true;
-		this.head.texture = this.headOutline.texture = texture('snake_head_open');
 		await clock.wait(ms);
 		this.mouthOpen = false;
-		this.head.texture = this.headOutline.texture = texture('snake_head');
 	}
 
 	flick() {
@@ -415,8 +449,8 @@ export class SnakeView extends Container {
 		} else {
 			for (let i = 0; i < poly.length - 1; i++) {
 				const p0 = poly[Math.max(0, i - 1)], p1 = poly[i], p2 = poly[i + 1], p3 = poly[Math.min(poly.length - 1, i + 2)];
-				for (let k = 0; k < 8; k++) {
-					const t = k / 8, t2 = t * t, t3 = t2 * t;
+				for (let k = 0; k < 12; k++) {
+					const t = k / 12, t2 = t * t, t3 = t2 * t;
 					dense.push({
 						x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
 						y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
@@ -427,10 +461,16 @@ export class SnakeView extends Container {
 		}
 		const cum = [0];
 		for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + Math.hypot(dense[i].x - dense[i - 1].x, dense[i].y - dense[i - 1].y));
-		// a length-1 hatchling still gets a short body: the path runs on past the last centre (see sample)
-		const total = Math.max(cum[cum.length - 1], c * 0.35);
-		const visibleLen = total * this.enterClip;
-		const startS = Math.min(c * 0.18, total * 0.2); // body starts under the head
+		// the head's design grid in board units
+		const hs = ((c * HEAD_CELLS) / HEAD_PX) * this.headScale * (this.mouthOpen ? 1.06 : 1);
+		const grid = HEAD_PX * hs;
+		const sTip = (HEAD_TIP - HEAD_PIVOT) * grid; // distances along the strip: negative ahead of the pivot
+		const jawLen = (HEAD_JAW - HEAD_PIVOT) * grid;
+		const neckLen = c * NECK * this.headScale;
+		// a hatchling still gets a neck and a short tail behind the jaw (the path runs on past the last centre)
+		const minLen = jawLen + c * 0.55;
+		const total = Math.max(cum[cum.length - 1], minLen);
+		const sEnd = Math.max(minLen, total * this.enterClip); // the entry reveals the body behind the head
 		// queries come in nearly increasing order (s - 2, s, s + 2 as s grows), so a moving cursor replaces
 		// a scan from the start for every sample
 		let jc = 1;
@@ -442,7 +482,7 @@ export class SnakeView extends Container {
 			jc = j;
 			const a = dense[j - 1], b = dense[j];
 			const seg = cum[j] - cum[j - 1] || 1;
-			// past the last centre the path carries straight on (short snakes, and the neck behind the head)
+			// past the last centre the path carries straight on (short snakes)
 			const t = Math.max(0, j === cum.length - 1 ? (s - cum[j - 1]) / seg : Math.min(1, (s - cum[j - 1]) / seg));
 			return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 		};
@@ -459,21 +499,22 @@ export class SnakeView extends Container {
 		this.look += (this.lookTarget - this.look) * Math.min(1, (dt / 1000) * 3);
 		const heading = this.headAngle + this.look;
 		const hdx = Math.cos(heading), hdy = Math.sin(heading);
-		// The spine the body and the head both follow: straight along the heading back to the jaw (the skull is
-		// rigid), then the neck bends into the path over NECK cells, so it curves with the body on a turn instead
-		// of sticking out as a stiff stub.
-		const tex = this.head.texture;
-		const hs = ((c * 1.8) / Math.max(1, tex.width)) * this.headScale * (this.mouthOpen ? 1.06 : 1);
-		const texW = tex.width * hs, texH = tex.height * hs;
-		const jawLen = (HEAD_JAW - HEAD_PIVOT) * texH;
-		const neckLen = c * NECK * this.headScale;
+		// The spine of the whole strip: straight along the heading from the snout to the back of the jaw (the skull
+		// is rigid), then a Hermite curve that leaves the jaw along the heading and joins the body path, tangent to
+		// it, NECK cells further back. The neck has no kink and no hairpin, so it never folds over on a turn.
+		const ax = hp.x - hdx * jawLen, ay = hp.y - hdy * jawLen;
+		const sJoin = jawLen + neckLen;
+		const tw = c * 0.1; // tangents span a tenth of a cell either side, so normals turn smoothly over path kinks
+		const J = sample(sJoin), J0 = sample(sJoin - tw), J1 = sample(sJoin + tw);
+		const L = Math.hypot(J.x - ax, J.y - ay) || neckLen;
+		const jl = Math.hypot(J1.x - J0.x, J1.y - J0.y) || 1;
+		const m0x = -hdx * L, m0y = -hdy * L, m1x = ((J1.x - J0.x) / jl) * L, m1y = ((J1.y - J0.y) / jl) * L;
 		const spine = (s: number): Pt => {
-			const rx = hp.x - hdx * s, ry = hp.y - hdy * s;
-			if (s <= jawLen) return { x: rx, y: ry };
-			const p = sample(s);
-			if (s >= jawLen + neckLen) return p;
-			const k = 1 - (s - jawLen) / neckLen, w = k * k;
-			return { x: p.x + (rx - p.x) * w, y: p.y + (ry - p.y) * w };
+			if (s <= jawLen) return { x: hp.x - hdx * s, y: hp.y - hdy * s };
+			if (s >= sJoin) return sample(s);
+			const t = (s - jawLen) / neckLen, t2 = t * t, t3 = t2 * t;
+			const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = 3 * t2 - 2 * t3, h11 = t3 - t2;
+			return { x: h00 * ax + h10 * m0x + h01 * J.x + h11 * m1x, y: h00 * ay + h10 * m0y + h01 * J.y + h11 * m1y };
 		};
 		// bulges travel toward the tail
 		for (const b of this.bulges) b.pos += (b.speed * dt * clock.speed) / 1000;
@@ -481,29 +522,66 @@ export class SnakeView extends Container {
 		const W = c * 0.56;
 		const breath = 1 + 0.035 * Math.sin(clock.time * 2 * Math.PI * 0.33);
 		const texLen = c * 1.15; // one texture repeat per ~1.15 cells
-		for (let i = 0; i < N; i++) {
-			const f = i / (N - 1);
-			const s = startS + (Math.max(visibleLen, startS + 1) - startS) * f;
+		const sHead = Math.min(sJoin, sEnd);
+		const taper = Math.min(1.2, Math.max(0.3, (sEnd - jawLen) / c)); // cells over which the tail tapers
+		const { rs, rx, ry, rtx, rty, rh } = this.rows;
+		for (let i = 0; i < NT; i++) {
+			// rows: the head and neck (denser at the snout, to round it), then the body to the visible end
+			const x = i / (NH - 1);
+			const s = i < NH ? sTip + (sHead - sTip) * (0.5 * x + 0.5 * x * x) : sHead + ((sEnd - sHead) * (i - NH + 1)) / NB;
 			const p = spine(s);
-			const p2 = spine(Math.min(s + 2, total));
-			const p1 = spine(Math.max(s - 2, 0));
+			const p2 = spine(Math.min(s + tw, sEnd));
+			const p1 = spine(s - tw);
 			let tx = p2.x - p1.x, ty = p2.y - p1.y;
 			const tl = Math.hypot(tx, ty) || 1;
 			tx /= tl;
 			ty /= tl;
-			// width: neck -> full body -> a short, rounded taper into the tail tip (not a long spike)
-			const fromTail = (visibleLen - s) / c;
-			let w = W * breath * (f < 0.06 ? 0.86 + f * 2.3 : 1) * (0.2 + 0.8 * Math.sqrt(Math.min(1, Math.max(0, fromTail) / 1.2)));
+			// width: the head's profile, blending behind the jaw into the body, which breathes, carries the swallow
+			// bulges and ends in a short, rounded taper (not a long spike)
+			const fromTail = (sEnd - s) / c;
+			let body = W * 0.5 * breath * (0.2 + 0.8 * Math.sqrt(Math.min(1, Math.max(0, fromTail) / taper)));
 			for (const b of this.bulges) {
 				const d = s / c - b.pos;
-				w *= 1 + b.amp * Math.exp(-d * d * 7);
+				body *= 1 + b.amp * Math.exp(-d * d * 7);
 			}
-			const nx = -ty * w * 0.5, ny = tx * w * 0.5;
+			const v = HEAD_PIVOT + s / grid;
+			const k = smooth(0.6, 0.85, v);
+			rs[i] = s;
+			rx[i] = p.x;
+			ry[i] = p.y;
+			rtx[i] = tx;
+			rty[i] = ty;
+			rh[i] = k >= 1 ? body : headHalf(v) * grid * (1 - k) + body * k;
+		}
+		// On a bend tighter than the strip is wide, the inner edge would cross itself (a crumpled crease): hold it
+		// inside the radius of curvature, like skin bunching on the inside of the turn. The cut is eased along the
+		// strip so it reads as a soft dent, never a notch.
+		const { cut0, cut1 } = this.rows;
+		cut0.fill(0);
+		cut1.fill(0);
+		for (let i = 0; i < NT; i++) {
+			const a = Math.max(0, i - 2), b = Math.min(NT - 1, i + 2);
+			const ds = rs[b] - rs[a];
+			if (ds < 1e-3) continue;
+			const cross = rtx[a] * rty[b] - rty[a] * rtx[b];
+			const r = ds / Math.max(1e-6, Math.asin(Math.min(1, Math.abs(cross))));
+			const cut = rh[i] - Math.max(rh[i] * 0.3, r * 0.92 - c * 0.06);
+			if (cut <= 0) continue;
+			// spread each cut over the neighbouring rows (a tent), keeping the largest
+			const reach = Math.max(1, Math.round((c * 0.25) / Math.max(1e-3, ds / (b - a))));
+			const side = cross > 0 ? cut0 : cut1;
+			for (let j = Math.max(0, i - reach); j <= Math.min(NT - 1, i + reach); j++) {
+				side[j] = Math.max(side[j], cut * (1 - Math.abs(j - i) / (reach + 1)));
+			}
+		}
+		for (let i = 0; i < NT; i++) {
+			const s = rs[i], tx = rtx[i], ty = rty[i];
+			const h0 = Math.max(rh[i] * 0.3, rh[i] - cut0[i]), h1 = Math.max(rh[i] * 0.3, rh[i] - cut1[i]);
 			const o = i * 4;
-			this.pos[o] = p.x + nx;
-			this.pos[o + 1] = p.y + ny;
-			this.pos[o + 2] = p.x - nx;
-			this.pos[o + 3] = p.y - ny;
+			this.pos[o] = rx[i] - ty * h0;
+			this.pos[o + 1] = ry[i] + tx * h0;
+			this.pos[o + 2] = rx[i] + ty * h1;
+			this.pos[o + 3] = ry[i] - tx * h1;
 			const uu = s / texLen;
 			this.uv[o] = uu;
 			this.uv[o + 1] = 0;
@@ -513,61 +591,26 @@ export class SnakeView extends Container {
 			this.tan[o + 1] = ty;
 			this.tan[o + 2] = tx;
 			this.tan[o + 3] = ty;
-			this.tt[i * 2] = f;
-			this.tt[i * 2 + 1] = f;
+			const f = (s - sTip) / (sEnd - sTip);
+			const capK = Math.max(0, 1 - (s - sTip) / (c * 0.12));
+			this.tt[o] = f;
+			this.tt[o + 1] = capK;
+			this.tt[o + 2] = f;
+			this.tt[o + 3] = capK;
 		}
 		this.geom.getBuffer('aPosition').update();
 		this.geom.getBuffer('aUV').update();
 		this.geom.getBuffer('aTan').update();
 		this.geom.getBuffer('aT').update();
-		// head: the snout rows run straight ahead of the pivot (between the eyes), the rows behind it lie on the
-		// spine (rigid to the jaw, then bending). The head texture's neck is ~35 % of its width; the scale makes
-		// that match the body width.
-		// the ink outline is the same strip a little wider and with the snout pushed forward
-		const ink = c * 0.05;
-		for (let i = 0; i < HEAD_ROWS; i++) {
-			const v = i / (HEAD_ROWS - 1);
-			const d0 = (v - HEAD_PIVOT) * texH; // distance behind the pivot (negative: towards the snout)
-			for (const outline of [false, true]) {
-				const d = outline && d0 < 0 ? d0 * 1.06 - ink * 0.6 : d0;
-				let px: number, py: number, tx: number, ty: number;
-				if (d <= 0) {
-					px = hp.x - hdx * d;
-					py = hp.y - hdy * d;
-					tx = -hdx;
-					ty = -hdy;
-				} else {
-					const p = spine(d), p1 = spine(Math.max(0, d - 2)), p2 = spine(d + 2);
-					px = p.x;
-					py = p.y;
-					tx = p2.x - p1.x;
-					ty = p2.y - p1.y;
-					const tl = Math.hypot(tx, ty) || 1;
-					tx /= tl;
-					ty /= tl;
-				}
-				// texture u runs to the head's right: the back-tangent turned a quarter clockwise
-				const r = headHalfU(v) * texW * (outline ? 1.06 : 1) + (outline ? ink * 0.5 : 0);
-				const buf = outline ? this.headOutlinePos : this.headPos;
-				const o = i * 4;
-				buf[o] = px - ty * r;
-				buf[o + 1] = py + tx * r;
-				buf[o + 2] = px + ty * r;
-				buf[o + 3] = py - tx * r;
-			}
-		}
-		this.headGeom.getBuffer('aPosition').update();
-		this.headOutlineGeom.getBuffer('aPosition').update();
 		for (const rig of [this.tongueRig, this.headRig]) {
 			rig.position.set(hp.x, hp.y);
 			rig.rotation = heading + Math.PI / 2;
 			rig.scale.set(hs);
-			rig.visible = this.enterClip > 0.02;
 		}
-		this.head.visible = this.headOutline.visible = this.enterClip > 0.02;
 		const g = Math.round(255 * Math.max(0, Math.min(1, this.shade)));
-		this.head.tint = (g << 16) | (g << 8) | g;
-		this.tongue.y = -0.27 * tex.height;
+		this.face.tint = this.mouth.tint = (g << 16) | (g << 8) | g;
+		this.mouth.visible = this.mouthOpen;
+		this.tongue.y = (HEAD_TIP - HEAD_PIVOT) * HEAD_PX;
 		for (const e of this.eyes) e.alpha = this.eyeGlow * (0.75 + 0.25 * Math.sin(clock.time * 7));
 		// idle tongue flick every 3-6 s (cosmetic timing)
 		this.nextFlick -= dt / 1000;

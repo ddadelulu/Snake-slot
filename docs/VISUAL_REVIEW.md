@@ -95,6 +95,12 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 |---|---|---|
 | 47 | End of a base game round | The hatchling rests where it finished (breathing, tongue flicks, outlines kept) until the next spin, then fades as the new board drops; replaces the slither-off and exit refill (#28, #29) |
 
+## Owner round: head and body one piece (D-045)
+
+| # | Where | Change |
+|---|---|---|
+| 48 | Snake head and neck | One mesh from snout to tail: same scales, light and ink line; the neck curves smoothly into the body on turns with no fold or seam (checked frame by frame through tight turns, an OUROBOROS round and the guardian); eyes and nostrils drawn on top |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield
