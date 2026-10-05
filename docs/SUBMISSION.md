@@ -1,6 +1,6 @@
 # CONSTRICTOR: Submission pack
 
-Studio **Studio 12** · Game id `constrictor` · Math **v2** (2026-09-30: trail refills, D-038) · Upload-ready web build `frontend/apps/constrictor/build/` (static, 3.9 MB, 76 files; `pnpm build`) · Math upload set `math/games/constrictor/publish/` (`publish_parts.py join`)
+Studio **Studio 12** · Game id `constrictor` · Math **v2** (2026-09-30: trail refills, D-038) · Upload-ready web build `frontend/apps/constrictor/build/` (static, 4.9 MB, 76 files; `pnpm build`) · Math upload set `math/games/constrictor/publish/` (`publish_parts.py join`)
 
 ## 1. Promo blurb
 
