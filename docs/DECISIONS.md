@@ -389,3 +389,15 @@ layers: a smoked-glass panel (`rgba(9,9,10,0.4)` with a 7 px backdrop blur, cut 
 (an even-odd clip-path ring with the ink line on both edges); the ink line and drop are applied to the controls
 only, with a shorter drop (3 px) so the readouts never smudge on the lighter glass. Layout, sizes and selectors
 are unchanged; the other plaques (HUD, dialogs, menu) stay solid. Style bible §7 updated.
+
+### D-047: A richer room
+The owner asked for a nicer background. The room plate (still a procedural placeholder, D-020) was a flat grid of
+riveted steel panels with hard blind stripes, a plain door and an empty counter. It is now an art-deco strongroom:
+deep blue lacquer walls with fluted pilasters, inset panels framed by double brass pinstripes with stepped corners,
+a dentil frieze and a brass dado rail; softer moonlight shafts through the blinds with haze and dust in the beams;
+fan-shaped Deco sconces on the pilasters casting warm pools (style bible §2 "practicals"); a heavy round vault door
+in a bolted frame ring, its machined face with a faint sunburst, brass bolts, spoked wheel and combination dial,
+standing a little ajar so gold light leaks round its rim; and a polished black counter with a brass edge that
+mirrors the room and catches a few gold glints. Composition is unchanged (board centre calm and darker, door right
+in landscape and top in portrait, behind the logo). `room()` now has its own seeded generator; the key art, which
+composes the room, was regenerated with it.

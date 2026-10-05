@@ -107,6 +107,12 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 |---|---|---|
 | 49 | Taskbar | Smoked glass (40 % tint, soft blur) inside the brass rim: the room shows through; text and controls keep the ink line, legible on every viewport |
 
+## Owner round: a nicer room (D-047)
+
+| # | Where | Change |
+|---|---|---|
+| 50 | Background | Art-deco panelled strongroom: lacquer panels with brass pinstripes, fluted pilasters, fan sconces with warm pools, a detailed vault door ajar with gold light at its rim, a polished counter; softer moon shafts |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

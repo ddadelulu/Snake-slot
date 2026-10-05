@@ -609,129 +609,249 @@ def shed():
     return finish(im.filter(ImageFilter.GaussianBlur(2 * S)), W, W)
 
 
+def _ss(a, b, x):
+    t = np.clip((x - a) / (b - a), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
 def room(w, h, portrait=False):
-    """1940s strongroom plate after midnight (STYLE_BIBLE, D-043): riveted steel wall panels in cool steel blue,
-    a round brass vault door ajar, a brass-trimmed counter, moonlight through the blinds from the upper left,
-    a teal rim from the right, low mist over the counter and a few gold glints. The centre stays calm and darker
-    for the board; the brass stays warm against the cool room."""
-    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    """1940s strongroom plate after midnight (STYLE_BIBLE §2, D-043, D-047): an art-deco panelled wall in deep
+    blue lacquer (fluted pilasters, inset panels with brass pinstripes and stepped corners, a dentil frieze), soft
+    moonlight shafts through the blinds from the upper left, fan sconces casting warm pools, a heavy round vault
+    door ajar with warm gold light leaking round its rim, and a polished black counter with a brass edge that
+    mirrors the room and catches a few gold glints. The centre stays calm and darker for the board; the brass
+    stays warm against the cool room."""
+    r = np.random.default_rng(47)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     u, v = xx / w, yy / h
     S0 = min(w, h)
-    # --- steel wall: panels with bevelled seams, horizontal brushing
-    pw, ph = (0.2 * w, 0.34 * h) if not portrait else (0.34 * w, 0.2 * h)
-    fx, fy = (xx / pw) % 1.0, (yy / ph) % 1.0
-    ex, ey = np.minimum(fx, 1 - fx) * pw, np.minimum(fy, 1 - fy) * ph
-    seam = np.minimum(ex, ey)
-    brushed = np.array(Image.fromarray((rng.normal(0, 1, (h, w)) * 40 + 128).clip(0, 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(0)), float)
-    brushed = np.array(Image.fromarray(brushed.astype(np.uint8)).resize((w // 8, h), Image.BILINEAR).resize((w, h), Image.BILINEAR), float) / 128 - 1
-    wall = 26 + 5 * brushed
-    wall = wall - 16 * np.exp(-(seam / 2.5) ** 2)  # dark seam
-    wall = wall + 9 * np.exp(-((fx * pw - 5) / 3) ** 2) + 7 * np.exp(-((fy * ph - 5) / 3) ** 2)  # bevel catch-light (top/left)
-    wall = wall - 6 * np.exp(-(((1 - fx) * pw - 5) / 3) ** 2) - 6 * np.exp(-(((1 - fy) * ph - 5) / 3) ** 2)
-    base = np.stack([wall * 0.84, wall * 0.97, wall * 1.18], -1)
-    # --- light: moonlight key (upper left), teal rim (right), calm darker centre
-    key = np.exp(-(((u - 0.08) / 0.5) ** 2 + ((v - 0.05) / 0.55) ** 2))
-    base = base * (0.55 + 0.9 * key[..., None]) + np.array([20, 38, 62]) * key[..., None] * 0.6
-    moon = np.exp(-(((u - 1.02) / 0.22) ** 2)) * (0.6 + 0.4 * (1 - v))
-    base = base + np.array([6, 30, 38]) * moon[..., None]
-    centre = np.exp(-(((u - 0.5) / 0.26) ** 2 + ((v - 0.48) / 0.34) ** 2))
-    base = base * (1 - 0.35 * centre[..., None])
-    img = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
-    d = ImageDraw.Draw(img)
-    # rivets along the seams
-    step = S0 * 0.035
-    nxp, nyp = int(w / pw) + 2, int(h / ph) + 2
-    for i in range(nxp):
-        for j in range(nyp):
-            x0, y0 = i * pw, j * ph
-            for k in range(int(pw / step)):
-                for (rx, ry) in ((x0 + (k + 0.5) * step, y0 + 9), (x0 + 9, y0 + (k + 0.5) * step * ph / pw)):
-                    if 0 <= rx < w and 0 <= ry < h:
-                        r = S0 * 0.0045
-                        d.ellipse([rx - r, ry - r, rx + r, ry + r], fill=(14, 15, 17, 255))
-                        d.ellipse([rx - r * 0.55, ry - r * 0.7, rx, ry - r * 0.1], fill=(70, 72, 78, 255))
-    # --- vault door, ajar (dark gap on the hinge side), in the background
-    dcx, dcy, R = (0.83 * w, 0.4 * h, 0.3 * h) if not portrait else (0.5 * w, 0.13 * h, 0.3 * w)
-    gap = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(gap).ellipse([dcx - R * 1.06 - R * 0.1, dcy - R * 1.06, dcx + R * 1.06 - R * 0.1, dcy + R * 1.06], fill=255)
-    gap = gap.filter(ImageFilter.GaussianBlur(S0 * 0.004))
-    img = Image.composite(Image.new("RGBA", (w, h), (4, 4, 6, 255)), img, gap)
-    dd = np.hypot(xx - dcx, yy - dcy) / R
-    ang = np.arctan2(yy - dcy, xx - dcx)
-    litk = np.cos(ang - math.radians(-135))  # +1 toward the upper-left light
-    door = np.zeros((h, w, 4))
-    inside = dd <= 1.0
-    # outer steel rim with brass lip, inner plate, bolt ring, concentric machining
-    rim = (dd > 0.86) & inside
-    plate = dd <= 0.86
-    col = np.zeros((h, w, 3))
-    col[plate] = 30
-    mach = (np.sin(dd * 140) * 0.5 + 0.5) * 4
-    col += mach[..., None] * plate[..., None]
-    bev = np.clip(litk, -1, 1)
-    col[rim] = (np.stack([40 + 18 * bev, 41 + 18 * bev, 44 + 18 * bev], -1))[rim]
-    lip = np.exp(-((dd - 0.865) / 0.012) ** 2)
-    col += np.array([150, 112, 58]) * (lip * (0.6 + 0.4 * bev))[..., None]
-    inner_lip = np.exp(-((dd - 0.36) / 0.01) ** 2)
-    col += np.array([120, 90, 46]) * (inner_lip * (0.6 + 0.4 * bev))[..., None]
-    col = col * (0.6 + 0.8 * key[..., None]) + np.array([10, 18, 30]) * key[..., None]
-    door[..., :3] = col
-    door[..., 3] = 255 * inside
-    dimg = Image.fromarray(np.clip(door, 0, 255).astype(np.uint8), "RGBA")
-    dd2 = ImageDraw.Draw(dimg)
-    for kb in range(24):
-        a = kb * 2 * math.pi / 24
-        bx, by = dcx + math.cos(a) * R * 0.93, dcy + math.sin(a) * R * 0.93
-        br = R * 0.028
-        shade_k = 0.6 + 0.4 * math.cos(a - math.radians(-135))
-        dd2.ellipse([bx - br, by - br, bx + br, by + br], fill=(int(96 * shade_k), int(74 * shade_k), int(40 * shade_k), 255), outline=(10, 10, 12, 255), width=2)
-    for kb in range(6):  # handle wheel
-        a = kb * math.pi / 3 + 0.3
-        dd2.line([(dcx + math.cos(a) * R * 0.06, dcy + math.sin(a) * R * 0.06), (dcx + math.cos(a) * R * 0.3, dcy + math.sin(a) * R * 0.3)], fill=(128, 96, 50, 255), width=max(3, int(R * 0.035)))
-    dd2.ellipse([dcx - R * 0.32, dcy - R * 0.32, dcx + R * 0.32, dcy + R * 0.32], outline=(140, 106, 56, 255), width=max(3, int(R * 0.03)))
-    dd2.ellipse([dcx - R * 0.07, dcy - R * 0.07, dcx + R * 0.07, dcy + R * 0.07], fill=(110, 84, 44, 255))
-    img.alpha_composite(dimg)
-    # --- counter: velvet-topped with a brass trim, lower band
-    ctop = 0.8 if not portrait else 0.86
-    arr = np.array(img, float)
-    band = v > ctop
-    arr[band, :3] = arr[band, :3] * 0.35 + 6
-    trim = np.exp(-((v - ctop) * h / 3.0) ** 2)
-    arr[..., :3] += np.array([150, 112, 56]) * (trim * (0.35 + 0.65 * np.clip(1 - u, 0, 1)))[..., None]
-    # --- blind-light slats (moonlight, upper left, falling across wall and door)
+    px = S0 / 1440.0  # one design pixel at the 1440 reference size
+    ctop = 0.8 if not portrait else 0.86  # counter top
+    ftop = 0.075 if not portrait else 0.045  # frieze bottom
+    # ---------------------------------------------------------------- albedo and relief
+    alb = np.zeros((h, w, 3), np.float32)
+    lac = np.array([30, 44, 62], np.float32)  # deep blue lacquer
+    alb[:] = lac
+    relief = np.zeros((h, w), np.float32)  # >0 catches light (faces up/left), <0 in shade
+    brass = np.zeros((h, w), np.float32)  # brass inlay coverage (0..1)
+    # pilasters and panels
+    Pw = (0.155 if not portrait else 0.27) * w
+    off = (0.5 * w) % Pw - Pw / 2  # a pilaster sits on the centre line (hidden by the board) so both sides match
+    pil_w = 0.19 * Pw
+    k = np.floor((xx - off) / Pw)
+    lx = (xx - off) - k * Pw  # 0..Pw, the pilaster centred on 0
+    dpil = np.minimum(lx, Pw - lx)  # distance to the nearest pilaster centre line
+    on_pil = dpil < pil_w / 2
+    wall_zone = (v > ftop) & (v < ctop)
+    # fluting: five grooves across the pilaster
+    fl = np.cos((dpil / (pil_w / 2)) * math.pi * 2.5 * 2)
+    relief += np.where(on_pil & wall_zone, 0.35 * fl, 0)
+    alb[on_pil & wall_zone] *= 0.82
+    # pilaster edges: thin brass line
+    pe = np.exp(-((dpil - pil_w / 2) / (1.3 * px)) ** 2)
+    brass += pe * wall_zone
+    # inset panel frame (double pinstripe with stepped corners)
+    m = pil_w / 2 + 0.11 * Pw  # margin from the pilaster centre to the frame
+    x0 = m
+    x1 = Pw - m
+    ty0, ty1 = (ftop + 0.05) * h, (ctop - 0.06) * h
+    qx = np.minimum(lx - x0, x1 - lx)  # >0 inside horizontally
+    qy = np.minimum(yy - ty0, ty1 - yy)
+    st = 0.07 * Pw  # stepped corner size
+    # signed distance to the panel outline: the rectangle with a square step cut into each corner
+    sd = np.maximum(-np.minimum(qx, qy), np.minimum(st - qx, st - qy))
+    for g, wgt in ((0.0, 0.9), (0.028 * Pw, 0.6)):
+        brass += wgt * np.exp(-((sd + g) / (1.1 * px)) ** 2)
+    inside_panel = sd < 0
+    # a raised panel face: lit along its top and left, a soft shade along its bottom and right
+    relief += np.where(inside_panel, 0.1 * (1 - v), 0)
+    relief += 0.25 * np.exp(-np.clip(-sd, 0, None) / (5 * px)) * inside_panel * np.where((yy - ty0 < ty1 - yy), 1, -1)
+    # frieze: dark band, a row of dentils and two brass lines
+    fz = v <= ftop
+    alb[fz] = lac * 0.62
+    dent_w = 0.012 * w
+    dent = ((xx % (dent_w * 2)) < dent_w) & (v > ftop * 0.35) & (v < ftop * 0.8)
+    relief += np.where(dent, 0.35, 0)
+    relief += np.where(dent & ((xx % (dent_w * 2)) < 2 * px), 0.4, 0)
+    for lv, wgt in ((ftop, 1.0), (ftop * 0.3, 0.7), (ftop + 0.012, 0.6)):
+        brass += wgt * np.exp(-((yy - lv * h) / (1.4 * px)) ** 2)
+    # dado: brass rail above the counter's back panel
+    brass += 0.8 * np.exp(-((yy - (ctop - 0.025) * h) / (1.6 * px)) ** 2)
+    # ---------------------------------------------------------------- lighting
+    # moonlight key from the upper left, through the blinds as soft volumetric shafts
+    key = np.exp(-(((u - 0.0) / 0.55) ** 2 + ((v - 0.0) / 0.7) ** 2))
     a30 = math.radians(30)
-    # bands at ~30 deg from horizontal, falling left-high to right-low (STYLE_BIBLE 2)
-    pp = (yy * math.cos(a30) - xx * math.sin(a30)) / (S0 * 0.085)
-    slat = np.clip(np.sin(pp * math.pi) * 1.6 - 0.25, 0, 1) ** 1.4
-    fall = np.exp(-(((u - 0.18) / 0.36) ** 2 + ((v - 0.18) / 0.48) ** 2)) * (1 - 0.7 * centre)
-    lightk = (slat * fall)[..., None]
-    arr[..., :3] = arr[..., :3] * (1 + 1.0 * lightk) + np.array([16, 34, 58]) * lightk
-    # --- low mist over the counter, drifting in soft banks
-    mist_n = rng.random((max(2, h // 90), max(2, w // 90)))
-    mist_n = np.array(Image.fromarray((mist_n * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC), float) / 255
-    mist = np.clip((v - (ctop - 0.2)) / 0.3, 0, 1) ** 1.3 * (0.55 + 0.45 * mist_n) * (1 - 0.5 * centre)
-    arr[..., :3] += np.array([22, 36, 50]) * mist[..., None]
-    # --- vignette + dust
-    vig = np.clip(1 - 0.7 * (((u - 0.5) / 0.72) ** 2 + ((v - 0.5) / 0.72) ** 2), 0.2, 1)
-    arr[..., :3] *= vig[..., None]
-    dust = rng.random((h, w)) > 0.99965
-    arr[dust, :3] += 34
-    out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA").convert("RGB").filter(ImageFilter.GaussianBlur(0.8))
-    # --- gold glints along the counter (jewels catching the moon), kept clear of the board in the centre
-    glow = Image.new("RGB", (w, h), (0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    for _ in range(9):
-        gx = rng.uniform(0.03, 0.97) * w
-        if abs(gx / w - 0.5) < 0.22 and not portrait:
+    pp = (yy * math.cos(a30) - xx * math.sin(a30)) / (S0 * 0.11)
+    slat = 0.5 + 0.5 * np.sin(pp * math.pi * 2)
+    slat = _ss(0.3, 0.8, slat)
+    beam = slat * np.exp(-(((u - 0.06) / 0.34) ** 2 + ((v - 0.1) / 0.5) ** 2))
+    centre = np.exp(-(((u - 0.5) / 0.25) ** 2 + ((v - 0.47) / 0.33) ** 2))
+    beam = beam * (1 - 0.75 * centre)
+    moon = np.array([0.55, 0.72, 1.0], np.float32)
+    warm = np.array([1.0, 0.72, 0.4], np.float32)
+    light = np.full((h, w, 3), 0.42, np.float32) * np.array([0.8, 0.88, 1.0], np.float32)
+    light += moon * (0.55 * key + 0.5 * beam)[..., None]
+    # teal moon rim from the right edge
+    light += np.array([0.1, 0.35, 0.4], np.float32) * (np.exp(-(((u - 1.02) / 0.12) ** 2)) * (0.5 + 0.5 * (1 - v)))[..., None]
+    # sconces: fan-shaped deco wall lamps with warm pools up and down the wall
+    # fan sconces mounted on pilasters (snapped to the nearest pilaster centre)
+    want = [(0.1, 0.36)] if not portrait else [(0.1, 0.8), (0.9, 0.8)]
+    sconces = [(((round((tx * w - off) / Pw) * Pw) + off) / w, ty) for tx, ty in want]
+    for sx, sy in sconces:
+        dx, dy = (u - sx) * w / S0, (v - sy) * h / S0
+        pool = np.exp(-((dx / 0.09) ** 2 + (dy / 0.24) ** 2)) + 0.8 * np.exp(-((dx / 0.045) ** 2 + ((dy + 0.1) / 0.1) ** 2))
+        light += warm * (1.6 * pool)[..., None]
+    # the vault interior glows gold round the door's rim
+    dcx, dcy, R = (0.83 * w, 0.4 * h, 0.3 * h) if not portrait else (0.5 * w, 0.13 * h, 0.3 * w)
+    gx, gy = dcx - R * 0.045, dcy  # the door sits a little off its frame (ajar towards the hinge side)
+    dd_frame = np.hypot(xx - dcx, yy - dcy) / R
+    leak = np.exp(-((dd_frame - 1.2) / 0.22) ** 2) * (0.5 + 0.5 * np.clip((xx - (dcx - R)) / (2 * R), 0, 1))
+    light += warm * (0.7 * leak)[..., None]
+    light = light * (1 - 0.32 * centre)[..., None]
+    # ---------------------------------------------------------------- compose the wall
+    shade_k = 1 + relief * 0.9
+    col = alb * shade_k[..., None] * light
+    bcol = np.array([206, 164, 92], np.float32)
+    bl = np.clip(brass, 0, 1)[..., None]
+    col = col * (1 - bl) + bcol * bl * (0.45 + 0.55 * np.clip(light / 1.2, 0, 1.4))
+    # ---------------------------------------------------------------- counter: polished black with a brass edge
+    cz = v >= ctop
+    top_h = 0.035
+    ref_zone = (v >= ctop) & (v < ctop + top_h)
+    # reflection of the wall above (mirrored, blurred, dim)
+    src_rows = np.clip((2 * ctop * h - yy).astype(int), 0, h - 1)
+    refl = col[src_rows, xx.astype(int)]
+    refl_img = Image.fromarray(np.clip(refl, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(6 * px))
+    refl = np.asarray(refl_img, np.float32)
+    marble = np.array([10, 12, 16], np.float32)
+    fade = np.exp(-((v - ctop) / 0.05))[..., None]
+    col = np.where(cz[..., None], marble + refl * 0.5 * fade, col)
+    # front face (below the top): vertical fluting, darker
+    face = v >= ctop + top_h
+    fl2 = np.cos(xx / (0.006 * w) * math.pi)
+    col = np.where(face[..., None], (np.array([8, 10, 14], np.float32) * (1 + 0.25 * fl2[..., None])) + refl * 0.06, col)
+    edge = np.exp(-((yy - ctop * h) / (2.0 * px)) ** 2) + 0.5 * np.exp(-((yy - (ctop + top_h) * h) / (1.5 * px)) ** 2)
+    col += np.array([200, 158, 88], np.float32) * (edge * (0.5 + 0.5 * np.clip(1.2 - u * 0.6, 0, 1)))[..., None]
+    img = Image.fromarray(np.clip(col, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
+    # ---------------------------------------------------------------- sconce fixtures
+    d = ImageDraw.Draw(img)
+    for sx, sy in sconces:
+        cx, cy = sx * w, sy * h
+        rr = 0.042 * S0
+        for kf in range(7):  # fan of glass blades
+            a0 = math.radians(200 + kf * 20)
+            d.polygon([(cx, cy), (cx + math.cos(a0) * rr, cy + math.sin(a0) * rr), (cx + math.cos(a0 + math.radians(17)) * rr, cy + math.sin(a0 + math.radians(17)) * rr)], fill=(255, 214, 150, 235))
+        d.rectangle([cx - rr * 0.55, cy - 2 * px, cx + rr * 0.55, cy + 4 * px], fill=(196, 152, 84, 255))
+        d.polygon([(cx - rr * 0.18, cy + 4 * px), (cx + rr * 0.18, cy + 4 * px), (cx, cy + rr * 0.6)], fill=(170, 130, 70, 255))
+    # ---------------------------------------------------------------- vault door
+    door = _vault_door(w, h, dcx, dcy, R, gx, gy, key, px, r)
+    img.alpha_composite(door)
+    arr = np.asarray(img, np.float32)[..., :3].copy()
+    # ---------------------------------------------------------------- air: haze in the shafts, dust
+    haze = beam * (0.6 + 0.4 * (1 - v))
+    arr += np.array([28, 44, 70], np.float32) * haze[..., None]
+    for sx, sy in sconces:
+        dx, dy = (u - sx) * w / S0, (v - sy) * h / S0
+        arr += np.array([90, 58, 22], np.float32) * np.exp(-((dx / 0.045) ** 2 + ((dy + 0.012) / 0.04) ** 2))[..., None]
+        # warm wash on the lacquer round the lamp (light up and down the wall from the fan)
+        arr += np.array([40, 26, 10], np.float32) * (np.exp(-((dx / 0.08) ** 2 + (dy / 0.22) ** 2)) * (v < ctop))[..., None]
+    dust = (r.random((h, w)) > 0.9994) & (beam > 0.25)
+    arr[dust] += 50
+    # a few gold glints along the counter's brass edge (jewels catching the light), clear of the board
+    gl = Image.new("RGB", (w, h), (0, 0, 0))
+    gd = ImageDraw.Draw(gl)
+    for _ in range(10):
+        gx = r.uniform(0.02, 0.98) * w
+        if abs(gx / w - 0.5) < 0.26 and not portrait:
             continue
-        gy = (ctop + rng.uniform(0.01, 0.05)) * h
-        r = S0 * rng.uniform(0.0025, 0.005)
-        gd.ellipse([gx - r * 3, gy - r * 3, gx + r * 3, gy + r * 3], fill=(60, 44, 20))  # soft warm halo
-        gd.line([(gx - r * 3.5, gy), (gx + r * 3.5, gy)], fill=(150, 120, 74), width=1)
-        gd.line([(gx, gy - r * 2.5), (gx, gy + r * 2.5)], fill=(150, 120, 74), width=1)
-        gd.ellipse([gx - r * 0.7, gy - r * 0.7, gx + r * 0.7, gy + r * 0.7], fill=(230, 200, 150))
-    glow = glow.filter(ImageFilter.GaussianBlur(S0 * 0.0028))
-    return Image.fromarray(np.clip(np.array(out, float) + np.array(glow, float), 0, 255).astype(np.uint8), "RGB")
+        gy = (ctop + r.uniform(0.004, 0.02)) * h
+        gr = S0 * r.uniform(0.002, 0.004)
+        gd.line([(gx - gr * 3.5, gy), (gx + gr * 3.5, gy)], fill=(150, 120, 74), width=1)
+        gd.line([(gx, gy - gr * 2.5), (gx, gy + gr * 2.5)], fill=(150, 120, 74), width=1)
+        gd.ellipse([gx - gr * 0.7, gy - gr * 0.7, gx + gr * 0.7, gy + gr * 0.7], fill=(230, 200, 150))
+    arr += np.asarray(gl.filter(ImageFilter.GaussianBlur(0.8 * px)), np.float32)
+    # ---------------------------------------------------------------- vignette + fine grain (no banding)
+    vig = np.clip(1 - 0.75 * (((u - 0.5) / 0.75) ** 2 + ((v - 0.5) / 0.75) ** 2), 0.18, 1)
+    arr *= vig[..., None]
+    arr += r.normal(0, 1.6, (h, w, 1)).astype(np.float32)
+    out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB").filter(ImageFilter.GaussianBlur(0.6 * px))
+    return out
+
+
+def _vault_door(w, h, dcx, dcy, R, gx, gy, key, px, r):
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    rgba = np.zeros((h, w, 4), np.float32)
+    # frame ring set into the wall (steel, bolted), then the dark gap, then the door (offset towards the hinge)
+    df = np.hypot(xx - dcx, yy - dcy) / R
+    ring = (df > 1.06) & (df < 1.22)
+    ang = np.arctan2(yy - dcy, xx - dcx)
+    litk = np.cos(ang - math.radians(-135))
+    rc = 34 + 16 * litk * np.sign(1.14 - df)
+    rgba[ring, :3] = np.stack([rc * 0.92, rc * 0.98, rc * 1.08], -1)[ring]
+    rgba[ring, 3] = 255
+    gap = df <= 1.06
+    # inside the vault: gold light, brightest where the gap is widest (away from the hinge)
+    dd0 = np.hypot(xx - gx, yy - gy) / R
+    glow = np.exp(-np.clip(dd0 - 1.0, 0, None) / 0.025) * (0.35 + 0.65 * np.clip((xx - gx) / R * 0.5 + 0.5, 0, 1))
+    gcol = np.array([24, 14, 6], np.float32) + np.array([255, 196, 110], np.float32) * glow[..., None]
+    rgba[gap, :3] = gcol[gap]
+    rgba[gap, 3] = 255
+    dd = np.hypot(xx - gx, yy - gy) / R
+    ang2 = np.arctan2(yy - gy, xx - gx)
+    lit2 = np.cos(ang2 - math.radians(-135))
+    inside = dd <= 1.0
+    col = np.zeros((h, w, 3), np.float32)
+    # thick rim (the door's edge) and the face: machined steel with concentric rings and a soft sunburst
+    rim = (dd > 0.9) & inside
+    face = dd <= 0.9
+    base = 36 + 10 * lit2
+    mach = 3 * np.sin(dd * 220)
+    rays = 4 * np.cos(ang2 * 24) * _ss(0.42, 0.6, dd) * (1 - _ss(0.8, 0.9, dd))
+    fcol = base + mach + rays
+    col[face] = np.stack([fcol * 0.93, fcol * 0.98, fcol * 1.1], -1)[face]
+    rcol = 44 + 26 * lit2
+    col[rim] = np.stack([rcol * 0.93, rcol * 0.98, rcol * 1.08], -1)[rim]
+    # brass lips
+    for rad, wgt in ((0.9, 1.0), (0.97, 0.6), (0.4, 0.8), (0.42, 0.5)):
+        lip = np.exp(-((dd - rad) / 0.008) ** 2)
+        col += np.array([170, 128, 64], np.float32) * (lip * wgt * (0.55 + 0.45 * lit2))[..., None]
+    col = col * (0.75 + 0.6 * key[..., None])
+    rgba[inside, :3] = col[inside]
+    rgba[inside, 3] = 255
+    img = Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8), "RGBA")
+    d = ImageDraw.Draw(img)
+    # bolts on the frame ring
+    for kb in range(28):
+        a = kb * 2 * math.pi / 28
+        bx, by = dcx + math.cos(a) * R * 1.14, dcy + math.sin(a) * R * 1.14
+        br = R * 0.022
+        sk = 0.6 + 0.4 * math.cos(a - math.radians(-135))
+        d.ellipse([bx - br, by - br, bx + br, by + br], fill=(int(70 * sk + 20), int(72 * sk + 20), int(78 * sk + 22), 255), outline=(10, 10, 12, 255), width=max(1, int(1.5 * px)))
+    # locking bolts round the door's face
+    for kb in range(16):
+        a = kb * 2 * math.pi / 16
+        bx, by = gx + math.cos(a) * R * 0.94, gy + math.sin(a) * R * 0.94
+        br = R * 0.03
+        sk = 0.6 + 0.4 * math.cos(a - math.radians(-135))
+        d.ellipse([bx - br, by - br, bx + br, by + br], fill=(int(150 * sk), int(116 * sk), int(62 * sk), 255), outline=(12, 10, 8, 255), width=max(1, int(1.5 * px)))
+        d.ellipse([bx - br * 0.5, by - br * 0.7, bx - br * 0.05, by - br * 0.2], fill=(int(230 * sk), int(196 * sk), int(130 * sk), 255))
+    # spoked handle wheel and hub
+    for kb in range(6):
+        a = kb * math.pi / 3 + 0.3
+        d.line([(gx + math.cos(a) * R * 0.07, gy + math.sin(a) * R * 0.07), (gx + math.cos(a) * R * 0.3, gy + math.sin(a) * R * 0.3)], fill=(150, 114, 60, 255), width=max(3, int(R * 0.032)))
+        ex, ey = gx + math.cos(a) * R * 0.33, gy + math.sin(a) * R * 0.33
+        rr = R * 0.035
+        d.ellipse([ex - rr, ey - rr, ex + rr, ey + rr], fill=(176, 136, 72, 255))
+    d.ellipse([gx - R * 0.3, gy - R * 0.3, gx + R * 0.3, gy + R * 0.3], outline=(160, 122, 64, 255), width=max(3, int(R * 0.028)))
+    d.ellipse([gx - R * 0.08, gy - R * 0.08, gx + R * 0.08, gy + R * 0.08], fill=(128, 96, 50, 255), outline=(200, 160, 90, 255), width=max(1, int(2 * px)))
+    # combination dial, upper right of the wheel
+    cx, cy, cr = gx + R * 0.58, gy - R * 0.5, R * 0.1
+    d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], fill=(40, 42, 46, 255), outline=(176, 136, 72, 255), width=max(2, int(2.5 * px)))
+    for kt in range(20):
+        a = kt * 2 * math.pi / 20
+        d.line([(cx + math.cos(a) * cr * 0.7, cy + math.sin(a) * cr * 0.7), (cx + math.cos(a) * cr * 0.9, cy + math.sin(a) * cr * 0.9)], fill=(200, 170, 110, 255), width=1)
+    # soft contact shadow of the door on the gap's lower right
+    return img
 
 
 def velvet(n=1024):
