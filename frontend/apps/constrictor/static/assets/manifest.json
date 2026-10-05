@@ -165,10 +165,6 @@
   }
  },
  "audio": {
-  "amb_vault": {
-   "file": "audio/amb_vault.mp3",
-   "source": "placeholder"
-  },
   "cluster_win": {
    "file": "audio/cluster_win.mp3",
    "source": "placeholder"
@@ -255,10 +251,6 @@
   },
   "ouroboros_sting": {
    "file": "audio/ouroboros_sting.mp3",
-   "source": "placeholder"
-  },
-  "slither_loop": {
-   "file": "audio/slither_loop.mp3",
    "source": "placeholder"
   },
   "stinger_apex": {

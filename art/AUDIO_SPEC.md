@@ -13,8 +13,8 @@ around 4–6 kHz.
 
 ## Global rules
 - Format: MP3 44.1 kHz, 96–128 kbps (music 128 kbps), peak −1 dBFS; SFX trimmed to −60 dB tails.
-- Loops (`*_loop`, `music_*`, `amb_*`) must loop sample-accurately, with no click at the seam.
-- Two buses: **music** (music_*, amb_vault) and **sfx** (everything else). Mute, volumes and tab-hidden
+- Loops (`*_loop`, `music_*`) must loop sample-accurately, with no click at the seam.
+- Two buses: **music** (music_*) and **sfx** (everything else). Mute, volumes and tab-hidden
   silence are handled by the game (`src/game/sound.ts`).
 - Turbo pitches nothing up. Repeated sounds (gulp, mult_tick) are pitched by the game (+12 % per step, capped).
 
@@ -29,7 +29,6 @@ around 4–6 kHz.
 | egg_wobble | `hatch` start | 0.5 s | leathery creak |
 | egg_crack | shell splits | 0.4 s | dry crack and crumble |
 | hatch_hiss | hatchling emerges | 0.8 s | soft hiss, rising |
-| slither_loop | snake moving / entering / exiting | 2 s loop | scales dragging on velvet |
 | tongue_flick | idle flick | 0.2 s | tiny wet flutter |
 | gulp | pearl swallowed (`snakeMoves` step eats a pearl) | 0.35 s | wet gulp, pitch-stepped by the game |
 | mult_tick | multiplier increases | 0.2 s | brass counter click |
@@ -47,7 +46,6 @@ around 4–6 kHz.
 | music_base | base game | 60–90 s loop | slow noir jazz, bass + brushes + sparse piano, 72 bpm |
 | music_hunt | THE HUNT / VENOM HUNT | 60 s loop | same key, 96 bpm, walking bass, ride |
 | music_hunt_layer | added as the multiplier grows | 60 s loop, synced to music_hunt | trumpet/vibes layer; the game fades it in from ×2 up to ×21 |
-| amb_vault | always, very low | 30 s loop | room tone, distant ventilation, the odd drip |
 
 ## Placeholder generator
 `math/env/bin/python art/audio/synth.py` regenerates every placeholder into `art/placeholder/audio/`.

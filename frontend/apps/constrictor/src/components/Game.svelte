@@ -187,7 +187,6 @@
 		const unlocked = sound.unlock();
 		await unlocked;
 		sound.loop('music_base', { music: true, volume: 0.7, fade: 2 });
-		sound.loop('amb_vault', { volume: 0.35, fade: 2 });
 		introPlaying = true;
 		await playVideo('intro', { requireReady: true }); // only if already loaded; skippable
 		introPlaying = false;

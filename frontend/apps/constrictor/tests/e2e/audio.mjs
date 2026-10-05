@@ -5,11 +5,11 @@ import { chromium } from '@playwright/test';
 const base = process.argv[2] ?? 'http://localhost:8080';
 const SPEC = {
 	land_1: [0.15], land_2: [0.15], land_3: [0.15], gem_tick: [0.1], key_land: [0.6], heartbeat_loop: [1.6, true], egg_wobble: [0.5],
-	egg_crack: [0.4], hatch_hiss: [0.8], slither_loop: [2, true], tongue_flick: [0.2], gulp: [0.35], mult_tick: [0.2], mult_slam: [0.9],
+	egg_crack: [0.4], hatch_hiss: [0.8], tongue_flick: [0.2], gulp: [0.35], mult_tick: [0.2], mult_slam: [0.9],
 	ouro_bite: [0.5], constrict_crunch: [1.0], deep_boom: [1.5], cluster_win: [0.7], countup_loop: [1, true], vault_door: [2.5],
 	ui_click: [0.05], ui_toggle: [0.05], stinger_strike: [1.5], stinger_constrict: [2], stinger_devour: [2.5], stinger_apex: [3],
 	stinger_vault_empty: [4], hunt_intro_sting: [2.5], ouroboros_sting: [2], music_base: [60, true], music_hunt: [60, true],
-	music_hunt_layer: [60, true], amb_vault: [30, true],
+	music_hunt_layer: [60, true],
 };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const page = await browser.newPage();

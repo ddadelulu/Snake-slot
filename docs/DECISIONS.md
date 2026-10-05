@@ -448,3 +448,11 @@ Checked by measurement (pitch-class profile per track, band balance for phone sp
 spectrograms) and the audio QA test (33 files, 0 problems). The SFX are byte-identical; the vault ambience changed
 only in its noise pattern (the music now has its own random generator). These are still placeholders: finals per
 `art/AUDIO_SPEC.md` drop into `art/final/audio/` and win.
+
+### D-052: No rain ambience, no slither swoosh
+The owner did not like the "water and swoosh" sounds (and does like the music). They were the vault ambience
+(`amb_vault`: rain-like filtered noise with random drips, looping under everything) and the snake's `slither_loop`
+(pulsing filtered noise while it moves or enters). Both are removed from the game, the asset build, the audio spec and
+the audio QA list; the music carries the room on its own. The snake's moves keep their musical feedback: a gem tick for
+each fresh gem that drops into its trail and the gulp for pearls. `synth.py` still synthesizes (and drops) the slither
+so its noise generator stays in step: every other file regenerates byte-identical. 31 audio files, QA clean.

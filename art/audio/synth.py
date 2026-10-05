@@ -259,23 +259,18 @@ def sfx():
 
 
 # ----------------------------------------------------------------------------------------------------
-# Ambience (the music is in music.py, D-051)
+# The music is in music.py (D-051); there is no ambience track (D-052)
 # ----------------------------------------------------------------------------------------------------
-def ambience():
-    dur = 24
-    hum = sum(sine(f, dur) * a for f, a in [(50, 0.5), (100, 0.25), (150, 0.1)]) * 0.35
-    rain = lp(hp(pink(dur), 400), 5000) * 0.25
-    drops = np.zeros(int(dur * SR))
-    for k in range(260):
-        place(drops, fm_bell(rng.uniform(1800, 4200), 0.04, 1.5, 0.5, 0.01) * rng.uniform(0.02, 0.07), rng.uniform(0, dur - 0.1))
-    return loopify(mix(hum, rain, drops), 1.0)
+# Removed by the owner (D-052): the slither swoosh and the rain-and-drips ambience. The slither is still synthesized
+# (and dropped) so the noise generator stays in step and every other SFX file stays byte-identical.
+DROPPED = {"slither_loop"}
 
 
 def main():
     sizes = {}
     for name, x in sfx().items():
-        sizes[name] = save(name, x, 96)
-    sizes["amb_vault"] = save("amb_vault", ambience(), 64)
+        if name not in DROPPED:
+            sizes[name] = save(name, x, 96)
     # the music: stereo noir jazz with a snake charmer (music.py, its own random generator)
     import music
 

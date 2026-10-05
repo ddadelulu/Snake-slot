@@ -265,15 +265,12 @@ export class Stage {
 		this.claimSnake();
 		// start off-board beyond the tail edge and slide in along the body path
 		this.snake.setPath(pts);
-		sound.loop('slither_loop', { volume: 0.5 });
 		await this.snake.enter(this.speedMs(900, 300));
-		sound.stop('slither_loop');
 		void edge;
 	}
 
 	async moveSnake(steps: SnakeStep[], onStep: (i: number, st: SnakeStep) => void) {
 		const ms = this.speedMs(235, 90);
-		sound.loop('slither_loop', { volume: 0.35 });
 		let pearlStreak = 0;
 		for (let i = 0; i < steps.length; i++) {
 			const st = steps[i];
@@ -297,7 +294,6 @@ export class Stage {
 			if (st.eat && isPearl(st.eat)) this.snake.addBulge();
 			onStep(i, st);
 		}
-		sound.stop('slither_loop');
 	}
 
 	private cellAt(p: Pt): Cell {
