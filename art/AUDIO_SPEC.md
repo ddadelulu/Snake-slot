@@ -62,4 +62,7 @@ The placeholders are normalised to −1.5 dBFS because MP3 encoding overshoots s
 
 Known placeholder differences from the lengths above (informational; the finals should follow the spec):
 reverb tails make `cluster_win`, `constrict_crunch`, `deep_boom`, `hatch_hiss`, `key_land`, `mult_slam`,
-`ouroboros_sting` and `stinger_strike` 2–4× longer, and `music_hunt` / `music_hunt_layer` loop at 20 s instead of 60 s.
+`ouroboros_sting` and `stinger_strike` 2–4× longer, and `music_hunt` / `music_hunt_layer` loop at 37 s instead of 60 s.
+The placeholder music (D-051, `art/audio/music.py`) is stereo at 96 kbps: base 72 s at 80 bpm (swung noir jazz with a
+clarinet "snake charmer" line in A Phrygian dominant), Hunt 37 s at 104 bpm (jungle toms tuned to the key, walking bass)
+with a layer of muted-trumpet lead and brass hits of exactly the same length.

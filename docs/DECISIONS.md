@@ -432,3 +432,19 @@ wide screens, in a row under it on tall ones, and hide on very short pop-out pla
 match: the hero is smaller and centred for the poster, and its raised neck and head are now one piece with the
 coil (same scales and light, an S-curved neck, the game's cartoon head and glossy eyes, D-045) inside the game's
 ink line; the dashboard tile foreground follows. `LoadingScreen` gained optional `tagline` and `features` props.
+
+### D-051: New music: noir jazz with a snake charmer
+The owner asked to change the music. The placeholders were thin (12 bars of plucked bass, noise brushes and a few
+piano chords; the Hunt was 8 bars of bass over a sine pad) and mono. New original music, synthesized from scratch in
+`art/audio/music.py` (nothing sampled), all in A minor so the win stingers still fit:
+- **Base game** (72 s, 80 bpm, swung): an upright-bass walk with chromatic approach notes, brushes, ride and a
+  feathered kick, Rhodes comping in a Charleston rhythm, and a gliding clarinet line in A Phrygian dominant (the
+  "snake charmer" mode) over changes that lean on the Phrygian Bb7; a vibraphone answers in the B section (A-B-A').
+- **The Hunt** (37 s, 104 bpm): a big-band jungle-tom stomp (toms tuned to E and A, the key's fifth and root), a
+  driving walk, a low clarinet riff and a Rhodes pad. **The layer** (exactly the same number of samples, so the game's
+  fade-in as the multiplier grows stays in sync) adds a hot muted-trumpet lead and brass hits.
+Stereo with a wide room reverb whose tail wraps round the loop point (seamless loops), peaks at -1.5 dBFS, 96 kbps.
+Checked by measurement (pitch-class profile per track, band balance for phone speakers, loudness over time, seams,
+spectrograms) and the audio QA test (33 files, 0 problems). The SFX are byte-identical; the vault ambience changed
+only in its noise pattern (the music now has its own random generator). These are still placeholders: finals per
+`art/AUDIO_SPEC.md` drop into `art/final/audio/` and win.

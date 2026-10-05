@@ -1,4 +1,4 @@
-"""CONSTRICTOR placeholder audio: original, synthesized from scratch (numpy). DECISIONS D-021.
+"""CONSTRICTOR placeholder audio: original, synthesized from scratch (numpy). DECISIONS D-021, D-051 (music.py).
 
 Usage (from repo root):  math/env/bin/python art/audio/synth.py
 Writes MP3 (mono, 44.1 kHz) into art/placeholder/audio/. Nothing is sampled from any source.
@@ -259,72 +259,8 @@ def sfx():
 
 
 # ----------------------------------------------------------------------------------------------------
-# Music and ambience
+# Ambience (the music is in music.py, D-051)
 # ----------------------------------------------------------------------------------------------------
-def brush(sec):
-    return bp(noise(sec), 2500, 9000) * env_exp(int(sec * SR), 0.01, sec * 0.5) * 0.35
-
-
-def music_base():
-    bpm = 84
-    beat = 60 / bpm
-    bars = 12
-    dur = bars * 4 * beat
-    m = np.zeros(int((dur + 2) * SR))
-    # walking upright bass, A minor: Am | Dm | E7 | Am  (x3)
-    prog = [
-        [110, 131, 147, 165],
-        [147, 131, 117, 110],
-        [82, 104, 123, 147],
-        [110, 98, 92, 104],
-    ]
-    for bar in range(bars):
-        for b, f in enumerate(prog[bar % 4]):
-            place(m, pluck(f, beat * 1.4, 0.9955, 0.25) * 0.8, (bar * 4 + b) * beat)
-    # brushed drums: swish on 2 and 4, soft ride taps
-    for bb in range(bars * 4):
-        if bb % 2 == 1:
-            place(m, brush(beat * 0.9) * 1.1, bb * beat)
-        place(m, fm_bell(3500, 0.12, 2.3, 0.6, 0.05) * 0.06, bb * beat)
-        place(m, fm_bell(3500, 0.1, 2.3, 0.6, 0.04) * 0.04, (bb + 0.66) * beat)
-    # sparse piano voicings every other bar
-    chords = [[220, 262, 330, 494], [294, 349, 440, 523], [330, 415, 494, 587], [220, 262, 330, 392]]
-    for bar in range(0, bars, 2):
-        for i, f in enumerate(chords[(bar // 2) % 4]):
-            place(m, piano(f, beat * 6, 0.22), bar * 4 * beat + i * 0.03 + beat * 0.5)
-    m = reverb(m[: int(dur * SR) + int(0.5 * SR)], 0.22)
-    return loopify(m[: int(dur * SR) + int(0.3 * SR)], 0.3)
-
-
-def music_hunt(layer=False):
-    bpm = 96
-    beat = 60 / bpm
-    bars = 8
-    dur = bars * 4 * beat
-    m = np.zeros(int((dur + 2) * SR))
-    roots = [55, 55, 58.27, 55, 55, 55, 51.91, 49]
-    for bar in range(bars):
-        for e in range(8):
-            f = roots[bar] * (2 if e % 4 == 2 else 1)
-            place(m, pluck(f, beat * 0.6, 0.994, 0.3) * (0.9 if e % 2 == 0 else 0.6), (bar * 4 + e / 2) * beat)
-        for q in range(4):
-            place(m, hp(noise(0.03), 7000) * env_exp(int(0.03 * SR), 0.001, 0.008) * 0.25, (bar * 4 + q + 0.5) * beat)
-    if not layer:
-        pad = (sine(220, dur) + sine(233.08, dur) * 0.7) * 0.05 * (0.5 + 0.5 * np.sin(2 * np.pi * t(dur) / (beat * 8)))
-        m[: len(pad)] += lp(pad, 1500)
-    else:
-        m *= 0.0
-        for bar in range(bars):
-            for q in (0, 1.5, 2, 3.5):
-                tom = glide(160, 90, 0.35, 6) * env_exp(int(0.35 * SR), 0.002, 0.12)
-                place(m, tom * 0.7, (bar * 4 + q) * beat)
-        x = t(dur)
-        saw = sum(np.sin(2 * np.pi * 110 * k * x + k) / k for k in range(1, 12)) * 0.08
-        m[: len(saw)] += lp(saw * (0.4 + 0.6 * (x / dur)), 2200)
-    m = reverb(m[: int(dur * SR) + int(0.5 * SR)], 0.2)
-    return loopify(m[: int(dur * SR) + int(0.3 * SR)], 0.3)
-
-
 def ambience():
     dur = 24
     hum = sum(sine(f, dur) * a for f, a in [(50, 0.5), (100, 0.25), (150, 0.1)]) * 0.35
@@ -339,10 +275,12 @@ def main():
     sizes = {}
     for name, x in sfx().items():
         sizes[name] = save(name, x, 96)
-    sizes["music_base"] = save("music_base", music_base(), 96)
-    sizes["music_hunt"] = save("music_hunt", music_hunt(False), 96)
-    sizes["music_hunt_layer"] = save("music_hunt_layer", music_hunt(True), 96)
     sizes["amb_vault"] = save("amb_vault", ambience(), 64)
+    # the music: stereo noir jazz with a snake charmer (music.py, its own random generator)
+    import music
+
+    for name, st in music.render().items():
+        sizes[name] = music.save_stereo(name, st, 96)
     total = sum(sizes.values())
     for k, v in sorted(sizes.items()):
         print(f"{k:22s} {v/1024:7.1f} KB")
