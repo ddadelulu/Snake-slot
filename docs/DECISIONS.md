@@ -456,3 +456,12 @@ The owner did not like the "water and swoosh" sounds (and does like the music). 
 the audio QA list; the music carries the room on its own. The snake's moves keep their musical feedback: a gem tick for
 each fresh gem that drops into its trail and the gulp for pearls. `synth.py` still synthesizes (and drops) the slither
 so its noise generator stays in step: every other file regenerates byte-identical. 31 audio files, QA clean.
+
+### D-053: Retina fix: the stage is sized by `app.screen`
+On Stake (the owner's Mac) the room filled only the top-left quarter of the screen and the right side was black.
+`Stage.layout()` sized the background, blinds and dim layer by `renderer.width / renderer.resolution`, but in Pixi 8
+`renderer.width` is already in CSS pixels, so on a 2x screen the stage thought it was half its real size (the dust
+wrapped at half width too). Every earlier check ran at device pixel ratio 1, where the bug is invisible. The stage now
+uses `app.screen` (CSS px). New test `tests/e2e/hidpi.mjs` loads the game at DPR 1, 2 and 3 on desktop and phone and
+checks the right-hand strip and the bottom-left corner are drawn room, not the flat backdrop (it fails on the old
+code at 2x and 3x, passes now).

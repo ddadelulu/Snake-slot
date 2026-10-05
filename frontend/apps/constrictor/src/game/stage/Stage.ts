@@ -157,8 +157,10 @@ export class Stage {
 	}
 
 	private layout() {
-		const w = this.app.renderer.width / this.app.renderer.resolution;
-		const h = this.app.renderer.height / this.app.renderer.resolution;
+		// app.screen is in CSS px (Pixi 8's renderer.width already is too: dividing it by the resolution again
+		// halved the room on Retina screens and left the right side black)
+		const w = this.app.screen.width;
+		const h = this.app.screen.height;
 		const portrait = h > w * 1.05;
 		if (portrait !== this.bgPortrait) {
 			this.bgPortrait = portrait;
@@ -196,11 +198,11 @@ export class Stage {
 		this.guardianCoil.update(dt);
 		this.blinds.tilePosition.x += dt * 0.004;
 		this.blinds.tilePosition.y += dt * 0.002;
-		const w = this.app.renderer.width / this.app.renderer.resolution;
+		const w = this.app.screen.width;
 		for (const d of this.dust.children as (Graphics & { v?: number })[]) {
 			d.y -= ((d.v ?? 5) * dt) / 1000;
 			d.x += Math.sin(clock.time * 0.3 + d.y * 0.01) * 0.05;
-			if (d.y < -10) d.y = (this.app.renderer.height / this.app.renderer.resolution) + 10;
+			if (d.y < -10) d.y = this.app.screen.height + 10;
 			if (d.x > w) d.x = 0;
 		}
 		this.guardianCoil.eyeGlow = this.eyeOpen;
