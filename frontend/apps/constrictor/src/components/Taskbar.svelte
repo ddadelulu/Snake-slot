@@ -163,7 +163,10 @@
 			<div class="readout win" class:hot={winHot} aria-live="polite"><span class="lbl">{labels.win}</span><span class="val num">{winText}</span></div>
 		{/if}
 	{/snippet}
-	<div class="dock deco" role="toolbar" aria-label="Game controls">
+	<div class="dock" role="toolbar" aria-label="Game controls">
+		<!-- smoked glass (the room shows through, softly blurred) inside a brass rim -->
+		<span class="glass" aria-hidden="true"></span>
+		<span class="rim" aria-hidden="true"><span></span></span>
 		<div class="row" class:tight bind:this={rowEl}>
 		<div class="side left">
 			<div class="left-group" bind:this={leftEl}>
@@ -242,11 +245,80 @@
 		user-select: none;
 		-webkit-tap-highlight-color: transparent;
 	}
-	/* the owner's dock: glass, heavy outline, round corners; equal sides keep SPIN exactly in the middle */
+	/* the owner's dock: a brass-rimmed plaque of smoked glass, so the room shows through; equal sides keep SPIN
+	   exactly in the middle. Only the controls carry the ink line and drop (D-042): a filter over the whole dock
+	   would paint its shadows through the glass and make it opaque again. The drop is shorter than on the solid
+	   plaques so it never smudges the readouts on the lighter glass. */
 	.dock {
 		--cut: 18px;
 		--edge-w: 2px;
+		--glass: rgba(9, 9, 10, 0.4);
+		position: relative;
+		isolation: isolate;
 		padding: 10px 24px;
+	}
+	.dock > .row,
+	.dock > .funds-row {
+		filter: var(--ink-outline) drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+	}
+	.glass,
+	.rim,
+	.rim > span {
+		position: absolute;
+		pointer-events: none;
+	}
+	.glass {
+		--c: calc(var(--cut) - var(--edge-w) * 0.41);
+		inset: var(--edge-w);
+		z-index: -2;
+		clip-path: polygon(
+			var(--c) 0,
+			calc(100% - var(--c)) 0,
+			100% var(--c),
+			100% calc(100% - var(--c)),
+			calc(100% - var(--c)) 100%,
+			var(--c) 100%,
+			0 calc(100% - var(--c)),
+			0 var(--c)
+		);
+		background:
+			linear-gradient(180deg, rgba(255, 236, 190, 0.08), rgba(255, 236, 190, 0) 45%),
+			var(--glass);
+		-webkit-backdrop-filter: blur(7px) saturate(1.15);
+		backdrop-filter: blur(7px) saturate(1.15);
+	}
+	/* the rim: a brass ring with the ink line on both edges */
+	.rim {
+		inset: 0;
+		z-index: -1;
+		filter: var(--ink-outline);
+	}
+	.rim > span {
+		--e: var(--edge-w);
+		--ci: calc(var(--cut) - var(--edge-w) * 0.41);
+		inset: 0;
+		background: linear-gradient(160deg, #f3dc9a 0%, #b8902f 38%, #e9c96e 62%, #8a6a2a 100%);
+		clip-path: polygon(
+			evenodd,
+			var(--cut) 0,
+			calc(100% - var(--cut)) 0,
+			100% var(--cut),
+			100% calc(100% - var(--cut)),
+			calc(100% - var(--cut)) 100%,
+			var(--cut) 100%,
+			0 calc(100% - var(--cut)),
+			0 var(--cut),
+			var(--cut) 0,
+			calc(var(--e) + var(--ci)) var(--e),
+			var(--e) calc(var(--e) + var(--ci)),
+			var(--e) calc(100% - var(--e) - var(--ci)),
+			calc(var(--e) + var(--ci)) calc(100% - var(--e)),
+			calc(100% - var(--e) - var(--ci)) calc(100% - var(--e)),
+			calc(100% - var(--e)) calc(100% - var(--e) - var(--ci)),
+			calc(100% - var(--e)) calc(var(--e) + var(--ci)),
+			calc(100% - var(--e) - var(--ci)) var(--e),
+			calc(var(--e) + var(--ci)) var(--e)
+		);
 	}
 	.row {
 		display: grid;

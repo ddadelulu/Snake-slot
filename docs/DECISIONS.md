@@ -380,3 +380,12 @@ design grid, so they stay crisp at any size; the eye glows and tongue keep their
 frame is the same snake and gets the same head. `snake_head.png` / `snake_head_open.png` are no longer drawn in
 the game (the head is part of the body); the placeholder pipeline still uses `snake_head` for the key art, and it
 stays the style reference for the snake parts in `art/HIGGSFIELD_PROMPTS.md`. Presentation only.
+
+### D-046: A see-through taskbar
+The owner asked for the taskbar to be a bit transparent. Lowering the face opacity of the `.deco` plaque alone does
+not work: its brass `::before` fills the whole shape (it would glow through), and the ink-outline filter on the
+plaque paints its stacked drop-shadows under a see-through face, making it opaque again. The dock now has its own
+layers: a smoked-glass panel (`rgba(9,9,10,0.4)` with a 7 px backdrop blur, cut corners) and a separate brass rim
+(an even-odd clip-path ring with the ink line on both edges); the ink line and drop are applied to the controls
+only, with a shorter drop (3 px) so the readouts never smudge on the lighter glass. Layout, sizes and selectors
+are unchanged; the other plaques (HUD, dialogs, menu) stay solid. Style bible §7 updated.

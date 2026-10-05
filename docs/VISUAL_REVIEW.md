@@ -101,6 +101,12 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 |---|---|---|
 | 48 | Snake head and neck | One mesh from snout to tail: same scales, light and ink line; the neck curves smoothly into the body on turns with no fold or seam (checked frame by frame through tight turns, an OUROBOROS round and the guardian); eyes and nostrils drawn on top |
 
+## Owner round: see-through taskbar (D-046)
+
+| # | Where | Change |
+|---|---|---|
+| 49 | Taskbar | Smoked glass (40 % tint, soft blur) inside the brass rim: the room shows through; text and controls keep the ink line, legible on every viewport |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield

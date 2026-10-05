@@ -89,7 +89,9 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
 ## 7. UI (the owner's taskbar layout, built as the vault's own hardware: D-031 / D-036 / D-039 / D-041)
 - The taskbar is the owner's layout on every screen: menu left, SPIN in the middle, − BET + right, BALANCE and
   WIN inside the bar (beside the menu on wide screens, a slim row along the bottom on phones), Buy Bonus above it
-  on the left.
+  on the left. The bar itself is **smoked glass** (D-046): `rgba(9,9,10,0.4)` over a soft 7 px blur of the room,
+  inside the same brass rim and ink line, so the room shows through; its controls keep the ink line with a short
+  drop.
 - **Art-deco hardware, not generic cards.** Panels are black lacquer (`rgba(9,9,10,0.94–0.97)`) with a
   brushed-brass edge (gradient `#F3DC9A → #B8902F → #E9C96E → #8A6A2A`, 2–3 px) and **corners cut at 45°**
   (`.deco` in `app.css`; 6–22 px cuts by size). No rounded "pill" cards, no dashed outlines, no stacks of
