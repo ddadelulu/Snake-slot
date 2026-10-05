@@ -979,19 +979,114 @@ def tile_foreground(n=1024):
     gem = opal().resize((int(n * 0.43), int(n * 0.43)), Image.LANCZOS)
     fg.alpha_composite(gem, (int(cx - gem.width / 2), int(cy - gem.height * 0.62)))
     fg.alpha_composite(Image.fromarray(front, "RGBA"))
-    # raised head rising from the front-right of the coil, looking up-left
-    head = snake_head(False).resize((int(n * 0.56), int(n * 0.56)), Image.LANCZOS).rotate(24, resample=Image.BICUBIC, expand=True)
-    fg.alpha_composite(head, (int(cx + rx * 0.58 - head.width * 0.55), int(cy + ry * 0.35 - head.height * 0.93)))
-    return drop_shadow(fg, (10, 16), 22, 140)
+    # the raised neck and head, one piece with the coil (D-045): a tube rising from the coil's front right
+    fg.alpha_composite(_hero_neck_head(n, strip, (cx + rx * math.cos(0.7), cy + ry * math.sin(0.7)), (n * 0.62, n * 0.27), -112))
+    # the in-game cartoon ink line round the whole silhouette (D-042)
+    a = fg.split()[-1]
+    ink = a.point(lambda q: 255 if q > 110 else 0).filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(1.2))
+    out = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    out.alpha_composite(Image.merge("RGBA", (*Image.new("RGB", (n, n), (20, 13, 5)).split(), ink)))
+    out.alpha_composite(fg)
+    return drop_shadow(out, (10, 16), 22, 140)
+
+
+def _hero_neck_head(n, strip, base, pivot, heading_deg):
+    """The key art's raised neck and head as one tube with the coil's scales and light: a Bezier spine from the
+    coil up to the head, then the head's width profile (rounded snout, broad jaw, taper into the neck) as in the
+    game's renderer, with the game's glossy cartoon eyes and nostrils on top."""
+    sh, sw = strip.shape[:2]
+    hd = np.array([math.cos(math.radians(heading_deg)), math.sin(math.radians(heading_deg))])
+    body_half = n * 0.05
+    grid = body_half * 2 * 3.6  # the head grid in body widths: a little bigger than in-game (3.2), for the hero shot
+    P0, P3 = np.array(base, float), np.array(pivot, float)
+    P1 = P0 + np.array([n * 0.12, -n * 0.18])  # out to the right, then back over to the head: a gentle S
+    P2 = P3 - hd * n * 0.22
+    # spine from the snout tip (s = 0) back to the coil
+    tip = P3 + hd * (0.34 - 0.07) * grid
+    ts = np.linspace(0, 1, 120)
+    bez = ((1 - ts) ** 3)[:, None] * P0 + (3 * (1 - ts) ** 2 * ts)[:, None] * P1 + (3 * (1 - ts) * ts ** 2)[:, None] * P2 + (ts ** 3)[:, None] * P3
+    pts = np.vstack([tip[None, :], bez[::-1]])
+    seg = np.diff(pts, axis=0)
+    cum = np.concatenate([[0], np.cumsum(np.hypot(seg[:, 0], seg[:, 1]))])
+    total = cum[-1]
+
+    def half(sv):
+        v = 0.07 + sv / grid
+        hh = np.where(v < 0.2, 0.14 * np.sqrt(np.clip(1 - ((0.2 - v) / 0.13) ** 2, 0, 1)),
+                      np.where(v < 0.5, 0.14 + 0.11 * _ss(0.2, 0.5, v), 0.25 - 0.085 * _ss(0.5, 0.72, v))) * grid
+        k = _ss(0.6, 0.85, v)
+        return hh * (1 - k) + body_half * k
+
+    yy, xx = np.mgrid[0:n, 0:n].astype(float)
+    best = np.full((n, n), 1e9)
+    s_at = np.zeros((n, n))
+    side = np.zeros((n, n))
+    nrm_x = np.zeros((n, n))
+    nrm_y = np.zeros((n, n))
+    pad = grid * 0.3
+    for i in range(len(pts) - 1):
+        (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+        bx0, bx1 = int(max(0, min(x0, x1) - pad)), int(min(n, max(x0, x1) + pad + 1))
+        by0, by1 = int(max(0, min(y0, y1) - pad)), int(min(n, max(y0, y1) + pad + 1))
+        px, py = xx[by0:by1, bx0:bx1], yy[by0:by1, bx0:bx1]
+        dx, dy = x1 - x0, y1 - y0
+        ll = dx * dx + dy * dy or 1e-9
+        t = np.clip(((px - x0) * dx + (py - y0) * dy) / ll, 0, 1)
+        qx, qy = px - (x0 + t * dx), py - (y0 + t * dy)
+        dist = np.hypot(qx, qy)
+        sv = cum[i] + t * (cum[i + 1] - cum[i])
+        f = dist / np.maximum(half(sv), 1e-6)  # normalised distance: < 1 inside the tube
+        sub = best[by0:by1, bx0:bx1]
+        better = f < sub
+        sub[better] = f[better]
+        ln = math.sqrt(ll)
+        s_at[by0:by1, bx0:bx1][better] = sv[better]
+        side[by0:by1, bx0:bx1][better] = np.sign(qx * -dy + qy * dx)[better]
+        nrm_x[by0:by1, bx0:bx1][better] = -dy / ln
+        nrm_y[by0:by1, bx0:bx1][better] = dx / ln
+    inside = best < 1.0
+    across = np.clip(best * side, -1, 1)
+    nz = np.sqrt(np.clip(1 - across ** 2, 0, 1))
+    # light from the upper left, as everywhere: the surface normal leans along the spine's normal by `across`
+    lx, ly, lz = -0.62, -0.62, 0.48
+    ln_ = math.sqrt(lx * lx + ly * ly + lz * lz)
+    lam = np.clip(((nrm_x * across) * lx + (nrm_y * across) * ly + nz * lz) / ln_, 0, 1)
+    u = ((s_at / (n * 0.56)) * sw).astype(int) % sw  # the coil's scale size (three strip repeats round it)
+    v = ((across * 0.5 + 0.5) * (sh - 1)).astype(int).clip(0, sh - 1)
+    tex = strip[v, u]
+    col = tex * (0.6 + 0.62 * lam)[..., None] + 255 * (np.exp(-((across + 0.35) / 0.14) ** 2) * 0.2)[..., None]
+    rgba = np.zeros((n, n, 4))
+    rgba[..., :3] = np.clip(col, 0, 255)
+    edge = np.clip((1 - best) / 0.06, 0, 1)  # soft silhouette
+    fade = np.clip((total - s_at) / (total * 0.12), 0, 1)  # the neck melts into the coil
+    rgba[..., 3] = 255 * inside * edge * fade
+    img = Image.fromarray(rgba.astype(np.uint8), "RGBA")
+    d = ImageDraw.Draw(img)
+    # face on the head grid (256 units = grid), as in SnakeView: eyes beside the pivot, nostrils near the snout
+    unit = grid / 256.0
+    side_v = np.array([-hd[1], hd[0]])  # the head's right
+    for sx in (-1, 1):
+        e = P3 + side_v * sx * 34.6 * unit + hd * 7.7 * unit
+        R = 13.3 * unit * 1.15
+        ex, ey = e
+        d.ellipse([ex - R * 1.2, ey - R * 1.2, ex + R * 1.2, ey + R * 1.2], fill=(4, 4, 6, 255))
+        d.ellipse([ex - R, ey - R, ex + R, ey + R], fill=(10, 8, 7, 255))
+        d.ellipse([ex - R * 0.86, ey - R * 0.86, ex + R * 0.86, ey + R * 0.86], outline=(128, 89, 40, 230), width=max(1, int(R * 0.16)))
+        d.ellipse([ex - R * 0.66, ey - R * 0.74, ex - R * 0.06, ey - R * 0.16], fill=(255, 250, 238, 235))
+        d.ellipse([ex + R * 0.22, ey + R * 0.3, ex + R * 0.46, ey + R * 0.54], fill=(255, 250, 238, 170))
+        nst = P3 + side_v * sx * 11.5 * unit + hd * 57.6 * unit
+        d.ellipse([nst[0] - 2.4 * unit, nst[1] - 2.4 * unit, nst[0] + 2.4 * unit, nst[1] + 2.4 * unit], fill=(58, 54, 52, 255))
+    return img
 
 
 def keyart(w=1920, h=1080):
     """Loading-screen key art (no text): the strongroom with the serpent coiled around the black opal."""
     bg = room(w, h).convert("RGBA")
     fg = tile_foreground(1024)
-    k = h * 0.82 / fg.height
+    # the hero sits in the middle band of a centred poster: title above it, call to action below (D-050)
+    k = h * 0.66 / fg.height
     fg = fg.resize((int(fg.width * k), int(fg.height * k)), Image.LANCZOS)
-    bg.alpha_composite(fg, (int(w * 0.5 - fg.width * 0.5), int(h * 0.56 - fg.height * 0.5)))
+    bg.alpha_composite(fg, (int(w * 0.5 - fg.width * 0.5), int(h * 0.52 - fg.height * 0.5)))
     return bg.convert("RGB")
 
 

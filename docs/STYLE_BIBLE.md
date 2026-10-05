@@ -114,6 +114,9 @@ Each gem has a **distinct cut silhouette**, so they read without colour:
   amounts the bar spreads out.
 - Fonts (D-048): Limelight for the logo and every title, Josefin Sans for the controls and numbers, Archivo for
   running text (§6).
+- Loading screen (D-050): after the Studio 12 splash, a centred Deco poster over the key art: a brass fan crest,
+  the title and the max-win line on top, three feature cards (left on wide screens, a row on tall ones), the hero in
+  the middle, a solid brass "Tap to enter the vault" plate at the bottom, a double brass hairline round the screen.
 - Motion: short and purposeful (120–300 ms UI transitions); restraint except the three hero moments.
 
 ## 8. Realism rules: reject and regenerate if any of these appear

@@ -42,7 +42,20 @@
 	{#snippet template()}<LoadingScreen progress={0.3} ready={false} title="CONSTRICTOR" onEnter={() => {}} />{/snippet}
 </Story>
 <Story name="Loading: ready">
-	{#snippet template()}<LoadingScreen progress={1} ready={true} preset="plain" title="CONSTRICTOR" tapText="Tap to enter the vault" onEnter={() => {}} />{/snippet}
+	{#snippet template()}<LoadingScreen
+			progress={1}
+			ready={true}
+			preset="plain"
+			title="CONSTRICTOR"
+			tagline="Win up to 25,000×"
+			features={[
+				{ title: 'The hatchling', text: 'An EGG hatches a WILD snake. Every PEARL it eats grows the multiplier.' },
+				{ title: 'Ouroboros', text: 'When it bites its own tail, the ring is crushed and the multiplier doubles.' },
+				{ title: 'The Hunt', text: '3, 4 or 5 KEYs unlock 10, 12 or 15 free spins.' },
+			]}
+			tapText="Tap to enter the vault"
+			onEnter={() => {}}
+		/>{/snippet}
 </Story>
 
 <Story name="HUD: idle wordmark">

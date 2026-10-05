@@ -27,6 +27,7 @@
 	import { formatMoney, bookToMoney } from '$game/money';
 	import { Stage } from '$game/stage/Stage';
 	import { loadManifest, loadTextures, audioUrl, imageUrl } from '$game/stage/assets';
+	import mathConfig from '$game/generated/mathConfig.json';
 	import { sound } from '$game/sound';
 	import { clock } from '$game/stage/clock';
 	import { createBookPlayer } from '$game/bookHandlers';
@@ -56,6 +57,17 @@
 	let ready = $state(false);
 	let entered = $state(false);
 	let keyArt = $state<string | null>(null);
+	// the loading screen's feature cards: every number comes from the exported math, like the rules
+	const fsAwards = mathConfig.freeSpins.awards;
+	let loadingFeatures = $derived(
+		keyArt
+			? [
+					{ title: t('loading.hatchTitle'), text: t('loading.hatchText'), icon: imageUrl('sym_EGG') },
+					{ title: t('loading.ouroTitle'), text: t('loading.ouroText'), icon: imageUrl('pearl_venom') },
+					{ title: t('loading.huntTitle'), text: t('loading.huntText', { a: fsAwards['3'], b: fsAwards['4'], c: fsAwards['5'] }), icon: imageUrl('sym_KEY') },
+				]
+			: [],
+	);
 	let vw = $state(1280);
 	let vh = $state(720);
 	let barH = $state(0);
@@ -388,6 +400,8 @@
 		{progress}
 		{ready}
 		title={t('game.title')}
+		tagline={t('loading.tagline', { max: mathConfig.maxWin.toLocaleString('en-US') })}
+		features={loadingFeatures}
 		tapText={t('loading.tap')}
 		loadingText={t('loading.loading')}
 		{keyArt}

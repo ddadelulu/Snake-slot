@@ -7,6 +7,13 @@ export const en = {
 	'studio.presents': 'STUDIO 12 PRESENTS',
 	'loading.tap': 'Tap to enter the vault',
 	'loading.loading': 'Loading',
+	'loading.tagline': 'Win up to {max}×',
+	'loading.hatchTitle': 'The hatchling',
+	'loading.hatchText': 'An EGG hatches a WILD snake. Every PEARL it eats grows the multiplier.',
+	'loading.ouroTitle': 'Ouroboros',
+	'loading.ouroText': 'When it bites its own tail, the ring is crushed and the multiplier doubles.',
+	'loading.huntTitle': 'The Hunt',
+	'loading.huntText': '3, 4 or 5 KEYs unlock {a}, {b} or {c} free spins.',
 
 	'hud.moves': 'MOVES',
 	'hud.length': 'LENGTH',

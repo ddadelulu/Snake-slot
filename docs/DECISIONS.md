@@ -420,3 +420,15 @@ texts (WILD, pearl tags) follow. Style bible §6 and §7 updated.
 While checking banners, the end of a feature showed holes in the board: `freeSpinEnd` removed the Hunt's snake,
 and the cells under its body (hidden while it was on the board) stayed empty until the next spin. It now rests on
 the board like the base game's hatchling (D-044) and fades as the next board drops. Presentation only.
+
+### D-050: A Deco poster loading screen
+The owner asked for a new loading screen design. The Studio 12 splash is unchanged (the owner's spec). The game
+screen after it was the key art with the title on the left and a dark tap plate. It is now a centred Art Deco
+poster: a brass fan crest, the title in Limelight with the "Win up to 25,000×" line between diamond rules, three
+feature cards (EGG: the hatchling and pearls; OUROBOROS; THE HUNT: KEYs to free spins, numbers from the exported
+math like the rules), a solid brass "Tap to enter the vault" plate with a soft glow, a brass gauge while loading
+(plain preset), and a double brass hairline with corner brackets round the screen. The cards sit left of the hero on
+wide screens, in a row under it on tall ones, and hide on very short pop-out players. The key art was redrawn to
+match: the hero is smaller and centred for the poster, and its raised neck and head are now one piece with the
+coil (same scales and light, an S-curved neck, the game's cartoon head and glossy eyes, D-045) inside the game's
+ink line; the dashboard tile foreground follows. `LoadingScreen` gained optional `tagline` and `features` props.

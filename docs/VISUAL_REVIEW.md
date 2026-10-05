@@ -120,6 +120,13 @@ visible (on the dock; in the 400×225 mini-player the WIN sits in the side panel
 | 51 | All text | Limelight (Art Deco) for the logo and titles, Josefin Sans for controls and numbers, Archivo for running text; titles and logo resized to fit on every viewport; counters do not jiggle |
 | 52 | End of a feature | The Hunt's snake stays on its cells until the next spin (no holes in the board) |
 
+## Owner round: loading screen (D-050)
+
+| # | Where | Change |
+|---|---|---|
+| 53 | Loading screen | Centred Deco poster: fan crest, Limelight title and max-win line, three feature cards, brass CTA plate, brass frame; checked at 1920×1080, 1200×675, 1024×576, 400×225, 375×667 and 320×568 |
+| 54 | Key art | Hero centred and smaller for the poster; neck and head one piece with the coil, game-style head and eyes, ink line |
+
 ## What still falls short of the bible (and why)
 
 - **Symbols and pearls are final** (the owner's Higgsfield set, `art/final/`, D-035). **The scene art is still illustrative, not photoreal:** background, frame, velvet, snake parts and key art are procedural placeholders because the Higgsfield
