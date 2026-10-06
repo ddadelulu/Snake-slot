@@ -471,3 +471,16 @@ After re-uploading the Retina fix the owner still saw the old game, and the uplo
 from the old one. Every build now carries a label (UTC build time, `vite.config.js` `define`, `src/build.ts`), shown
 faintly in the bottom-right corner of the loading screen and in Game Info > Legal ("Build 2026.10.06-0507"), so it
 is clear at a glance which upload a server serves. Zips handed over are named after the build.
+
+### D-055: Cover art layers for the Stake game tile
+The owner needs a 3:4 background and foreground for the cover art that also look good at 16:9. Each ratio gets its
+own composition (a crop of one ratio into the other would cut the hero), all in `art/cover/`:
+`background_3x4.png` (1500×2000) and `background_16x9.png` (1920×1080): the game's strongroom recomposed for a cover
+(`room()` gained optional door/lamps/counter/hero-glow settings; the game's plates regenerate byte-identical): the
+vault door centred behind the hero with gold light at its rim, a fan sconce either side, moonlight through the
+blinds, the counter low for a title band. `foreground_3x4.png` / `foreground_16x9.png` (transparent): the white
+serpent coiled round the black opal (one piece, D-045/D-050) with the owner's gems and pearls spilling at its base
+(the wide one adds the snake ring and the pocket watch at the sides). `title.png`: CONSTRICTOR in the game's
+Limelight lettering, transparent. `preview_*.png`: the layers assembled with a bottom gradient and the title.
+No text in the background or foreground layers. Regenerate: `art/pipeline/cover_art.py`, then
+`frontend/apps/constrictor/scripts/cover_title.mjs`.

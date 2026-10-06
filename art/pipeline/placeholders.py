@@ -614,19 +614,22 @@ def _ss(a, b, x):
     return t * t * (3 - 2 * t)
 
 
-def room(w, h, portrait=False):
+def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.0):
     """1940s strongroom plate after midnight (STYLE_BIBLE §2, D-043, D-047): an art-deco panelled wall in deep
     blue lacquer (fluted pilasters, inset panels with brass pinstripes and stepped corners, a dentil frieze), soft
     moonlight shafts through the blinds from the upper left, fan sconces casting warm pools, a heavy round vault
     door ajar with warm gold light leaking round its rim, and a polished black counter with a brass edge that
     mirrors the room and catches a few gold glints. The centre stays calm and darker for the board; the brass
-    stays warm against the cool room."""
+    stays warm against the cool room.
+    The cover art (cover_art.py) recomposes it: door=(cx, cy, radius) as fractions of the width, the height and
+    min(w, h); lamps=[(u, v), ...]; counter=its top as a fraction of the height; hero_glow lights the middle instead
+    of darkening it. The defaults are the game's plates."""
     r = np.random.default_rng(47)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     u, v = xx / w, yy / h
     S0 = min(w, h)
     px = S0 / 1440.0  # one design pixel at the 1440 reference size
-    ctop = 0.8 if not portrait else 0.86  # counter top
+    ctop = (0.8 if not portrait else 0.86) if counter is None else counter  # counter top
     ftop = 0.075 if not portrait else 0.045  # frieze bottom
     # ---------------------------------------------------------------- albedo and relief
     alb = np.zeros((h, w, 3), np.float32)
@@ -686,6 +689,8 @@ def room(w, h, portrait=False):
     slat = _ss(0.3, 0.8, slat)
     beam = slat * np.exp(-(((u - 0.06) / 0.34) ** 2 + ((v - 0.1) / 0.5) ** 2))
     centre = np.exp(-(((u - 0.5) / 0.25) ** 2 + ((v - 0.47) / 0.33) ** 2))
+    if hero_glow:
+        centre = centre * 0.0  # the cover has a hero in the middle, not a board: no calm dark centre
     beam = beam * (1 - 0.75 * centre)
     moon = np.array([0.55, 0.72, 1.0], np.float32)
     warm = np.array([1.0, 0.72, 0.4], np.float32)
@@ -695,7 +700,7 @@ def room(w, h, portrait=False):
     light += np.array([0.1, 0.35, 0.4], np.float32) * (np.exp(-(((u - 1.02) / 0.12) ** 2)) * (0.5 + 0.5 * (1 - v)))[..., None]
     # sconces: fan-shaped deco wall lamps with warm pools up and down the wall
     # fan sconces mounted on pilasters (snapped to the nearest pilaster centre)
-    want = [(0.1, 0.36)] if not portrait else [(0.1, 0.8), (0.9, 0.8)]
+    want = ([(0.1, 0.36)] if not portrait else [(0.1, 0.8), (0.9, 0.8)]) if lamps is None else lamps
     sconces = [(((round((tx * w - off) / Pw) * Pw) + off) / w, ty) for tx, ty in want]
     for sx, sy in sconces:
         dx, dy = (u - sx) * w / S0, (v - sy) * h / S0
@@ -703,11 +708,16 @@ def room(w, h, portrait=False):
         light += warm * (1.6 * pool)[..., None]
     # the vault interior glows gold round the door's rim
     dcx, dcy, R = (0.83 * w, 0.4 * h, 0.3 * h) if not portrait else (0.5 * w, 0.13 * h, 0.3 * w)
+    if door is not None:
+        dcx, dcy, R = door[0] * w, door[1] * h, door[2] * S0
     gx, gy = dcx - R * 0.045, dcy  # the door sits a little off its frame (ajar towards the hinge side)
     dd_frame = np.hypot(xx - dcx, yy - dcy) / R
     leak = np.exp(-((dd_frame - 1.2) / 0.22) ** 2) * (0.5 + 0.5 * np.clip((xx - (dcx - R)) / (2 * R), 0, 1))
     light += warm * (0.7 * leak)[..., None]
     light = light * (1 - 0.32 * centre)[..., None]
+    if hero_glow:  # a warm pool of light behind the hero, as if the open vault lit the room
+        hg = np.exp(-(((u - 0.5) * w / S0 / 0.42) ** 2 + ((v - 0.5) * h / S0 / 0.42) ** 2))
+        light += warm * (hero_glow * hg)[..., None]
     # ---------------------------------------------------------------- compose the wall
     shade_k = 1 + relief * 0.9
     col = alb * shade_k[..., None] * light
