@@ -465,3 +465,9 @@ wrapped at half width too). Every earlier check ran at device pixel ratio 1, whe
 uses `app.screen` (CSS px). New test `tests/e2e/hidpi.mjs` loads the game at DPR 1, 2 and 3 on desktop and phone and
 checks the right-hand strip and the bottom-left corner are drawn room, not the flat backdrop (it fails on the old
 code at 2x and 3x, passes now).
+
+### D-054: A visible build label
+After re-uploading the Retina fix the owner still saw the old game, and the uploaded file could not be told apart
+from the old one. Every build now carries a label (UTC build time, `vite.config.js` `define`, `src/build.ts`), shown
+faintly in the bottom-right corner of the loading screen and in Game Info > Legal ("Build 2026.10.06-0507"), so it
+is clear at a glance which upload a server serves. Zips handed over are named after the build.

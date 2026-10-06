@@ -16,6 +16,7 @@
 		preset?: 'studio12' | 'plain';
 		title?: string;
 		tagline?: string;
+		build?: string;
 		features?: { title: string; text: string; icon?: string | null }[];
 		tapText?: string;
 		loadingText?: string;
@@ -31,6 +32,7 @@
 		preset = 'studio12',
 		title = '',
 		tagline = '',
+		build = '',
 		features = [],
 		tapText = 'Tap to continue',
 		loadingText = 'Loading',
@@ -95,6 +97,7 @@
 		<div class="game" class:with-art={!!keyArt} style={keyArt ? `background-image:url(${keyArt})` : ''}>
 			<div class="shade"></div>
 			<div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+			{#if build}<div class="build">build {build}</div>{/if}
 			<header class="head">
 				<!-- Art Deco fan crest -->
 				<svg class="crest" viewBox="0 0 160 52" aria-hidden="true">
@@ -245,6 +248,16 @@
 		bottom: 6px;
 		right: 6px;
 		border-width: 0 2px 2px 0;
+	}
+	/* which upload this is: tiny and faint in the corner */
+	.build {
+		position: absolute;
+		right: clamp(40px, 7vmin, 64px);
+		bottom: clamp(16px, 2.6vmin, 26px);
+		font-size: 10px;
+		letter-spacing: 0.08em;
+		color: rgba(237, 230, 214, 0.42);
+		pointer-events: none;
 	}
 	.head {
 		grid-area: head;

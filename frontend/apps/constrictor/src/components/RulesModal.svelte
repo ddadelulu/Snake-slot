@@ -1,5 +1,6 @@
 <!-- Game info: rules, paytable (at the current bet), modes (cost, RTP, max win), UI guide, legal. -->
 <script lang="ts">
+	import { BUILD_ID } from '../build';
 	import Modal from './Modal.svelte';
 	import mathConfig from '$game/generated/mathConfig.json';
 	import { game, type ModeId } from '$game/state/game.svelte';
@@ -112,7 +113,7 @@
 		</dl>
 	{:else}
 		<p>{disclaimer()}</p>
-		<p class="muted">{tx(`Math version ${mathConfig.mathVersion}.`)}</p>
+		<p class="muted">{tx(`Math version ${mathConfig.mathVersion}. Build ${BUILD_ID}.`)}</p>
 	{/if}
 </Modal>
 

@@ -28,6 +28,7 @@
 	import { Stage } from '$game/stage/Stage';
 	import { loadManifest, loadTextures, audioUrl, imageUrl } from '$game/stage/assets';
 	import mathConfig from '$game/generated/mathConfig.json';
+	import { BUILD_ID } from '../build';
 	import { sound } from '$game/sound';
 	import { clock } from '$game/stage/clock';
 	import { createBookPlayer } from '$game/bookHandlers';
@@ -401,6 +402,7 @@
 		title={t('game.title')}
 		tagline={t('loading.tagline', { max: mathConfig.maxWin.toLocaleString('en-US') })}
 		features={loadingFeatures}
+		build={BUILD_ID}
 		tapText={t('loading.tap')}
 		loadingText={t('loading.loading')}
 		{keyArt}
