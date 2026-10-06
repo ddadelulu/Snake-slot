@@ -2,7 +2,7 @@
 // math), never re-typed. Text goes through tx() so social mode gets its wording.
 
 import mathConfig from '../generated/mathConfig.json';
-import { tx } from './index';
+import { t, tx } from './index';
 
 export type RulesSection = { id: string; title: string; paragraphs: string[] };
 
@@ -105,18 +105,44 @@ export function rulesSections(): RulesSection[] {
 	return S.map((s) => ({ ...s, title: tx(s.title), paragraphs: s.paragraphs.map(tx) }));
 }
 
+/**
+ * Interaction guide (Engine guideline #235): one entry per control the player can press, labelled exactly as the
+ * control reads on screen. Labels come from the same i18n keys as the controls, so social mode stays in step.
+ */
 export function uiGuide(): { label: string; text: string }[] {
-	return [
-		{ label: 'SPIN', text: 'Starts a round at the current bet. Press the spacebar to spin. During a round, the spacebar or a tap on the board skips animations.' },
-		{ label: '− / +', text: 'Lowers or raises the bet. Tap the bet amount to choose any bet level.' },
-		{ label: 'SERPENT CALL', text: `Turns the ante on or off. While it is on, each spin costs ${modeCostText('ante')}× the bet and THE HUNT triggers more often.` },
-		{ label: 'BUY', text: 'Opens the feature menu to buy THE HUNT or VENOM HUNT. A purchase must be confirmed.' },
-		{ label: 'AUTO', text: 'Opens the autoplay settings. Autoplay starts only after you confirm, and stops when you press STOP or a stop condition is met.' },
-		{ label: 'TURBO', text: 'Plays animations faster. It never changes the outcome.' },
-		{ label: 'SOUND', text: 'Mutes or unmutes the game.' },
-		{ label: 'i', text: 'Opens these game rules.' },
-		{ label: 'MENU', text: 'Opens the settings: sound and music volume, turbo and reduced motion.' },
-	].map((r) => ({ label: tx(r.label), text: tx(r.text) }));
+	const onOff = `${t('menu.on')} / ${t('menu.off')}`;
+	const rows: { label: string; text: string }[] = [
+		{
+			label: `${t('button.spin')} (centre button)`,
+			text: 'Starts a round at the current bet amount. The spacebar does the same. During a round the button shows SKIP: press it, the spacebar or tap the board to skip the animations. During autoplay it shows the spins left; press it to stop autoplay.',
+		},
+		{ label: '− / +', text: 'Lowers or raises the bet amount by one level. They stop at the lowest and the highest level.' },
+		{ label: t('hud.bet'), text: 'Shows the current bet amount. Tap it to choose any bet level from the list.' },
+		{ label: `${t('hud.balance')} · ${t('hud.win')}`, text: 'Your balance and the win of the current round. Display only.' },
+		{
+			label: t('button.buyBonus'),
+			text: `Opens the feature menu. ${t('mode.hunt')} and ${t('mode.venom')} show their price at the current bet amount; choosing one opens a confirmation, and the feature only starts when you press ${t('button.confirm')}.`,
+		},
+		{
+			label: t('button.ante'),
+			text: `In the ${t('button.buyBonus')} menu: turns the ante on (after a confirmation) or off. While it is on, each spin costs ${modeCostText('ante')}× the bet amount, THE HUNT triggers more often and a ${t('bonus.anteChip')} tag shows next to ${t('button.buyBonus')}.`,
+		},
+		{
+			label: `☰ ${t('button.menu').toUpperCase()}`,
+			text: `Opens the game menu with ${t('menu.auto', { state: onOff })}, ${t('menu.speed', { n: '1 / ×2' })}, ${t('menu.sound', { state: onOff })}, ${t('menu.rules')} and ${t('menu.settings')}.`,
+		},
+		{
+			label: t('menu.auto', { state: onOff }),
+			text: `Opens the autoplay settings: number of spins and stop conditions. Autoplay starts only when you press ${t('autoplay.start')}. While autoplay runs, this item or the centre button stops it.`,
+		},
+		{ label: t('menu.speed', { n: '1 / ×2' }), text: 'Switches between normal and fast (×2) animations. It never changes the outcome.' },
+		{ label: t('menu.sound', { state: onOff }), text: 'Mutes or unmutes all game sound: music and effects.' },
+		{ label: t('menu.rules'), text: 'Opens this game information: rules, paytable, modes, this guide and the legal notice.' },
+		{ label: t('menu.settings'), text: 'Opens the settings: sound on or off, music volume, effects volume, turbo play and reduced motion.' },
+		{ label: `${t('button.confirm')} / ${t('button.cancel')}`, text: `In a confirmation: ${t('button.confirm')} goes ahead, ${t('button.cancel')} closes it without playing.` },
+		{ label: '✕', text: 'Closes the open window. The Escape key does the same.' },
+	];
+	return rows.map((r) => ({ label: r.label, text: tx(r.text) }));
 }
 
 function modeCostText(id: string) {

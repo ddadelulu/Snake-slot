@@ -7,8 +7,29 @@ describe('formatMoney', () => {
 		expect(formatMoney(100_000, 'USD')).toBe('$0.10');
 		expect(formatMoney(1_234_567_890_000, 'USD')).toBe('$1,234,567.89');
 	});
-	it('rounds down to the displayed unit (never shows more than paid)', () => {
-		expect(formatMoney(1_999_999, 'USD')).toBe('$1.99');
+	it('shows sub-cent amounts exactly, never $0.00 or rounded up (#273)', () => {
+		expect(formatMoney(5_000, 'USD')).toBe('$0.005'); // 0.1x on a $0.05 bet
+		expect(formatMoney(15_000, 'USD')).toBe('$0.015');
+		expect(formatMoney(9_999, 'USD')).toBe('$0.009999');
+		expect(formatMoney(1_999_999, 'USD')).toBe('$1.999999');
+		expect(formatMoney(500_000, 'JPY')).toBe('¥0.5');
+		expect(formatMoney(3_000, 'XSC')).toBe('0.003 SC');
+		expect(formatMoney(0, 'USD')).toBe('$0.00');
+	});
+	it('count-up frames can floor to the currency decimals', () => {
+		expect(formatMoney(1_999_999, 'USD', { exact: false })).toBe('$1.99');
+		expect(formatMoney(5_000, 'USD', { exact: false })).toBe('$0.00');
+	});
+	it('formats the Engine test currencies (#219)', () => {
+		const ten = 10_000_000;
+		expect(formatMoney(ten, 'USD')).toBe('$10.00');
+		expect(formatMoney(ten, 'EUR')).toBe('€10.00');
+		expect(formatMoney(ten, 'CAD')).toBe('CA$10.00');
+		expect(formatMoney(ten, 'MXN')).toBe('MX$10.00');
+		expect(formatMoney(ten, 'JPY')).toBe('¥10');
+		expect(formatMoney(ten, 'XSC')).toBe('10.00 SC');
+		expect(formatMoney(ten, 'XGC')).toBe('10.00 GC');
+		expect(formatMoney(ten, 'XEC')).toBe('10.00 SC');
 	});
 	it('uses 0 decimals for JPY/IDR/KRW/VND/CLP', () => {
 		expect(formatMoney(100_000_000, 'JPY')).toBe('¥100');

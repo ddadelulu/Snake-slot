@@ -3,7 +3,7 @@
 
 import { game, modeCost, type ModeId } from './state/game.svelte';
 import { rgs, RgsFailure, eventsFromState, type AuthResponse } from './rgs';
-import { buildBetLevels, loadPersistedBet, persistBet, pickInitialBet } from './state/bets';
+import { buildBetLevels, pickInitialBet } from './state/bets';
 import type { LaunchParams } from './url';
 import type { BookEvent, BookEventOfType } from './model/bookTypes';
 import { bookToMoney } from './money';
@@ -45,7 +45,7 @@ export async function authenticate(): Promise<AuthResponse | null> {
 		if (game.jurisdiction.disabledTurbo) game.turbo = false;
 		game.betLevels = buildBetLevels(auth.config);
 		const resumeAmount = auth.round && auth.round.active !== false && typeof auth.round.amount === 'number' ? auth.round.amount : null;
-		game.bet = pickInitialBet(game.betLevels, auth.config, loadPersistedBet(game.currency), resumeAmount);
+		game.bet = pickInitialBet(game.betLevels, auth.config, resumeAmount);
 		return auth;
 	} catch (e) {
 		fail(e, true);
@@ -77,8 +77,8 @@ export async function resumeRound(round: NonNullable<AuthResponse['round']>) {
 
 export function setBet(amount: number) {
 	if (game.busy) return;
+	if (!game.betLevels.includes(amount)) return; // only levels from authenticate
 	game.bet = amount;
-	persistBet(game.currency, amount);
 }
 
 export function stepBet(dir: -1 | 1) {

@@ -90,15 +90,20 @@ The expected return is calculated over many plays. It is a long-term statistical
 
 ## UI GUIDE
 
-- **SPIN**: Starts a round at the current bet. Press the spacebar to spin. During a round, the spacebar or a tap on the board skips animations.
-- **− / +**: Lowers or raises the bet. Tap the bet amount to choose any bet level.
-- **SERPENT CALL**: Turns the ante on or off. While it is on, each spin costs 2.5× the bet and THE HUNT triggers more often.
-- **BUY**: Opens the feature menu to buy THE HUNT or VENOM HUNT. A purchase must be confirmed.
-- **AUTO**: Opens the autoplay settings. Autoplay starts only after you confirm, and stops when you press STOP or a stop condition is met.
-- **TURBO**: Plays animations faster. It never changes the outcome.
-- **SOUND**: Mutes or unmutes the game.
-- **i**: Opens these game rules.
-- **MENU**: Opens the settings: sound and music volume, turbo and reduced motion.
+- **SPIN (centre button)**: Starts a round at the current bet amount. The spacebar does the same. During a round the button shows SKIP: press it, the spacebar or tap the board to skip the animations. During autoplay it shows the spins left; press it to stop autoplay.
+- **− / +**: Lowers or raises the bet amount by one level. They stop at the lowest and the highest level.
+- **BET**: Shows the current bet amount. Tap it to choose any bet level from the list.
+- **BALANCE · WIN**: Your balance and the win of the current round. Display only.
+- **BUY BONUS**: Opens the feature menu. THE HUNT and VENOM HUNT show their price at the current bet amount; choosing one opens a confirmation, and the feature only starts when you press CONFIRM.
+- **SERPENT CALL**: In the BUY BONUS menu: turns the ante on (after a confirmation) or off. While it is on, each spin costs 2.5× the bet amount, THE HUNT triggers more often and a SERPENT CALL ON tag shows next to BUY BONUS.
+- **☰ MENU**: Opens the game menu with AUTO SPIN: ON / OFF, SPEED: ×1 / ×2, SOUND: ON / OFF, GAME RULES and SETTINGS.
+- **AUTO SPIN: ON / OFF**: Opens the autoplay settings: number of spins and stop conditions. Autoplay starts only when you press START AUTOPLAY. While autoplay runs, this item or the centre button stops it.
+- **SPEED: ×1 / ×2**: Switches between normal and fast (×2) animations. It never changes the outcome.
+- **SOUND: ON / OFF**: Mutes or unmutes all game sound: music and effects.
+- **GAME RULES**: Opens this game information: rules, paytable, modes, this guide and the legal notice.
+- **SETTINGS**: Opens the settings: sound on or off, music volume, effects volume, turbo play and reduced motion.
+- **CONFIRM / CANCEL**: In a confirmation: CONFIRM goes ahead, CANCEL closes it without playing.
+- **✕**: Closes the open window. The Escape key does the same.
 
 ## LEGAL
 

@@ -202,7 +202,7 @@ green or blue). The title is added by the editor. The provider logo is set in Te
 | 3 | (not mentioned) | SDK "3-star volatility limits" (§3.3) | Secondary targets. Reported per mode in MATH_REPORT; conflicts logged in DECISIONS. |
 | 4 | Mode switching: buy menu confirmation | Confirmation for **any** mode costing > 2×, including ante | The ante toggle also asks for confirmation (its cost is > 2×). |
 | 5 | Disclaimer: use the template or cover every point | Template ends "TM and © 2025 Stake Engine" | Template wording with our own notice: "CONSTRICTOR™ and © 2026 Studio 12." (D-006) |
-| 6 | Bet selector requirements | Also: a refresh mid-spin must keep the selected bet | Persist the chosen bet level (localStorage) and restore it, validated against `betLevels`. |
+| 6 | Bet selector requirements | Also: a refresh mid-spin must keep the selected bet. Engine #242 / #187: open on `defaultBetLevel`; an unfinished round restores `round.amount` | No localStorage: a remembered bet would override `defaultBetLevel` (#242). A refresh mid-spin keeps the bet through the unfinished round's `round.amount` (#187). The ladder is exactly `betLevels` (min/max only trim it). |
 | 7 | Replay: show bet cost | Show mode, base bet, cost multiplier, currency and **real cost**; default 1 USD / 1 SC | Implemented as specified. |
 | 8 | Title | Must be unique; no "Megaways"/"Xways" | "CONSTRICTOR": no existing slot with this name found (DECISIONS D-001). |
 | 9 | Bet modes ≤ 4 | No official limit found in any source | Keep 4. |

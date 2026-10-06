@@ -29,7 +29,8 @@
 	const STINGERS = ['', 'stinger_strike', 'stinger_constrict', 'stinger_devour', 'stinger_apex', 'stinger_vault_empty'];
 	const COUNT_MS = [0, 1200, 1900, 2800, 3800, 5200];
 
-	const money = (x: number) => formatMoney(bookToMoney(x, game.roundBet), game.currency);
+	// in-between count-up frames floor to the currency's decimals; the final amount is always exact (#273)
+	const money = (x: number, exact = true) => formatMoney(bookToMoney(x, game.roundBet), game.currency, { exact });
 	const ms = (normal: number) => (clock.speed > 1 ? normal * 0.45 : normal);
 
 	async function countUp(amount: number, dur: number) {
@@ -99,7 +100,7 @@
 		{#if card.kind === 'tier'}
 			<div class="tier deco on-glass lvl{card.level}">
 				<div class="title display">{t(TIER_KEYS[card.level] ?? 'win.strike')}</div>
-				<div class="amount num"><Digits text={money(shown)} /></div>
+				<div class="amount num"><Digits text={money(shown, shown === card.amount)} /></div>
 				<div class="hint">{t('win.tapToSkip')}</div>
 			</div>
 		{:else if card.kind === 'intro'}
@@ -132,7 +133,7 @@
 		{:else if card.kind === 'outro'}
 			<div class="intro deco on-glass" class:venom={card.feature === 'venom'}>
 				<div class="sub">{t('feature.summary')}</div>
-				<div class="amount num"><Digits text={money(shown)} /></div>
+				<div class="amount num"><Digits text={money(shown, shown === card.amount)} /></div>
 				{#if card.capped}<div class="note">{t('feature.maxReached')}</div>{/if}
 			</div>
 		{:else if card.kind === 'retrigger'}
@@ -140,7 +141,7 @@
 		{:else if card.kind === 'maxWin'}
 			<div class="tier deco on-glass lvl5">
 				<div class="title display">{t('win.vaultEmpty')}</div>
-				<div class="amount num"><Digits text={money(shown)} /></div>
+				<div class="amount num"><Digits text={money(shown, shown === card.amount)} /></div>
 				<div class="note">{t('feature.maxReached')}</div>
 			</div>
 		{/if}

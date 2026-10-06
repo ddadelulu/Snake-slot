@@ -85,4 +85,33 @@
 		text-align: right;
 		font-weight: 700;
 	}
+	/* mini-player (popout S, 400×225; Engine #243): a slim card at the top, rows in two columns, clear of the
+	   taskbar at the bottom */
+	@media (max-height: 320px) {
+		.panel {
+			top: 6px;
+			transform: translateX(-50%);
+			width: min(94vw, 460px);
+			padding: 8px 14px 10px;
+			--cut: 10px;
+			gap: 5px;
+		}
+		h2 {
+			font-size: 14px;
+		}
+		dl {
+			grid-template-columns: auto 1fr auto 1fr;
+			gap: 1px 10px;
+			font-size: 12px;
+		}
+		dt {
+			font-size: 9px;
+			letter-spacing: 0.08em;
+		}
+		.btn {
+			min-height: 30px;
+			padding: 4px 12px;
+			font-size: 12px;
+		}
+	}
 </style>

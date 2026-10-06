@@ -94,7 +94,7 @@ the Stake upload is always `build/` itself.
 | Type check | `npx svelte-check` | 0 errors, 0 warnings |
 | Browser soak (real handlers, skip on) | `node tests/e2e/soak.mjs http://localhost:8080 1200` | 1,200 rounds (base 1,032 · ante 120 · hunt 24 · venom 24): **0 WIN/BALANCE mismatches**, 0 console/network problems, no round left open |
 | Memory over time | same soak (heap after forced GC) | 11.4 MB after 50 rounds → 13.8 MB at 500 → 15.2 MB at 1,200, flattening. Heap-snapshot diff over 300 rounds (`tests/e2e/heapdiff.mjs`): JS objects grow < 50 KB; the rest is JIT code (≈ 0.5 MB) and Pixi buffer pools (≈ 0.4 MB) warming up. An earlier real leak (Pixi 8 GraphicsContext retention, 11.9 → 105 MB) was found by this soak and fixed |
-| Compliance flows | `node tests/e2e/compliance.mjs` | 14/14: resume + settle after refresh, bet kept, balance matches; replay shows mode/bet/cost multiplier/real cost, plays, shows win, PLAY AGAIN, **no wallet calls**; insufficient balance → error; console clean |
+| Compliance flows | `node tests/e2e/compliance.mjs` | resume + settle after refresh at the round's own bet (#187), fresh launch on `defaultBetLevel` (#242), balance matches; replay shows mode/bet/cost multiplier/real cost, plays, shows win, PLAY AGAIN, **no wallet calls**; insufficient balance → error; console clean |
 | Social mode scan | `node tests/e2e/social.mjs` | 0 restricted words and no `$` on every screen/popup (main, rules tabs, feature menu + confirm, ante confirm, autoplay, settings, bet menu, error, replay) |
 | Viewports | `node tests/e2e/viewports.mjs` | 7/7 sizes, 0 overflow, 0 console problems |
 | Screenshots + visual self-review | `node tests/e2e/screenshots.mjs http://localhost:8081 ../../../docs/screenshots` | 36 files in `docs/screenshots/`; critique against the style bible, the 24 fixes it led to and the owner-directed changes in [`docs/VISUAL_REVIEW.md`](VISUAL_REVIEW.md) |
@@ -139,14 +139,14 @@ unless noted. The mock serves real books from the published math (D-024).
 | Mute | ✅ | sound button in the bar + Settings (music/SFX volumes) |
 | Autoplay needs explicit confirmation | ✅ | AUTO opens the settings dialog; only START AUTOPLAY begins; stop conditions; STOP always available |
 | Turbo keeps wins/popups legible | ✅ | turbo = 2× animation speed; count-ups keep ≥ 45 % of their duration; banners and amounts unchanged |
-| Bet levels from authenticate, stepBet, min and max | ✅ | `tests/unit/bets.test.ts`; bet menu lists every level |
+| Bet levels: exactly `betLevels` from authenticate (min/max only trim), opens on `defaultBetLevel`, nothing remembered | ✅ | `tests/unit/bets.test.ts` (incl. the reviewer's 1.00–2.00 / default 1.50 case); bet menu lists every level |
 | Balance and final win shown; counter reaches the exact payout | ✅ | browser soak: displayed WIN == book payout for every round (`tests/e2e/soak.mjs`, see §6) |
-| Money formatting incl. XGC/XSC without `$` | ✅ | `tests/unit/money.test.ts`; screenshots `desktop_social_XSC`, `desktop_currency_XGC`, `_JPY`, `_EUR`, `_BRL` |
+| Money formatting incl. XGC/XSC/XEC without `$`; sub-cent amounts shown exactly (`$0.005`, #273) | ✅ | `tests/unit/money.test.ts`; screenshots `desktop_social_XSC`, `desktop_currency_XGC`, `_JPY`, `_EUR`, `_BRL` |
 | Query params, `rgs_url` never hardcoded | ✅ | `src/game/url.ts`, `tests/unit/url.test.ts` |
 | English + robust to any `lang` | ✅ | `tests/unit/social.test.ts` ("any lang falls back to English") |
 | Rules popup: full rules, costs, RTP per mode, max win, paytable, special values, triggers, UI guide, disclaimer | ✅ | `tests/unit/rules.test.ts` (7 checks); text in `docs/RULES.md` |
 | Bet replay: replay=true, GET /bet/replay/…, no wallet calls, controls hidden, Play → animation → cost/payout/win → Play Again, errors handled, no path to real play | ✅ | `node tests/e2e/compliance.mjs` (replay checks + "no wallet calls") |
-| Unfinished round resumes and is settled; refresh keeps the bet | ✅ | `tests/e2e/compliance.mjs` (resume checks) |
+| Unfinished round resumes and is settled at `round.amount`; a fresh launch opens on `defaultBetLevel` | ✅ | `tests/e2e/compliance.mjs` (resume + default checks) |
 | Social mode: every restricted phrase replaced | ✅ | `tests/unit/social.test.ts` (every string, rule and the disclaimer) + `node tests/e2e/social.mjs` (every screen and popup incl. error and replay) → 0 hits |
 | Game tile: bright background, transparent foreground, no text | ✅ | `art/placeholder/images/tile_background.png` (mean luminance 193/255, no dark edges), `tile_foreground.png` (serpent coiled around the black opal) |
 

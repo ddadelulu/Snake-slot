@@ -33,9 +33,23 @@ describe('rules popup content', () => {
 		expect(all).toMatch(/round ends immediately and any remaining free spins or moves are forfeited/);
 		expect(all).toMatch(/moves left on the counter are forfeited/);
 	});
-	it('has a UI guide entry for every control', () => {
+	it('has a UI guide entry for every control, labelled as it reads on screen (#235)', () => {
 		const labels = uiGuide().map((g) => g.label);
-		for (const l of ['SPIN', 'SERPENT CALL', 'BUY', 'AUTO', 'TURBO', 'SOUND', 'MENU']) expect(labels).toContain(l);
+		const has = (s: string) => labels.some((l) => l.includes(s));
+		// taskbar, menu popup, bonus menu and dialog buttons (Taskbar.svelte, BonusButton.svelte, ConfirmModal.svelte)
+		for (const k of ['button.spin', 'hud.bet', 'button.buyBonus', 'button.ante', 'menu.rules', 'menu.settings', 'button.confirm', 'button.cancel']) expect(has(t(k)), k).toBe(true);
+		for (const s of ['− / +', 'MENU', 'AUTO SPIN:', 'SPEED: ×1 / ×2', 'SOUND: ON / OFF', '✕']) expect(has(s), s).toBe(true);
+		// no guide entry for a control the game does not have
+		expect(labels).not.toContain('i');
+		expect(labels).not.toContain('TURBO');
+		expect(labels).not.toContain('BUY');
+	});
+	it('social-mode guide labels match the social button text', () => {
+		configureI18n({ social: true, lang: 'en' });
+		const labels = uiGuide().map((g) => g.label);
+		expect(labels).toContain('GET BONUS');
+		expect(labels).toContain('PLAY');
+		configureI18n({ social: false, lang: 'en' });
 	});
 	it('covers every disclaimer point', () => {
 		const d = disclaimer();

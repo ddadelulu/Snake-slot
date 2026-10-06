@@ -1,5 +1,6 @@
 // Compliance flows against the mock RGS (REQUIREMENTS §4, §6):
-//  1. refresh mid-round -> the unfinished round is shown and settled (end-round), bet level kept;
+//  1. refresh mid-round -> the unfinished round is shown and settled (end-round) at its own bet amount (#187);
+//     a fresh launch with no open round opens on defaultBetLevel (#242);
 //  2. bet replay -> mode / bet / cost multiplier / real cost shown, no wallet calls, no way into normal play;
 //  3. insufficient balance -> error dialog, no play request accepted.
 // Usage: node tests/e2e/compliance.mjs [baseUrl] [outDir]
@@ -46,10 +47,17 @@ while (Date.now() - t0 < 180_000) {
 check('resumed round settled with end-round', !st.active);
 await page.waitForFunction(() => !document.querySelector('button.spin.busy'), null, { timeout: 60000 }).catch(() => {});
 const betAfter = await page.$eval('.betval .val', (e) => e.textContent.trim());
-check('bet level kept across refresh', betAfter === betBefore, `${betBefore} -> ${betAfter}`);
+check('resumed round keeps its bet amount, not the default (#187)', betAfter === betBefore, `${betBefore} -> ${betAfter}`);
 const bal = await page.$eval('.readout:not(.win) .val', (e) => e.textContent.trim());
-const expBal = '$' + (Math.floor(st.balance / 10_000) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const usd = (raw) => '$' + String(Math.floor(raw / 1_000_000)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + String(raw % 1_000_000).padStart(6, '0').replace(/0+$/, '').padEnd(2, '0'); // mirrors formatMoney (#273)
+const expBal = usd(st.balance);
 check('balance matches the server after resume', bal === expBal, `${bal} vs ${expBal}`);
+await page.reload();
+await page.waitForSelector('button.tap');
+await page.click('button.tap');
+await page.waitForSelector('button.spin');
+const betFresh = await page.$eval('.betval .val', (e) => e.textContent.trim());
+check('fresh launch opens on defaultBetLevel, nothing remembered (#242)', betFresh === '$1.00', betFresh);
 
 // 2. replay ---------------------------------------------------------------------------------------
 const showcase = await (await fetch(`${base}/dev/showcase`)).json();

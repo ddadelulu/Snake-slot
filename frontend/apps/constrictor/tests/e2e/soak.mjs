@@ -7,7 +7,8 @@ const base = process.argv[2] ?? 'http://localhost:8080';
 const rounds = Number(process.argv[3] ?? 100);
 const out = process.argv[4] ?? '.';
 const post = (p, b) => fetch(`${base}${p}`, { method: 'POST', body: JSON.stringify(b) });
-const usd = (raw) => '$' + (Math.floor(raw / 10_000) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+// mirrors formatMoney: exact amount, at least 2 decimals (#273)
+const usd = (raw) => '$' + String(Math.floor(raw / 1_000_000)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + String(raw % 1_000_000).padStart(6, '0').replace(/0+$/, '').padEnd(2, '0');
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
 const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
