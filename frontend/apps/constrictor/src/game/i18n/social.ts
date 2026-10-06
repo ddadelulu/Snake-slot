@@ -12,8 +12,8 @@ const TABLE: [string, string][] = [
 	['loss streak', 'miss streak'],
 	['pay table', 'win table'],
 	['paytable', 'win table'],
-	['paid out', 'won'],
-	['pays out', 'win'],
+	['paid out', 'win'],
+	['pays out', 'won'],
 	['pay out', 'win'],
 	['total bet', 'total play'],
 	['win feature', 'play feature'],
@@ -51,9 +51,12 @@ const TABLE: [string, string][] = [
 
 // The restricted words we test for (tests/unit/social.test.ts scans every string).
 export const RESTRICTED = [
-	'bet', 'bets', 'betting', 'bonus buy', 'buy', 'bought', 'purchase', 'cash', 'credit', 'money', 'currency',
-	'deposit', 'gamble', 'paid', 'pay', 'pays', 'payer', 'payout', 'profit', 'rebet', 'stake', 'wager', 'withdraw',
-	'loss limit', 'loss streak', 'cost of',
+	// Engine's social-mode list (every entry is checked as a whole word / phrase, case-insensitive)
+	"be awarded to player's accounts", 'place your bets', 'at the cost of', 'bonus buy', 'buy bonus', 'cost of', 'win feature',
+	'total bet', 'paid out', 'pays out', 'pay out', 'bet/s', 'betting', 'bets', 'bet', 'bought', 'buy', 'purchase', 'cash',
+	'credit', 'money', 'currency', 'deposit', 'gamble', 'paid', 'payer', 'pays', 'pay', 'stake', 'wager', 'withdraw', 'rebet',
+	// also kept out
+	'payout', 'profit', 'paytable', 'pay table', 'loss limit', 'loss streak',
 ];
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');

@@ -11,6 +11,21 @@ describe('social mode wording', () => {
 		expect(socialize('Buy bonus')).toBe('Get bonus');
 		expect(socialize('Pays 5x')).toBe('Wins 5x');
 	});
+	it("applies Engine's social-mode word list exactly (#77)", () => {
+		const list: [string, string][] = [
+			['win feature', 'play feature'], ['pay out', 'win'], ['paid out', 'win'], ['stake', 'play amount'], ['pays out', 'won'],
+			['betting', 'playing'], ['total bet', 'total play'], ['bet', 'play'], ['bets', 'plays'], ['cash', 'coins'], ['payer', 'winner'],
+			['pay', 'win'], ['pays', 'wins'], ['paid', 'won'], ['money', 'coins'], ['buy', 'play'], ['bought', 'instantly triggered'],
+			['purchase', 'play'], ['at the cost of', 'for'], ['rebet', 'respin'], ['cost of', 'can be played for'], ['credit', 'coins'],
+			['buy bonus', 'get bonus'], ['gamble', 'play'], ['wager', 'play'], ['deposit', 'get coins'], ['withdraw', 'redeem'],
+			['bonus buy', 'bonus'], ["be awarded to player's accounts", "appear in player's accounts"], ['place your bets', 'come and play'],
+			['bet/s', 'play/s'], ['currency', 'token'],
+		];
+		for (const [from, to] of list) {
+			expect(socialize(from), from).toBe(to);
+			expect(findRestricted(socialize(from.toUpperCase())), from).toEqual([]);
+		}
+	});
 	it('leaves no restricted word in any UI string, rule or the disclaimer', () => {
 		configureI18n({ social: true, lang: 'en' });
 		const texts: string[] = [];

@@ -4,7 +4,8 @@ import { chromium } from '@playwright/test';
 
 const base = process.argv[2] ?? 'http://localhost:8080';
 const out = process.argv[3] ?? '.';
-const RESTRICTED = ['bet', 'bets', 'betting', 'bonus buy', 'buy', 'bought', 'purchase', 'cash', 'credit', 'money', 'currency', 'deposit', 'gamble', 'paid', 'pay', 'pays', 'payer', 'payout', 'profit', 'rebet', 'stake', 'wager', 'withdraw', 'loss limit', 'loss streak', 'cost of'];
+// Engine's social-mode list plus a few extras (whole words / phrases, case-insensitive)
+const RESTRICTED = ["be awarded to player's accounts", 'place your bets', 'at the cost of', 'bonus buy', 'buy bonus', 'cost of', 'win feature', 'total bet', 'paid out', 'pays out', 'pay out', 'bet/s', 'betting', 'bets', 'bet', 'bought', 'buy', 'purchase', 'cash', 'credit', 'money', 'currency', 'deposit', 'gamble', 'paid', 'payer', 'pays', 'pay', 'stake', 'wager', 'withdraw', 'rebet', 'payout', 'profit', 'paytable', 'pay table', 'loss limit', 'loss streak'];
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 const scan = (label, text) => {
 	const hits = RESTRICTED.filter((w) => new RegExp(`\\b${esc(w)}\\b`, 'i').test(text));
