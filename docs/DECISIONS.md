@@ -499,3 +499,15 @@ row of teeth, venom (the game's green) dripping from the fangs, a slit pupil glo
 ridge, imbricated scales with belly plates up the front of the neck, a soft shadow on the counter. It sits inside the
 3:4 frame; `foreground_16x9.png` is the same pixels with clear margins. The title is unchanged (`title.png`);
 `cover_art.py` now assembles the previews.
+
+### D-057: The 16:9 cover's foreground gets the vault's hoard
+Owner request: keep the angry serpent and add the gems round it so the 16:9 looks full and natural. The 16:9
+foreground (`art/pipeline/cover_treasure.py`) is the 3:4 snake layer in the middle with a heap of treasure on the
+counter either side: a mound of gold coins (drawn procedurally, lit from the upper left, reeded edges) over a mass of
+coins in shadow, the owner's jewels resting on it (the opal brooch crowning the left heap with the sapphire,
+amethyst, ruby, citrine and the key; the pocket watch crowning the right one with the snake ring, venom vial, egg and
+gems), a pearl strand spilling down each heap, a few coin stacks and loose coins and pearls towards the snake. Every
+piece is placed on the counter in the snake's own camera and drawn back to front, with a soft shadow under each heap,
+contact and cast shadows from the snake's key light, faint reflections in the polished counter, less light further
+back, the snake's shadow where it falls on a piece, and a few glints. Nothing sits behind the coil. The 3:4 layers
+are unchanged; the preview's bottom gradient is lighter so the heaps stay bright under the title.

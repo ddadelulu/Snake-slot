@@ -2,7 +2,8 @@
 16:9. The vault is composed for the 3:4 frame; the 16:9 cover is the same picture with more of the strongroom either
 side (the room is rendered once, wide, and the 3:4 is its centre), so the two always match. The foreground is the
 angry white serpent (angry_snake.py) reared up out of its coils on the counter, jaws wide, fangs dripping venom,
-inside the 3:4 frame; at 16:9 it sits in the same place with clear air either side. No text in either layer; the
+inside the 3:4 frame; at 16:9 it sits in the same place with the vault's hoard heaped on the counter either side
+(cover_treasure.py: coin mounds, the owner's jewels, pearl strands, D-057). No text in either layer; the
 title is a separate transparent PNG (frontend/apps/constrictor/scripts/cover_title.mjs), and previews show the layers
 assembled with it.
 
@@ -20,6 +21,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
 import angry_snake  # noqa: E402
+import cover_treasure  # noqa: E402
 import placeholders as P  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -50,9 +52,8 @@ def backgrounds():
 
 def foregrounds():
     snake, *_ = angry_snake.render(SAFE_W, H, 2)
-    wide = Image.new("RGBA", (WIDE_W, H), (0, 0, 0, 0))
-    wide.paste(snake, (PAD, 0))  # an exact copy: the 3:4 layer is the 16:9 layer's centre
-    return snake, wide
+    # the 16:9 layer: the same snake in the middle (exact pixels) and the hoard heaped either side of it (D-057)
+    return snake, cover_treasure.add_treasure(snake, WIDE_W)
 
 
 def preview(bg, fg, title, frame_w):
@@ -61,7 +62,7 @@ def preview(bg, fg, title, frame_w):
     im.alpha_composite(fg)
     w, h = im.size
     v = np.linspace(0, 1, h, dtype=np.float32)
-    g = np.clip(np.interp(v, [0, 0.62, 0.86, 1.0], [0, 0, 0.8, 0.95]), 0, 1)
+    g = np.clip(np.interp(v, [0, 0.72, 0.9, 1.0], [0, 0, 0.62, 0.85]), 0, 1)
     grad = np.zeros((h, w, 4), np.uint8)
     grad[..., :3] = (7, 8, 10)
     grad[..., 3] = (g[:, None] * 255).astype(np.uint8)
