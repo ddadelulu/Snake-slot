@@ -614,7 +614,7 @@ def _ss(a, b, x):
     return t * t * (3 - 2 * t)
 
 
-def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.0):
+def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.0, xpad=0, vignette=True, counter_depth=0.035):
     """1940s strongroom plate after midnight (STYLE_BIBLE §2, D-043, D-047): an art-deco panelled wall in deep
     blue lacquer (fluted pilasters, inset panels with brass pinstripes and stepped corners, a dentil frieze), soft
     moonlight shafts through the blinds from the upper left, fan sconces casting warm pools, a heavy round vault
@@ -623,20 +623,24 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
     stays warm against the cool room.
     The cover art (cover_art.py) recomposes it: door=(cx, cy, radius) as fractions of the width, the height and
     min(w, h); lamps=[(u, v), ...]; counter=its top as a fraction of the height; hero_glow lights the middle instead
-    of darkening it. The defaults are the game's plates."""
+    of darkening it. xpad widens the plate by that many pixels each side without moving anything in the w x h frame
+    (the 16:9 cover is the 3:4 cover with more room either side); vignette=False leaves the edges for the caller;
+    counter_depth is how far the counter's polished top reaches down the frame. The defaults are the game's plates."""
     r = np.random.default_rng(47)
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    W = w + 2 * xpad
+    yy, xx = np.mgrid[0:h, 0:W].astype(np.float32)
+    xx -= xpad
     u, v = xx / w, yy / h
     S0 = min(w, h)
     px = S0 / 1440.0  # one design pixel at the 1440 reference size
     ctop = (0.8 if not portrait else 0.86) if counter is None else counter  # counter top
     ftop = 0.075 if not portrait else 0.045  # frieze bottom
     # ---------------------------------------------------------------- albedo and relief
-    alb = np.zeros((h, w, 3), np.float32)
+    alb = np.zeros((h, W, 3), np.float32)
     lac = np.array([30, 44, 62], np.float32)  # deep blue lacquer
     alb[:] = lac
-    relief = np.zeros((h, w), np.float32)  # >0 catches light (faces up/left), <0 in shade
-    brass = np.zeros((h, w), np.float32)  # brass inlay coverage (0..1)
+    relief = np.zeros((h, W), np.float32)  # >0 catches light (faces up/left), <0 in shade
+    brass = np.zeros((h, W), np.float32)  # brass inlay coverage (0..1)
     # pilasters and panels
     Pw = (0.155 if not portrait else 0.27) * w
     off = (0.5 * w) % Pw - Pw / 2  # a pilaster sits on the centre line (hidden by the board) so both sides match
@@ -694,10 +698,10 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
     beam = beam * (1 - 0.75 * centre)
     moon = np.array([0.55, 0.72, 1.0], np.float32)
     warm = np.array([1.0, 0.72, 0.4], np.float32)
-    light = np.full((h, w, 3), 0.42, np.float32) * np.array([0.8, 0.88, 1.0], np.float32)
+    light = np.full((h, W, 3), 0.42, np.float32) * np.array([0.8, 0.88, 1.0], np.float32)
     light += moon * (0.55 * key + 0.5 * beam)[..., None]
     # teal moon rim from the right edge
-    light += np.array([0.1, 0.35, 0.4], np.float32) * (np.exp(-(((u - 1.02) / 0.12) ** 2)) * (0.5 + 0.5 * (1 - v)))[..., None]
+    light += np.array([0.1, 0.35, 0.4], np.float32) * (np.exp(-(((u - (1.02 + xpad / w)) / 0.12) ** 2)) * (0.5 + 0.5 * (1 - v)))[..., None]
     # sconces: fan-shaped deco wall lamps with warm pools up and down the wall
     # fan sconces mounted on pilasters (snapped to the nearest pilaster centre)
     want = ([(0.1, 0.36)] if not portrait else [(0.1, 0.8), (0.9, 0.8)]) if lamps is None else lamps
@@ -726,11 +730,11 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
     col = col * (1 - bl) + bcol * bl * (0.45 + 0.55 * np.clip(light / 1.2, 0, 1.4))
     # ---------------------------------------------------------------- counter: polished black with a brass edge
     cz = v >= ctop
-    top_h = 0.035
+    top_h = counter_depth
     ref_zone = (v >= ctop) & (v < ctop + top_h)
     # reflection of the wall above (mirrored, blurred, dim)
     src_rows = np.clip((2 * ctop * h - yy).astype(int), 0, h - 1)
-    refl = col[src_rows, xx.astype(int)]
+    refl = col[src_rows, (xx + xpad).astype(int)]
     refl_img = Image.fromarray(np.clip(refl, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(6 * px))
     refl = np.asarray(refl_img, np.float32)
     marble = np.array([10, 12, 16], np.float32)
@@ -746,7 +750,7 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
     # ---------------------------------------------------------------- sconce fixtures
     d = ImageDraw.Draw(img)
     for sx, sy in sconces:
-        cx, cy = sx * w, sy * h
+        cx, cy = sx * w + xpad, sy * h
         rr = 0.042 * S0
         for kf in range(7):  # fan of glass blades
             a0 = math.radians(200 + kf * 20)
@@ -754,7 +758,7 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
         d.rectangle([cx - rr * 0.55, cy - 2 * px, cx + rr * 0.55, cy + 4 * px], fill=(196, 152, 84, 255))
         d.polygon([(cx - rr * 0.18, cy + 4 * px), (cx + rr * 0.18, cy + 4 * px), (cx, cy + rr * 0.6)], fill=(170, 130, 70, 255))
     # ---------------------------------------------------------------- vault door
-    door = _vault_door(w, h, dcx, dcy, R, gx, gy, key, px, r)
+    door = _vault_door(W, h, dcx + xpad, dcy, R, gx + xpad, gy, key, px, r)
     img.alpha_composite(door)
     arr = np.asarray(img, np.float32)[..., :3].copy()
     # ---------------------------------------------------------------- air: haze in the shafts, dust
@@ -765,25 +769,27 @@ def room(w, h, portrait=False, door=None, lamps=None, counter=None, hero_glow=0.
         arr += np.array([90, 58, 22], np.float32) * np.exp(-((dx / 0.045) ** 2 + ((dy + 0.012) / 0.04) ** 2))[..., None]
         # warm wash on the lacquer round the lamp (light up and down the wall from the fan)
         arr += np.array([40, 26, 10], np.float32) * (np.exp(-((dx / 0.08) ** 2 + (dy / 0.22) ** 2)) * (v < ctop))[..., None]
-    dust = (r.random((h, w)) > 0.9994) & (beam > 0.25)
+    dust = (r.random((h, W)) > 0.9994) & (beam > 0.25)
     arr[dust] += 50
     # a few gold glints along the counter's brass edge (jewels catching the light), clear of the board
-    gl = Image.new("RGB", (w, h), (0, 0, 0))
+    gl = Image.new("RGB", (W, h), (0, 0, 0))
     gd = ImageDraw.Draw(gl)
     for _ in range(10):
-        gx = r.uniform(0.02, 0.98) * w
+        gx = r.uniform(0.02, 0.98) * W - xpad
         if abs(gx / w - 0.5) < 0.26 and not portrait:
             continue
         gy = (ctop + r.uniform(0.004, 0.02)) * h
         gr = S0 * r.uniform(0.002, 0.004)
+        gx += xpad
         gd.line([(gx - gr * 3.5, gy), (gx + gr * 3.5, gy)], fill=(150, 120, 74), width=1)
         gd.line([(gx, gy - gr * 2.5), (gx, gy + gr * 2.5)], fill=(150, 120, 74), width=1)
         gd.ellipse([gx - gr * 0.7, gy - gr * 0.7, gx + gr * 0.7, gy + gr * 0.7], fill=(230, 200, 150))
     arr += np.asarray(gl.filter(ImageFilter.GaussianBlur(0.8 * px)), np.float32)
     # ---------------------------------------------------------------- vignette + fine grain (no banding)
-    vig = np.clip(1 - 0.75 * (((u - 0.5) / 0.75) ** 2 + ((v - 0.5) / 0.75) ** 2), 0.18, 1)
-    arr *= vig[..., None]
-    arr += r.normal(0, 1.6, (h, w, 1)).astype(np.float32)
+    if vignette:
+        vig = np.clip(1 - 0.75 * (((u - 0.5) / 0.75) ** 2 + ((v - 0.5) / 0.75) ** 2), 0.18, 1)
+        arr *= vig[..., None]
+    arr += r.normal(0, 1.6, (h, W, 1)).astype(np.float32)
     out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB").filter(ImageFilter.GaussianBlur(0.6 * px))
     return out
 

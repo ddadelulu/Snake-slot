@@ -484,3 +484,18 @@ serpent coiled round the black opal (one piece, D-045/D-050) with the owner's ge
 Limelight lettering, transparent. `preview_*.png`: the layers assembled with a bottom gradient and the title.
 No text in the background or foreground layers. Regenerate: `art/pipeline/cover_art.py`, then
 `frontend/apps/constrictor/scripts/cover_title.mjs`.
+
+### D-056: Cover art v2: the vault fits 3:4, the 16:9 adds room; an angry serpent
+Owner feedback on D-055: the vault should be composed for 3:4 and the 16:9 should be that picture with more background,
+and the foreground should be a proper angry snake. Both covers are now 2160 px tall: `background_3x4.png` (1620×2160)
+is the exact centre of `background_16x9.png` (3840×2160). `room()` renders it once, wide (`xpad` widens the plate
+without moving anything in the 3:4 frame; the game's plates still regenerate byte-identical), with the vault door
+whole inside the 3:4 frame behind the serpent's head, a fan sconce either side, more panelled wall and a second pair
+of sconces in the 16:9 margins, and a deep polished counter top for the coils. Only the vignette differs per ratio.
+The foreground is new (`art/pipeline/angry_snake.py`, a small numpy 3D renderer: the body a swept tube in a z-buffer,
+the head a ray-marched distance field, a shadow map from the key light, ambient occlusion): the white serpent reared
+up out of its coils in an S, the head in three-quarter view striking at the viewer, jaws wide, two long fangs and a
+row of teeth, venom (the game's green) dripping from the fangs, a slit pupil glowing green under a scowling brow
+ridge, imbricated scales with belly plates up the front of the neck, a soft shadow on the counter. It sits inside the
+3:4 frame; `foreground_16x9.png` is the same pixels with clear margins. The title is unchanged (`title.png`);
+`cover_art.py` now assembles the previews.
