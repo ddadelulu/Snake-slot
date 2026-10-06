@@ -49,6 +49,8 @@ The official template ends with "TM and © 2025 Stake Engine." The brief forbids
 the game, and the notice should name the rights holder of this game. Decision: keep the template's
 wording for every required point and end with "CONSTRICTOR™ and © 2026 Studio 12. All rights reserved."
 Alternative: the verbatim template, rejected because the copyright would name the wrong owner.
+**Update 2026-10-06 (Dylan):** switched to Engine's current template verbatim, ending "TM and © 2026 Engine."
+(`src/game/i18n/rules.ts` `DISCLAIMER`, shown under Game Info > Legal).
 
 ### D-007: Jurisdiction flags are honoured defensively
 The docs say to ignore `config.jurisdiction`. The example payload still carries `disabledTurbo`,
