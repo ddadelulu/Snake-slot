@@ -7,10 +7,10 @@ e-banking payments into the app is the statement file your e-banking already off
 
 ## Which file
 
-| Format              | What it is                                                                                     | Recommended                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **camt.053** (XML)  | The ISO 20022 account statement every Swiss bank provides (sometimes called "ISO 20022", "XML" or "camt") | Yes: exact amounts, booking references, often the purchase time |
-| **CSV**             | The transaction list export of e-banking or a banking app                                      | When your bank offers no camt.053                 |
+| Format             | What it is                                                                                                | Recommended                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **camt.053** (XML) | The ISO 20022 account statement every Swiss bank provides (sometimes called "ISO 20022", "XML" or "camt") | Yes: exact amounts, booking references, often the purchase time |
+| **CSV**            | The transaction list export of e-banking or a banking app                                                 | When your bank offers no camt.053                               |
 
 Both work for any Swiss bank. CSV files from PostFinance, UBS, Zürcher Kantonalbank, Raiffeisen,
 Neon and Revolut are recognized by their column names; for any other CSV the app asks which

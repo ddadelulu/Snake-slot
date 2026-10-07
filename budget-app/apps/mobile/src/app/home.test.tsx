@@ -7,6 +7,7 @@ import { getSupabase, getSupabaseIfConfigured } from '@/lib/supabase';
 import { fakeSession } from '@/test/appHarness';
 import { createFakeSupabase } from '@/test/fakeSupabase';
 import { OVERVIEW_JSON } from '@/test/overviewFixture';
+import { CATEGORY_ROWS, FIXED_COST_ROWS, page, transactionJson } from '@/test/transactionsFixture';
 
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageCode: 'en' }] }));
 jest.mock('@/lib/env', () => ({ ...jest.requireActual('@/lib/env'), readEnv: jest.fn() }));
@@ -22,7 +23,21 @@ function start(overview: () => Answer) {
   const fake = createFakeSupabase({
     session: fakeSession(),
     profile: { onboarding_completed_at: '2026-09-25T08:00:00.000000+00:00', language: 'en' },
-    rpc: { get_overview: overview },
+    rpc: {
+      get_overview: overview,
+      get_transaction: (args) => ({
+        data: transactionJson({
+          id: (args as { p_id: string }).p_id,
+          amount_rappen: -4250,
+          merchant: 'Migros',
+          category_id: 'c-groceries',
+          categorized_by: 'user',
+        }),
+        error: null,
+      }),
+      list_transactions: () => ({ data: page([]), error: null }),
+    },
+    tables: { categories: [...CATEGORY_ROWS], fixed_costs: [...FIXED_COST_ROWS] },
   });
   jest.mocked(getSupabaseIfConfigured).mockReturnValue(fake.client as never);
   jest.mocked(getSupabase).mockReturnValue(fake.client as never);
@@ -101,5 +116,47 @@ describe('home', () => {
     expect(await screen.findByTestId('home-error')).toBeOnTheScreen();
     fireEvent.press(screen.getByTestId('home-error-action'));
     expect(await screen.findByTestId('home-balance')).toBeOnTheScreen();
+  });
+
+  it('opens quick add from the floating + button', async () => {
+    start(() => ({ data: OVERVIEW_JSON, error: null }));
+    const add = await screen.findByTestId('home-add');
+    expect(add).toHaveAccessibleName('Add a purchase');
+    fireEvent.press(add);
+    expect(await screen.findByTestId('add-amount')).toBeOnTheScreen();
+    expect(screen.getPathname()).toBe('/add');
+  });
+
+  it('keeps the + button when the month cannot be loaded', async () => {
+    start(() => ({ data: null, error: { message: 'bad request' } }));
+    expect(await screen.findByTestId('home-error')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-add')).toBeOnTheScreen();
+  });
+
+  it('says how many purchases need a category and leads to the questions', async () => {
+    start(() => ({ data: { ...OVERVIEW_JSON, needs_review_count: 3 }, error: null }));
+    const banner = await screen.findByTestId('home-review');
+    expect(banner).toHaveAccessibleName('3 purchases need a category');
+    fireEvent.press(banner);
+    expect(await screen.findByTestId('review-screen')).toBeOnTheScreen();
+    expect(screen.getPathname()).toBe('/review');
+  });
+
+  it('uses the singular for one purchase and shows nothing when none waits', async () => {
+    start(() => ({ data: OVERVIEW_JSON, error: null }));
+    expect(await screen.findByTestId('home-review')).toHaveAccessibleName(
+      '1 purchase needs a category',
+    );
+    screen.unmount();
+    start(() => ({ data: { ...OVERVIEW_JSON, needs_review_count: 0 }, error: null }));
+    await screen.findByTestId('home-balance');
+    expect(screen.queryByTestId('home-review')).toBeNull();
+  });
+
+  it('opens a recent purchase', async () => {
+    start(() => ({ data: OVERVIEW_JSON, error: null }));
+    fireEvent.press(await screen.findByTestId('home-transaction-0'));
+    expect(await screen.findByTestId('detail-amount')).toHaveTextContent('CHF 42.50');
+    expect(screen.getPathname()).toBe('/transaction/t-1');
   });
 });

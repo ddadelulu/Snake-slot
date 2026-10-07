@@ -1,6 +1,7 @@
 /**
  * Privileges: anon gets nothing, authenticated gets exactly what the app needs, the private schema
- * is out of reach, and the write restrictions behind those grants hold in practice.
+ * is out of reach, schema internal is usable but read-only, and the write restrictions behind
+ * those grants hold in practice.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -36,14 +37,36 @@ type ColumnPrivilege = (typeof COLUMN_PRIVILEGES)[number];
 
 const CRUD: readonly TablePrivilege[] = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
 
+/**
+ * The profile columns a client may change (D-036): never id, onboarding_completed_at or the
+ * timestamps.
+ */
+const PROFILE_UPDATE_COLUMNS = [
+  'display_name',
+  'irregular_income',
+  'language',
+  'leftover_policy',
+  'net_income_rappen',
+  'pain_level',
+  'payday',
+  'payment_methods',
+  'savings_goal_date',
+  'savings_goal_name',
+  'savings_goal_rappen',
+  'savings_monthly_rappen',
+  'sound_enabled',
+  'timezone',
+  'weekly_work_minutes',
+];
+
 /** What role "authenticated" may do, table by table (from the migration's grants). */
 const AUTHENTICATED: Readonly<
   Record<string, { table: readonly TablePrivilege[]; updateColumns?: readonly string[] }>
 > = {
-  profiles: { table: ['SELECT', 'UPDATE'] },
+  profiles: { table: ['SELECT'], updateColumns: PROFILE_UPDATE_COLUMNS },
   fixed_costs: { table: CRUD },
   categories: { table: CRUD },
-  budget_periods: { table: CRUD },
+  budget_periods: { table: ['SELECT'] },
   budgets: { table: CRUD },
   data_sources: { table: CRUD },
   transactions: { table: CRUD },
@@ -57,15 +80,43 @@ const AUTHENTICATED: Readonly<
   consent_events: { table: ['SELECT', 'INSERT'] },
 };
 
-/** The RPCs the app calls: the only functions role "authenticated" may execute. */
+/** The RPCs the app calls: the only functions in schema public role "authenticated" may execute. */
 const CLIENT_FUNCTIONS = [
+  'add_transactions(jsonb)',
   'complete_onboarding(jsonb)',
   'delete_my_account()',
   'ensure_current_period()',
+  'export_my_data()',
   'get_overview()',
+  'get_transaction(uuid)',
+  'list_transactions(jsonb)',
   'move_budget(uuid,uuid,bigint)',
   'period_containing(date,integer)',
+  'remove_import(uuid)',
+  'set_transaction_splits(uuid,jsonb)',
+  'update_transaction(uuid,jsonb)',
 ];
+
+/** Helpers in schema internal that the RPCs call with the caller's rights (D-038). */
+const INTERNAL_FUNCTIONS = [
+  'internal.categorize(text,text,integer,bigint)',
+  'internal.fixed_cost_hint(text,text)',
+  'internal.ingest_row(jsonb,integer,text,text)',
+  'internal.json_bigint(jsonb,bigint,bigint)',
+  'internal.json_string(jsonb)',
+  'internal.json_uuid(jsonb)',
+  'internal.key_contains(text,text)',
+  'internal.key_runs(text,integer)',
+  'internal.merchant_key(text)',
+  'internal.needs_review(bigint,uuid,text,integer,uuid,boolean,boolean,boolean)',
+  'internal.rule_matches(text,text,text,text,text,integer)',
+  'internal.same_merchant(text,text)',
+  'internal.transaction_item(uuid)',
+  'internal.transaction_key(text,text)',
+];
+
+/** Reference data in schema internal: readable by signed-in users, never writable. */
+const INTERNAL_TABLES = ['known_merchants', 'mcc_categories'];
 
 async function tablePrivileges(db: Db, role: string, table: string): Promise<TablePrivilege[]> {
   const rows = await queryRows<{ privilege: TablePrivilege }>(
@@ -165,6 +216,15 @@ describe('role anon', () => {
     'select public.move_budget(gen_random_uuid(), gen_random_uuid(), 1)',
     `select * from public.period_containing('2026-10-02', 25)`,
     'select public.roll_due_periods()',
+    `select public.add_transactions('{"rows": []}')`,
+    `select public.list_transactions('{}')`,
+    'select public.get_transaction(gen_random_uuid())',
+    `select public.update_transaction(gen_random_uuid(), '{}')`,
+    `select public.set_transaction_splits(gen_random_uuid(), '[]')`,
+    'select public.remove_import(gen_random_uuid())',
+    'select public.export_my_data()',
+    `select internal.merchant_key('Coop')`,
+    'select count(*) from internal.known_merchants',
   ])('cannot run %s (42501)', async (sql) => {
     await withRollback(async (db) => {
       await asAnon(db);
@@ -212,7 +272,7 @@ describe('role authenticated', () => {
           order by 1`,
       ),
     );
-    expect(executable.map((row) => row.fn)).toEqual(CLIENT_FUNCTIONS);
+    expect(executable.map((row) => row.fn).sort()).toEqual([...CLIENT_FUNCTIONS].sort());
   });
 
   it('cannot run the scheduled reset for everyone (roll_due_periods, 42501)', async () => {
@@ -225,12 +285,13 @@ describe('role authenticated', () => {
 });
 
 describe('functions', () => {
-  it('every function in schemas public and private pins search_path to an empty value', async () => {
+  it('every function in schemas public, private and internal pins search_path to an empty value', async () => {
     const unpinned = await withRollback((db) =>
       queryRows<{ fn: string }>(
         db,
         `select oid::regprocedure::text as fn from pg_proc
-          where pronamespace in ('public'::regnamespace, 'private'::regnamespace)
+          where pronamespace in ('public'::regnamespace, 'private'::regnamespace,
+                                 'internal'::regnamespace)
             and not coalesce('search_path=""' = any (proconfig), false)`,
       ),
     );
@@ -242,11 +303,13 @@ describe('functions', () => {
       queryRows<{ fn: string }>(
         db,
         `select oid::regprocedure::text as fn from pg_proc
-          where pronamespace in ('public'::regnamespace, 'private'::regnamespace) and prosecdef
-          order by 1`,
+          where pronamespace in ('public'::regnamespace, 'private'::regnamespace,
+                                 'internal'::regnamespace)
+            and prosecdef`,
       ),
     );
-    expect(definers.map((row) => row.fn)).toEqual([
+    expect(definers.map((row) => row.fn).sort()).toEqual([
+      'complete_onboarding(jsonb)',
       'delete_my_account()',
       'ensure_current_period()',
       'handle_new_user()',
@@ -313,6 +376,199 @@ describe('schema private', () => {
       expect(privileges).toEqual([]);
     },
   );
+});
+
+describe('schema internal (D-038)', () => {
+  it.each([
+    ['anon', { usage: false, create: false }],
+    ['authenticated', { usage: true, create: false }],
+  ])('%s: USAGE and CREATE on schema internal', async (role, expected) => {
+    const row = await withRollback((db) =>
+      queryOne<{ usage: boolean; create: boolean }>(
+        db,
+        `select has_schema_privilege($1, 'internal', 'USAGE') as usage,
+                has_schema_privilege($1, 'internal', 'CREATE') as create`,
+        [role],
+      ),
+    );
+    expect(row).toEqual(expected);
+  });
+
+  it('is not served by the API (PostgREST exposes public and graphql_public only)', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const config = await readFile(new URL('../config.toml', import.meta.url), 'utf8');
+    const schemas = /^schemas = \[(.*)\]$/m.exec(config)?.[1];
+    expect(schemas).toBe('"public", "graphql_public"');
+  });
+
+  it('holds exactly the reference tables, readable (SELECT only) by authenticated', async () => {
+    await withRollback(async (db) => {
+      const tables = await queryRows<{ name: string }>(
+        db,
+        `select relname as name from pg_class
+          where relnamespace = 'internal'::regnamespace and relkind in ('r', 'p', 'v', 'm')
+          order by 1`,
+      );
+      expect(tables.map((t) => t.name)).toEqual(INTERNAL_TABLES);
+      for (const table of INTERNAL_TABLES) {
+        const qualified = `internal.${table}`;
+        expect(await tablePrivileges(db, 'authenticated', qualified)).toEqual(['SELECT']);
+        expect(await anyColumnPrivileges(db, 'authenticated', qualified)).toEqual(['SELECT']);
+        expect(await tablePrivileges(db, 'anon', qualified)).toEqual([]);
+        expect(await anyColumnPrivileges(db, 'anon', qualified)).toEqual([]);
+      }
+    });
+  });
+
+  it('reference tables have RLS with one read-only policy for authenticated', async () => {
+    const rows = await withRollback((db) =>
+      queryRows<{ table: string; rls: boolean; policies: string }>(
+        db,
+        `select c.relname as table, c.relrowsecurity as rls,
+                (select string_agg(p.cmd || ':' || array_to_string(p.roles, ','), ' ')
+                   from pg_policies p
+                  where p.schemaname = 'internal' and p.tablename = c.relname) as policies
+           from pg_class c
+          where c.relnamespace = 'internal'::regnamespace and c.relkind = 'r'
+          order by 1`,
+      ),
+    );
+    expect(rows).toEqual(
+      INTERNAL_TABLES.map((table) => ({ table, rls: true, policies: 'SELECT:authenticated' })),
+    );
+  });
+
+  it('authenticated may execute exactly the helpers the RPCs need, anon none', async () => {
+    await withRollback(async (db) => {
+      const executable = async (role: string) =>
+        (
+          await queryRows<{ fn: string }>(
+            db,
+            `select oid::regprocedure::text as fn from pg_proc
+              where pronamespace = 'internal'::regnamespace
+                and has_function_privilege($1, oid, 'EXECUTE')`,
+            [role],
+          )
+        )
+          .map((row) => row.fn)
+          .sort();
+      expect(await executable('authenticated')).toEqual(INTERNAL_FUNCTIONS);
+      expect(await executable('anon')).toEqual([]);
+      const all = await queryRows<{ fn: string }>(
+        db,
+        `select oid::regprocedure::text as fn from pg_proc
+          where pronamespace = 'internal'::regnamespace`,
+      );
+      expect(all.map((row) => row.fn).sort()).toEqual(INTERNAL_FUNCTIONS);
+    });
+  });
+
+  it.each([
+    [`insert into internal.known_merchants (pattern, category_key, confidence) values ('evil', 'other', 99)`],
+    [`update internal.known_merchants set confidence = 100 where pattern = 'manor'`],
+    [`delete from internal.known_merchants where pattern = 'manor'`],
+    [`insert into internal.mcc_categories values (1, 1, 'other', 99)`],
+    [`update internal.mcc_categories set confidence = 100`],
+    [`delete from internal.mcc_categories`],
+    [`create table internal.mine (id int)`],
+    [`create function internal.mine() returns int language sql as 'select 1'`],
+  ])('a signed-in user cannot run: %s (42501)', async (sql) => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, sql);
+    });
+  });
+
+  it('a signed-in user reads the reference lists', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      const row = await queryOne<{ merchants: number; codes: number }>(
+        db,
+        `select (select count(*)::int from internal.known_merchants) as merchants,
+                (select count(*)::int from internal.mcc_categories) as codes`,
+      );
+      expect(row.merchants).toBeGreaterThan(200);
+      expect(row.codes).toBeGreaterThan(50);
+    });
+  });
+});
+
+describe('column-level grants (D-036)', () => {
+  it.each([
+    ['onboarding_completed_at', 'now()'],
+    ['id', 'gen_random_uuid()'],
+    ['created_at', `'2000-01-01T00:00:00Z'`],
+    ['updated_at', `'2000-01-01T00:00:00Z'`],
+  ])('a client cannot set profiles.%s (42501)', async (column, value) => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        `update public.profiles set ${column} = ${value} where id = $1`,
+        [a],
+      );
+    });
+  });
+
+  it('a client cannot mark itself onboarded, so it gets no overview without onboarding', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        `update public.profiles
+            set net_income_rappen = 1, payday = 1, onboarding_completed_at = now()
+          where id = $1`,
+        [a],
+      );
+      const row = await queryOne<{ overview: unknown }>(db, 'select public.get_overview() as overview');
+      expect(row.overview).toBeNull();
+    });
+  });
+
+  it('a client still changes every user-editable profile field', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      expect(
+        await affectedRows(
+          db,
+          `update public.profiles
+              set display_name = 'Anna', language = 'en', timezone = 'Europe/Berlin',
+                  net_income_rappen = 600000, payday = 1, irregular_income = true,
+                  weekly_work_minutes = 2520, savings_monthly_rappen = 10000,
+                  savings_goal_name = 'Velo', savings_goal_rappen = 200000,
+                  savings_goal_date = '2027-01-01', leftover_policy = 'savings',
+                  pain_level = 'mild', sound_enabled = false, payment_methods = '{card}'
+            where id = $1`,
+          [a],
+        ),
+      ).toBe(1);
+    });
+  });
+
+  it.each([
+    [
+      'insert',
+      `insert into public.budget_periods
+         (user_id, starts_on, ends_on, income_rappen, fixed_costs_rappen, savings_rappen)
+       values ($1, '2026-09-25', '2026-10-25', 1, 0, 0)`,
+    ],
+    ['update', `update public.budget_periods set income_rappen = 9999999 where user_id = $1`],
+    ['delete', `delete from public.budget_periods where user_id = $1`],
+  ])('a client cannot %s its own budget periods (42501)', async (_action, sql) => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await make.period(db, a);
+      await asUser(db, a);
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, sql, [a]);
+    });
+  });
 });
 
 describe('client write restrictions', () => {

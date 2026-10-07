@@ -10,6 +10,8 @@ export type Choice<T extends string> = {
   label: string;
   /** Optional second line, e.g. what "System" means. */
   description?: string;
+  /** Overrides the default `${testID}-${value}`, e.g. to name a category by its key, not its id. */
+  testID?: string;
 };
 
 export type ChoiceListProps<T extends string> = {
@@ -87,7 +89,9 @@ export function ChoiceList<T extends string>({
                 option.description ? `${option.label}, ${option.description}` : option.label
               }
               accessibilityState={{ checked }}
-              testID={testID === undefined ? undefined : `${testID}-${option.value}`}
+              testID={
+                option.testID ?? (testID === undefined ? undefined : `${testID}-${option.value}`)
+              }
               style={({ pressed }) => [styles.option, pressed && styles.pressed]}
             >
               <View style={styles.text}>

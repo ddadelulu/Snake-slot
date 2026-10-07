@@ -74,9 +74,9 @@ describe('validateSourceTransaction', () => {
     expect(problemsOf({ bookedAt: undefined, bookedOn: '2026-02-30' })).toEqual([
       'bookedOn must be a date YYYY-MM-DD',
     ]);
-    expect(problemsOf({ bookedAt: undefined, bookedOn: '2026-10-01', bookedTime: '24:00' })).toEqual(
-      ['bookedTime must be HH:MM or HH:MM:SS'],
-    );
+    expect(
+      problemsOf({ bookedAt: undefined, bookedOn: '2026-10-01', bookedTime: '24:00' }),
+    ).toEqual(['bookedTime must be HH:MM or HH:MM:SS']);
   });
 
   it('checks text lengths, MCC, source and source id', () => {

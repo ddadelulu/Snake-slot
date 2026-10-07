@@ -362,9 +362,10 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a category deletes its budgets and rules', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
+      const period = await make.period(db, a); // periods are written with owner rights (D-036)
       await asUser(db, a);
       const category = await make.category(db, a);
-      await make.budget(db, a, await make.period(db, a), category);
+      await make.budget(db, a, period, category);
       await make.rule(db, a, category);
       await db.query('delete from public.categories where id = $1', [category]);
       expect(
@@ -450,7 +451,7 @@ describe('deleting a referenced row clears only the reference', () => {
       const period = await make.period(db, a);
       await make.budget(db, a, period, await make.category(db, a));
       const alert = await make.alert(db, a, { period_id: period });
-      await asUser(db, a);
+      // Clients cannot delete periods (D-036); account deletion and the owner can.
       await db.query('delete from public.budget_periods where id = $1', [period]);
       expect(
         await countRows(db, 'select 1 from public.budgets where period_id = $1', [period]),
