@@ -12,7 +12,12 @@ import {
   type StatementFormat,
 } from '@budget/core';
 
-import type { AddResult, AddRowResult, StatementImportInfo } from '@/data/transactions';
+import type {
+  AddResult,
+  AddRowResult,
+  DuplicateMatch,
+  StatementImportInfo,
+} from '@/data/transactions';
 
 /**
  * The statement import (US-3.2, docs/IMPORT_GUIDE.md) as plain data: what the preview shows for
@@ -68,24 +73,37 @@ export function sourceKey(
 // Skipped lines
 // ---------------------------------------------------------------------------------------------
 
-/** Most common reasons first, so the person sees the expected ones (pending, other currency). */
+/**
+ * Most common reasons first, so the person sees the expected ones (pending, other currency), then
+ * the lines that are not bookings (collective totals imported as their parts and balance lines,
+ * D-043), then the lines that could not be read.
+ */
 export const SKIP_REASONS: readonly SkipReason[] = [
   'not_booked',
   'not_chf',
   'collective_detail',
+  'collective_total',
+  'balance_line',
   'no_amount',
   'zero_amount',
   'invalid_amount',
   'invalid_date',
+  'malformed_row',
   'invalid',
 ];
 
 export type SkippedGroup = { reason: SkipReason; rows: SkippedRow[] };
 
-/** Skipped lines grouped by reason (in SKIP_REASONS order), each group by line number. */
+/**
+ * Skipped lines grouped by reason (in SKIP_REASONS order), each group by line number. A reason
+ * the app does not know yet counts as `invalid`, so no line goes missing from the list.
+ */
 export function groupSkipped(skipped: readonly SkippedRow[]): SkippedGroup[] {
+  const known = new Set<string>(SKIP_REASONS);
+  const reasonOf = (row: SkippedRow): SkipReason =>
+    known.has(row.reason) ? row.reason : 'invalid';
   return SKIP_REASONS.flatMap((reason) => {
-    const rows = skipped.filter((row) => row.reason === reason).sort((a, b) => a.line - b.line);
+    const rows = skipped.filter((row) => reasonOf(row) === reason).sort((a, b) => a.line - b.line);
     return rows.length > 0 ? [{ reason, rows }] : [];
   });
 }
@@ -100,12 +118,14 @@ export function groupSkipped(skipped: readonly SkippedRow[]): SkippedGroup[] {
  * - `merge`: the same purchase is already there from another source, e.g. typed in by hand; it is
  *   merged instead of counted twice (checked);
  * - `imported_before`: this file's line was imported before; never added twice (not selectable);
- * - `look_alike`: same day, amount and merchant as one already imported from a statement with
- *   another reference; unchecked, the person checks it if it really is a separate purchase.
+ * - `look_alike`: looks like a stored transaction (D-040): same day, amount and merchant as one
+ *   imported from a statement with another reference, or the same amount within four days as one
+ *   from another source whose merchant cannot be compared (e.g. typed in by hand without a name);
+ *   unchecked, the person checks it if it really is a separate purchase.
  */
 export type RowStatus = 'new' | 'merge' | 'imported_before' | 'look_alike';
 
-export type RowMatch = NonNullable<AddRowResult['duplicateOf']>;
+export type RowMatch = DuplicateMatch;
 
 export type PreviewRow = {
   /** Position in `statement.rows` (stable key and testID). */
@@ -114,9 +134,10 @@ export type PreviewRow = {
   line: number;
   transaction: SourceTransaction;
   status: RowStatus;
-  /** The transaction a `merge` row is merged into (its id; details come separately). */
-  mergeTargetId: string | null;
-  /** The transaction a `look_alike` row resembles. */
+  /**
+   * The stored transaction a `merge` row is merged into, or a `look_alike` row resembles, as the
+   * dry run describes it (`duplicate_of`); null for other rows or when it was not described.
+   */
   match: RowMatch | null;
   categoryId: string | null;
   fixedCostId: string | null;
@@ -144,8 +165,7 @@ export function toPreviewRows(statement: ParsedStatement, dryRun: AddResult): Pr
       line: row.line,
       transaction: row.transaction,
       status,
-      mergeTargetId: status === 'merge' ? (result?.transactionId ?? null) : null,
-      match: status === 'look_alike' ? (result?.duplicateOf ?? null) : null,
+      match: status === 'merge' || status === 'look_alike' ? (result?.duplicateOf ?? null) : null,
       categoryId: result?.categoryId ?? null,
       fixedCostId: result?.fixedCostId ?? null,
       needsReview: result?.needsReview ?? false,
@@ -259,12 +279,16 @@ export type MappingDraft = {
   amount: number | null;
   debit: number | null;
   credit: number | null;
+  /** Optional debit/credit indicator column (single amount column only). */
+  direction: number | null;
+  /** Purchases are positive in the file (single amount column without a direction column). */
+  invertAmounts: boolean;
   text: number[];
 };
 
 export type MappingProblem = 'date' | 'amount' | 'text';
 
-/** Starts from what the parser recognised (`guess`). */
+/** Starts from what the parser recognised (`guess`), including a debit/credit column. */
 export function mappingDraftFrom(guess: Partial<ColumnMapping>): MappingDraft {
   const split = guess.amount === undefined && (guess.debit ?? guess.credit) !== undefined;
   return {
@@ -273,6 +297,8 @@ export function mappingDraftFrom(guess: Partial<ColumnMapping>): MappingDraft {
     amount: guess.amount ?? null,
     debit: guess.debit ?? null,
     credit: guess.credit ?? null,
+    direction: guess.direction ?? null,
+    invertAmounts: guess.invertAmounts ?? false,
     text: [...(guess.text ?? [])].sort((a, b) => a - b),
   };
 }
@@ -296,12 +322,19 @@ export function mappingProblems(draft: MappingDraft): MappingProblem[] {
   return problems;
 }
 
-/** The mapping for `readStatement`, or null while it is incomplete. */
+/**
+ * The mapping for `readStatement`, or null while it is incomplete. The debit/credit column
+ * (`direction`) and "purchases are shown as positive amounts" (`invertAmounts`, D-043) belong to
+ * a single amount column; a direction column decides the sign on its own, so the switch is then
+ * left out.
+ */
 export function toColumnMapping(draft: MappingDraft, headerRow: number): ColumnMapping | null {
   if (mappingProblems(draft).length > 0 || draft.date === null) return null;
   const mapping: ColumnMapping = { headerRow, date: draft.date, text: draft.text };
   if (draft.amountKind === 'single' && draft.amount !== null) {
     mapping.amount = draft.amount;
+    if (draft.direction !== null) mapping.direction = draft.direction;
+    else if (draft.invertAmounts) mapping.invertAmounts = true;
   } else {
     if (draft.debit !== null) mapping.debit = draft.debit;
     if (draft.credit !== null) mapping.credit = draft.credit;

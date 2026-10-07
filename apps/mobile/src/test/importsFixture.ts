@@ -7,6 +7,8 @@ import { fakeSession } from './appHarness';
 import { createFakeSupabase, type FakeRow, type RpcHandler } from './fakeSupabase';
 import { OVERVIEW_JSON } from './overviewFixture';
 
+export { UBS_STATEMENT } from './statementFixture';
+
 /**
  * Data for the Milestone 3 route tests of statement import, data sources, rules and export, in
  * the snake_case shapes the database returns. SYNTHETIC: every merchant, file and amount is made
@@ -95,6 +97,7 @@ export function transactionJson(overrides: Record<string, unknown> & { id: strin
     original_amount_minor: null,
     original_currency: null,
     items: null,
+    suggested_rule: null,
     splits: [],
     merged_sources: [],
     needs_review: false,

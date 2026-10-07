@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import {
   cleanText,
+  compactKey,
   currencyExponent,
+  directionSign,
   ibanIn,
+  isBalanceLabel,
+  isChf,
   joinTexts,
   parseAmountCell,
   parseDecimalMinor,
   parseStatementDate,
   parseStatementTime,
+  purchaseDateIn,
+  slashOrderOf,
   truncate,
 } from './values';
 
@@ -48,6 +54,150 @@ describe('parseStatementDate', () => {
     '2026-09-30 12',
   ])('refuses %j', (text) => {
     expect(parseStatementDate(text)).toBeNull();
+  });
+});
+
+describe('parseStatementDate options', () => {
+  it('reads slash dates month first only when asked, and only slash dates', () => {
+    const monthFirst = { slashOrder: 'month-first' } as const;
+    expect(parseStatementDate('09/30/2026', monthFirst)).toEqual({ date: '2026-09-30' });
+    expect(parseStatementDate('12/31/26 14:05', monthFirst)).toEqual({
+      date: '2026-12-31',
+      time: '14:05',
+    });
+    expect(parseStatementDate('30/09/2026', monthFirst)).toBeNull();
+    expect(parseStatementDate('10.03.2026', monthFirst)).toEqual({ date: '2026-03-10' });
+    expect(parseStatementDate('10-03-2026', monthFirst)).toEqual({ date: '2026-03-10' });
+    expect(parseStatementDate('10/03/2026', { slashOrder: 'day-first' })).toEqual({
+      date: '2026-03-10',
+    });
+  });
+
+  it('wants the same separator twice', () => {
+    expect(parseStatementDate('30.09/2026')).toBeNull();
+    expect(parseStatementDate('30-09.2026')).toBeNull();
+  });
+
+  it('keeps midnight of an exact instant with an offset', () => {
+    const exact = { exactInstant: true };
+    expect(parseStatementDate('2026-09-30T00:00:00+02:00', exact)).toEqual({
+      date: '2026-09-30',
+      time: '00:00:00',
+      offset: '+02:00',
+    });
+    expect(parseStatementDate('2026-09-30T00:00Z', exact)).toEqual({
+      date: '2026-09-30',
+      time: '00:00',
+      offset: 'Z',
+    });
+    expect(parseStatementDate('2026-09-30T00:00:00', exact)).toEqual({ date: '2026-09-30' });
+  });
+});
+
+describe('slashOrderOf', () => {
+  it.each([
+    [['12/31/2026', '01/02/2026'], 'month-first'],
+    [['31/12/2026', '12/31/2026'], 'day-first'],
+    [['12/31/2026', '31/12/2026'], 'day-first'],
+    [['01/02/2026', ' 11/12/26 '], 'day-first'],
+    [['2026-12-31', '31.12.2026', '12.31.2026', ''], 'day-first'],
+    [[], 'day-first'],
+  ])('infers %j as %s', (cells, order) => {
+    expect(slashOrderOf(cells)).toBe(order);
+  });
+});
+
+describe('purchaseDateIn', () => {
+  it('takes the first text that states a purchase day within 31 days before the booking', () => {
+    expect(purchaseDateIn(['Exempla', 'Einkauf vom 02.10.2026'], '2026-10-05')).toBe('2026-10-02');
+    expect(purchaseDateIn(['EINKAUF VOM 2026-10-02 Exempla'], '2026-10-02')).toBe('2026-10-02');
+    expect(purchaseDateIn(['Purchase on 10/02/2026'], '2026-10-05', 'month-first')).toBe(
+      '2026-10-02',
+    );
+    expect(purchaseDateIn(['Kauf vom 01.09.2026'], '2026-10-02')).toBe('2026-09-01');
+    expect(purchaseDateIn(['Kauf vom 31.08.2026'], '2026-10-02')).toBeNull();
+    expect(purchaseDateIn(['Kauf vom 03.10.2026'], '2026-10-02')).toBeNull();
+  });
+
+  it('needs the keyword as a word and a real date right after the preposition', () => {
+    expect(purchaseDateIn(['Verkauf vom 02.10.2026'], '2026-10-05')).toBeNull();
+    expect(purchaseDateIn(['Einkauf vom 02.10.20265'], '2026-10-05')).toBeNull();
+    expect(purchaseDateIn(['Einkauf vom 02.10/2026'], '2026-10-05')).toBeNull();
+    expect(
+      purchaseDateIn(['Einkauf vom 31.09.2026', 'Einkauf vom 02.10.2026'], '2026-10-05'),
+    ).toBeNull();
+    expect(purchaseDateIn([], '2026-10-05')).toBeNull();
+  });
+
+  it('only searches the start of long texts', () => {
+    const late = `${'x'.repeat(1000)} Einkauf vom 02.10.2026`;
+    expect(purchaseDateIn([late], '2026-10-05')).toBeNull();
+    const started = Date.now();
+    purchaseDateIn([`kauf ${'x'.repeat(1_000_000)}`, 'kauf/'.repeat(200_000)], '2026-10-05');
+    expect(Date.now() - started).toBeLessThan(250);
+  });
+});
+
+describe('statement markers', () => {
+  it('folds column names and markers to compact keys', () => {
+    expect(compactKey('Transaktions-Nr.')).toBe('transaktionsnr');
+    expect(compactKey("Data dell'operazione")).toBe('datadelloperazione');
+    expect(compactKey('Crédit / Débit')).toBe('creditdebit');
+    expect(compactKey('Straße')).toBe('strasse');
+  });
+
+  it('knows the ways files write Swiss francs', () => {
+    for (const code of ['CHF', 'chf', ' CHF ', 'Fr.', 'FR', 'SFr.', 'sfr', 'CHF.']) {
+      expect(isChf(code)).toBe(true);
+    }
+    for (const code of ['', 'EUR', 'F', 'Franken', 'CH', 'SFrs']) expect(isChf(code)).toBe(false);
+  });
+
+  it('reads debit/credit markers', () => {
+    expect(directionSign(' S ')).toBe(-1);
+    expect(directionSign('D.')).toBe(-1);
+    expect(directionSign('CRÉDIT')).toBe(1);
+    expect(directionSign('')).toBe(0);
+    expect(directionSign('-')).toBe(0);
+    expect(directionSign('X')).toBeNull();
+    expect(directionSign('Debitkarte')).toBeNull();
+  });
+
+  it('recognises balance and total labels', () => {
+    for (const label of [
+      'Saldo',
+      'Anfangssaldo:',
+      'Schlusssaldo per 30.09.2026',
+      'Saldo am 30.09.26',
+      'Saldovortrag',
+      'Eröffnungssaldo',
+      'Kontostand',
+      'Total',
+      'Total CHF',
+      'Gesamttotal',
+      'Summe',
+      'Balance',
+      'Opening balance',
+      'Closing Balance as of 2026-09-30',
+      'Solde',
+      "Solde d'ouverture",
+      'Solde de clôture',
+      'Saldo iniziale',
+      'Saldo finale',
+      'Totale',
+    ]) {
+      expect(isBalanceLabel(label)).toBe(true);
+    }
+    for (const text of [
+      '',
+      'Saldo Kreditkarte',
+      'TotalEnergies Tankstelle',
+      'Summer Festival',
+      'Exempla Balance Yoga',
+      `Saldo ${'x'.repeat(60)}`,
+    ]) {
+      expect(isBalanceLabel(text)).toBe(false);
+    }
   });
 });
 

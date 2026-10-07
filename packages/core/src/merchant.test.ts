@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { keyContains, merchantKey, suggestRulePattern } from './merchant';
+import { MERCHANT_STOPWORDS, keyContains, merchantKey } from './merchant';
 
 describe('merchantKey', () => {
   it.each([
@@ -10,7 +10,7 @@ describe('merchantKey', () => {
     ['Digitec Galaxus AG', 'digitec galaxus'],
     ['Bäckerei Hug GmbH, 8001 Zürich', 'backerei hug zurich'],
     ['Crêperie Café Brûlée Sàrl', 'creperie cafe brulee'],
-    ['Straße & Œuvre Æsch', 'strasse oeuvre aesch'],
+    ['Straße & Œuvre Æsch', 'strasse ouvre asch'],
     ['Čokolada Šumava Žilina Ÿ', 'cokolada sumava zilina y'],
     ['www.zalando.ch', 'zalando'],
     ['XXXX1234 MANOR 0815', 'manor'],
@@ -19,6 +19,51 @@ describe('merchantKey', () => {
     ['  -- 1234 --  ', ''],
   ])('%s → %s', (input, key) => {
     expect(merchantKey(input)).toBe(key);
+  });
+
+  it.each([
+    ["McDonald's Bern", 'mcdonalds bern'],
+    ['McDonald’s', 'mcdonalds'],
+    ['MCDONALD´S', 'mcdonalds'],
+    ['Levi`s', 'levis'],
+    ["L'Osteria", 'losteria'],
+    ['H&M', 'h m'],
+  ])('drops apostrophes: %s → %s', (input, key) => {
+    expect(merchantKey(input)).toBe(key);
+  });
+
+  it.each([
+    ['Bäckerei', 'BAECKEREI', 'backerei'],
+    ['Müller', 'MUELLER', 'muller'],
+    ['Sprüngli', 'SPRUENGLI', 'sprungli'],
+    ['Orell Füssli', 'ORELL FUESSLI', 'orell fussli'],
+    ['Vögele', 'VOEGELE', 'vogele'],
+    ['Zürich', 'ZUERICH', 'zurich'],
+    ['Coop Mineralöl', 'COOP MINERALOEL', 'coop mineralol'],
+  ])('folds ae/oe/ue: %s and %s → %s', (umlaut, spelled, key) => {
+    expect(merchantKey(umlaut)).toBe(key);
+    expect(merchantKey(spelled)).toBe(key);
+  });
+
+  it.each([
+    ['Michael', 'michal'],
+    ['Queen', 'quen'],
+    ['Blue Cinema', 'blu cinema'],
+    ['Noël', 'nol'],
+    ['aee', 'ae'],
+    ['uee oee', 'ue oe'],
+  ])('folds every e after a, o or u once, also in other words: %s → %s', (input, key) => {
+    expect(merchantKey(input)).toBe(key);
+  });
+
+  it('treats decomposed accents (NFD) as separators, like any character outside the table', () => {
+    expect(merchantKey('Zürich')).toBe('zu rich');
+    expect(merchantKey('Zürich'.normalize('NFD'))).toBe('zu rich');
+  });
+
+  it('drops every stopword', () => {
+    expect(merchantKey(MERCHANT_STOPWORDS.join(' '))).toBe('');
+    expect(merchantKey('Coop AG Co Sàrl')).toBe('coop');
   });
 
   it('is empty for missing names', () => {
@@ -39,19 +84,5 @@ describe('keyContains', () => {
   it('never matches an empty key', () => {
     expect(keyContains('coop', '')).toBe(false);
     expect(keyContains('', 'coop')).toBe(false);
-  });
-});
-
-describe('suggestRulePattern', () => {
-  it.each([
-    ['MANOR AG ZUERICH 1234', 'manor'],
-    ['TWINT *Coop Pronto', 'coop'],
-    ['Mc Donalds Bern', 'mc donalds'],
-    ['M', 'm'],
-    ['Kauf/Dienstleistung Karte Visa', null],
-    ['1234', null],
-    [null, null],
-  ])('%s → %s', (merchant, pattern) => {
-    expect(suggestRulePattern(merchant)).toBe(pattern);
   });
 });

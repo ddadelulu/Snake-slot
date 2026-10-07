@@ -1,7 +1,6 @@
 import {
-  CATEGORIZED_BY,
+  RULE_MATCH_TYPES,
   TRANSACTION_SOURCES,
-  type CategorizedBy,
   type IngestRow,
   type Json,
   type LocalDate,
@@ -22,6 +21,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { toRequestError } from '@/lib/requestError';
 import { getSupabase } from '@/lib/supabase';
 
+import { TRANSACTION_CATEGORIZED_BY, type TransactionCategorizedBy } from './categorizedBy';
 import { jsonReader } from './json';
 import { overviewKeys } from './overview';
 import { ruleKeys } from './rules';
@@ -59,11 +59,17 @@ export type TransactionItem = {
   dataSourceId: string | null;
   dataSourceName: string | null;
   categoryId: string | null;
-  categorizedBy: CategorizedBy;
+  /** 'refund': money in placed like the earlier purchase it seems to pay back (a guess). */
+  categorizedBy: TransactionCategorizedBy;
   categoryConfidence: number | null;
   fixedCostId: string | null;
   original: { amountMinor: number; currency: string } | null;
   items: TransactionLineItem[] | null;
+  /**
+   * The rule "Always do this for …?" would create (D-042, proposed by the database from the
+   * merchant), or null when nothing should be offered.
+   */
+  suggestedRule: RulePatch | null;
   splits: TransactionSplit[];
   /** Other sources that delivered the same purchase (merged duplicates). */
   mergedSources: TransactionSource[];
@@ -73,6 +79,19 @@ export type TransactionItem = {
 };
 
 const read = jsonReader('transactions');
+
+/** The fields a rule can match that `update_transaction` accepts (docs/API.md, Changing). */
+const RULE_PATCH_FIELDS = ['merchant', 'raw_text'] as const;
+
+function parseSuggestedRule(json: unknown, field: string): RulePatch | null {
+  if (json === null || json === undefined) return null;
+  const rule = read.object(json, field);
+  return {
+    matchField: read.oneOf(RULE_PATCH_FIELDS, rule.match_field, `${field}.match_field`),
+    matchType: read.oneOf(RULE_MATCH_TYPES, rule.match_type, `${field}.match_type`),
+    pattern: read.text(rule.pattern, `${field}.pattern`),
+  };
+}
 
 export function parseTransactionItem(json: unknown, field = 'transaction'): TransactionItem {
   const row = read.object(json, field);
@@ -107,7 +126,7 @@ export function parseTransactionItem(json: unknown, field = 'transaction'): Tran
     dataSourceId: read.optionalText(row.data_source_id, at('data_source_id')),
     dataSourceName: read.optionalText(row.data_source_name, at('data_source_name')),
     categoryId: read.optionalText(row.category_id, at('category_id')),
-    categorizedBy: read.oneOf(CATEGORIZED_BY, row.categorized_by, at('categorized_by')),
+    categorizedBy: read.oneOf(TRANSACTION_CATEGORIZED_BY, row.categorized_by, at('categorized_by')),
     categoryConfidence: read.optionalInteger(row.category_confidence, at('category_confidence')),
     fixedCostId: read.optionalText(row.fixed_cost_id, at('fixed_cost_id')),
     original:
@@ -115,6 +134,7 @@ export function parseTransactionItem(json: unknown, field = 'transaction'): Tran
         ? null
         : { amountMinor: originalAmount, currency: originalCurrency },
     items,
+    suggestedRule: parseSuggestedRule(row.suggested_rule, at('suggested_rule')),
     splits: read.array(row.splits ?? [], at('splits')).map((entry, index) => {
       const part = read.object(entry, at(`splits[${index}]`));
       return {
@@ -267,19 +287,27 @@ export async function invalidateTransactionViews(queryClient: QueryClient): Prom
 export const ADD_OUTCOMES = ['added', 'merged', 'already_imported', 'possible_duplicate'] as const;
 export type AddOutcome = (typeof ADD_OUTCOMES)[number];
 
+/** A stored transaction an added row resembles or was merged into. */
+export type DuplicateMatch = {
+  id: string;
+  bookedAt: string;
+  merchant: string | null;
+  amountRappen: Rappen;
+  source: TransactionSource;
+};
+
 export type AddRowResult = {
   index: number;
   outcome: AddOutcome;
   transactionId: string | null;
-  duplicateOf: {
-    id: string;
-    bookedAt: string;
-    merchant: string | null;
-    amountRappen: Rappen;
-    source: TransactionSource;
-  } | null;
+  /**
+   * `possible_duplicate`: the stored transaction the row looks like (from the same source, or
+   * from another one when the merchants cannot be compared, D-040). `merged`: the transaction it
+   * was merged into. Otherwise null.
+   */
+  duplicateOf: DuplicateMatch | null;
   categoryId: string | null;
-  categorizedBy: CategorizedBy;
+  categorizedBy: TransactionCategorizedBy;
   categoryConfidence: number | null;
   fixedCostId: string | null;
   needsReview: boolean;
@@ -330,7 +358,11 @@ export function parseAddResult(json: unknown): AddResult {
             }
           : null,
         categoryId: read.optionalText(row.category_id, at('category_id')),
-        categorizedBy: read.oneOf(CATEGORIZED_BY, row.categorized_by, at('categorized_by')),
+        categorizedBy: read.oneOf(
+          TRANSACTION_CATEGORIZED_BY,
+          row.categorized_by,
+          at('categorized_by'),
+        ),
         categoryConfidence: read.optionalInteger(
           row.category_confidence,
           at('category_confidence'),

@@ -45,6 +45,18 @@ export function exportFileName(kind: ExportKind, today: LocalDate): string {
   return `${fileSlug()}-${kind}-${today}.${kind === 'transactions' ? 'csv' : 'json'}`;
 }
 
+/**
+ * True for a name `exportFileName` gives (any day), so leftover export files can be found in the
+ * cache and deleted without touching anything else stored there.
+ */
+export function isExportFileName(name: string): boolean {
+  const day = String.raw`\d{4}-\d{2}-\d{2}`;
+  return new RegExp(`^${fileSlug()}-(?:transactions-${day}\\.csv|data-${day}\\.json)$`).test(name);
+}
+
+/** The signed-in account the export belongs to (from the session, not the database). */
+export type ExportAccount = { userId: string; email: string | null };
+
 /** The time zone the person's days and times are counted in: the profile's, else `fallback`. */
 export function exportTimeZone(data: MyDataExport, fallback: string): string {
   const profile = data.profile;
@@ -289,16 +301,26 @@ export function transactionsCsv(
   return toCsv(csvHeaders(t), rows);
 }
 
-/** Everything stored about the person, pretty-printed. */
-export function dataJson(data: MyDataExport): string {
-  return `${JSON.stringify(data, null, 2)}\n`;
+/**
+ * Everything stored about the person, pretty-printed. With `account` the file also names the
+ * signed-in account (`account: { user_id, email }`, right after the format fields), so an access
+ * request under revDSG art. 25 / GDPR art. 15 shows whose data it is.
+ */
+export function dataJson(data: MyDataExport, account?: ExportAccount | null): string {
+  const content: Record<string, unknown> = {
+    format_version: data.format_version,
+    exported_at: data.exported_at,
+  };
+  if (account) content.account = { user_id: account.userId, email: account.email };
+  for (const [key, value] of Object.entries(data)) if (!(key in content)) content[key] = value;
+  return `${JSON.stringify(content, null, 2)}\n`;
 }
 
 /** The file of one export kind, named with the person's today. */
 export function buildExportFile(
   kind: ExportKind,
   data: MyDataExport,
-  options: { t: TFunction; timeZone: string; now?: Date },
+  options: { t: TFunction; timeZone: string; now?: Date; account?: ExportAccount | null },
 ): ExportFile {
   const timeZone = exportTimeZone(data, options.timeZone);
   const name = exportFileName(kind, localDateIn(options.now ?? new Date(), timeZone));
@@ -309,5 +331,10 @@ export function buildExportFile(
         mimeType: 'text/csv',
         uti: 'public.comma-separated-values-text',
       }
-    : { name, content: dataJson(data), mimeType: 'application/json', uti: 'public.json' };
+    : {
+        name,
+        content: dataJson(data, options.account),
+        mimeType: 'application/json',
+        uti: 'public.json',
+      };
 }

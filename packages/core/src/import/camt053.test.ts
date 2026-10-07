@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { contentId } from './__fixtures__/ids';
 import { CAMT_053_04, CAMT_053_08 } from './__fixtures__/statements';
 import { parseStatementText } from './index';
 import type { ParsedStatement, StatementParseResult } from './types';
@@ -153,7 +154,7 @@ describe('camt.053.001.08', () => {
           rawText: 'Anteil Abendessen',
           mcc: null,
           source: 'statement_import',
-          sourceId: `camt053:${IBAN}:2026-09-28:6000:anteil abendessen:1`,
+          sourceId: contentId(`camt053:${IBAN}`, '2026-09-28', 6000, 'Anteil Abendessen'),
         },
       },
     ]);
@@ -184,7 +185,7 @@ describe('camt.053 entries', () => {
       { amountRappen: -200, bookedOn: '2026-09-29' },
       { amountRappen: -300, bookedOn: '2026-09-28' },
     ]);
-    expect(rows[0]?.sourceId).toBe(`camt053:${IBAN}:2026-09-30:-100::1`);
+    expect(rows[0]?.sourceId).toBe(contentId(`camt053:${IBAN}`, '2026-09-30', -100, null));
   });
 
   it('skips entries it cannot import, with the reason', () => {
@@ -219,7 +220,7 @@ describe('camt.053 entries', () => {
     );
     expect(statement.rows[0]?.transaction).toMatchObject({
       rawText: null,
-      sourceId: `camt053:${IBAN}:2026-09-30:-1000::1`,
+      sourceId: contentId(`camt053:${IBAN}`, '2026-09-30', -1000, null),
     });
   });
 
@@ -276,20 +277,108 @@ describe('camt.053 entries', () => {
       {
         amountRappen: -600,
         merchant: 'Exempla Sechs',
-        sourceId: `camt053:${IBAN}:2026-09-30:-600:einkauf exempla sechs:1`,
+        sourceId: contentId(`camt053:${IBAN}`, '2026-09-30', -600, 'Einkauf Exempla Sechs'),
       },
       {
         amountRappen: -400,
         merchant: 'Exempla Vier',
-        sourceId: `camt053:${IBAN}:2026-09-30:-400:exempla vier:1`,
+        sourceId: contentId(`camt053:${IBAN}`, '2026-09-30', -400, 'Exempla Vier'),
       },
     ]);
   });
 
-  it('numbers references that repeat within the file', () => {
+  it('gives an entry listed twice the same id, and numbers other bookings sharing a reference', () => {
     const twice = entry('<AcctSvcrRef>TEST-SAME</AcctSvcrRef>');
-    const ids = parse(camt(twice + twice)).rows.map((row) => row.transaction.sourceId);
-    expect(ids).toEqual([`camt053:${IBAN}:TEST-SAME`, `camt053:${IBAN}:TEST-SAME:2`]);
+    const other = entry(
+      '<AcctSvcrRef>TEST-SAME</AcctSvcrRef>',
+      '<Amt Ccy="CHF">10.00</Amt><CdtDbtInd>CRDT</CdtDbtInd>',
+    );
+    const ids = parse(camt(twice + twice + other + twice)).rows.map(
+      (row) => row.transaction.sourceId,
+    );
+    expect(ids).toEqual([
+      `camt053:${IBAN}:TEST-SAME`,
+      `camt053:${IBAN}:TEST-SAME`,
+      `camt053:${IBAN}:TEST-SAME:2`,
+      `camt053:${IBAN}:TEST-SAME`,
+    ]);
+  });
+
+  it('gives the same entry in two statements of one file the same id (QA L10)', () => {
+    const coffee = entry(
+      '<AcctSvcrRef>TEST-KAFFEE</AcctSvcrRef><AddtlNtryInf>Kaffee</AddtlNtryInf>',
+      '<Amt Ccy="CHF">4.50</Amt><CdtDbtInd>DBIT</CdtDbtInd>',
+    );
+    const statement = (iban: string) =>
+      `<Stmt><Id>TEST</Id><Acct><Id><IBAN>${iban}</IBAN></Id><Ccy>CHF</Ccy></Acct>${coffee}</Stmt>`;
+    const file = (statements: string) =>
+      '<Document><BkToCstmrStmt><GrpHdr><MsgId>TEST</MsgId></GrpHdr>' +
+      `${statements}</BkToCstmrStmt></Document>`;
+    const ids = (text: string) => parse(text).rows.map((row) => row.transaction.sourceId);
+    expect(ids(file(statement(IBAN) + statement(IBAN)))).toEqual([
+      `camt053:${IBAN}:TEST-KAFFEE`,
+      `camt053:${IBAN}:TEST-KAFFEE`,
+    ]);
+    // Another account keeps its own ids.
+    expect(ids(file(statement(IBAN) + statement('CH5604835012345678009')))).toEqual([
+      `camt053:${IBAN}:TEST-KAFFEE`,
+      'camt053:CH5604835012345678009:TEST-KAFFEE',
+    ]);
+  });
+
+  it('numbers batch parts that share their own reference by position', () => {
+    const part = (amount: string, name: string) =>
+      `<TxDtls><Refs><AcctSvcrRef>TEST-SHARED</AcctSvcrRef></Refs><Amt Ccy="CHF">${amount}</Amt>` +
+      `<RltdPties><Cdtr><Nm>${name}</Nm></Cdtr></RltdPties></TxDtls>`;
+    const batch = (inner: string) =>
+      entry(inner, '<Amt Ccy="CHF">10.00</Amt><CdtDbtInd>DBIT</CdtDbtInd>');
+    const statement = parse(
+      camt(
+        batch(
+          `<AcctSvcrRef>TEST-ENTRY</AcctSvcrRef><NtryDtls>${part('5.00', 'Exempla A')}${part('5.00', 'Exempla B')}</NtryDtls>`,
+        ) +
+          batch(`<NtryDtls>${part('5.00', 'Exempla C')}${part('5.00', 'Exempla D')}</NtryDtls>`) +
+          batch(
+            '<AcctSvcrRef>TEST-OWN</AcctSvcrRef><NtryDtls>' +
+              '<TxDtls><Refs><AcctSvcrRef>TEST-OWN</AcctSvcrRef></Refs><Amt Ccy="CHF">4.00</Amt></TxDtls>' +
+              '<TxDtls><Refs><AcctSvcrRef>TEST-OTHER</AcctSvcrRef></Refs><Amt Ccy="CHF">6.00</Amt></TxDtls>' +
+              '</NtryDtls>',
+          ),
+      ),
+    );
+    expect(statement.rows.map((row) => row.transaction.sourceId)).toEqual([
+      `camt053:${IBAN}:TEST-ENTRY/1`,
+      `camt053:${IBAN}:TEST-ENTRY/2`,
+      `camt053:${IBAN}:TEST-SHARED/1`,
+      `camt053:${IBAN}:TEST-SHARED/2`,
+      `camt053:${IBAN}:TEST-OWN/1`,
+      `camt053:${IBAN}:TEST-OTHER`,
+    ]);
+  });
+
+  it('skips a negative amount (the sign belongs in CdtDbtInd) and keeps such a batch whole', () => {
+    const result = parseStatementText(
+      camt(
+        entry(
+          '<AcctSvcrRef>TEST-NEG</AcctSvcrRef>',
+          '<Amt Ccy="CHF">-5.00</Amt><CdtDbtInd>DBIT</CdtDbtInd>',
+        ) +
+          entry(
+            '<AcctSvcrRef>TEST-BATCH</AcctSvcrRef><NtryDtls>' +
+              '<TxDtls><Amt Ccy="CHF">15.00</Amt></TxDtls><TxDtls><Amt Ccy="CHF">-5.00</Amt></TxDtls>' +
+              '</NtryDtls>',
+          ),
+      ),
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      statement: {
+        rows: [
+          { line: 2, transaction: { amountRappen: -1000, sourceId: `camt053:${IBAN}:TEST-BATCH` } },
+        ],
+        skipped: [{ line: 1, reason: 'invalid_amount', text: '2026-09-30; DBIT; -5.00; CHF' }],
+      },
+    });
   });
 
   it('finds names in ultimate parties, repeated elements and entities', () => {
@@ -313,6 +402,50 @@ describe('camt.053 entries', () => {
       'Exempla &#0; &#xD800; &#1114112; &copy;',
       null,
     ]);
+  });
+
+  it('keeps an acceptance time with an offset as the exact instant, also at midnight', () => {
+    const accepted = (moment: string) =>
+      entry(
+        `<NtryDtls><TxDtls><RltdDts><AccptncDtTm>${moment}</AccptncDtTm></RltdDts></TxDtls></NtryDtls>`,
+      );
+    const rows = parse(
+      camt(
+        accepted('2026-09-29T00:00:00+05:00') +
+          accepted('2026-09-29T00:00:00Z') +
+          accepted('2026-09-29T00:00:00') +
+          accepted('2026-09-29T23:30:00.123+0200') +
+          accepted('kaputt'),
+      ),
+    ).rows.map((row) => row.transaction);
+    expect(rows.map((row) => row.bookedAt ?? [row.bookedOn, row.bookedTime])).toEqual([
+      '2026-09-29T00:00:00+05:00',
+      '2026-09-29T00:00:00Z',
+      ['2026-09-29', undefined],
+      '2026-09-29T23:30:00+02:00',
+      ['2026-09-30', undefined],
+    ]);
+  });
+
+  it('dates a card purchase without acceptance time by the day its text states (D-043)', () => {
+    const booked = (bookingDate: string, info: string) =>
+      `<Ntry><Amt Ccy="CHF">19.90</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>BOOK</Sts>` +
+      `<BookgDt><Dt>${bookingDate}</Dt></BookgDt><AddtlNtryInf>${info}</AddtlNtryInf></Ntry>`;
+    const rows = parse(
+      camt(
+        booked(
+          '2026-10-03',
+          'KAUF/DIENSTLEISTUNG VOM 02.10.2026 KARTEN NR. XXXX1234 EXEMPLA ZUERICH',
+        ) +
+          booked('2026-10-03', 'Achat du 03.10.2026 Exempla Lausanne') +
+          booked('2026-10-03', 'Einkauf vom 04.10.2026 Exempla Bern') +
+          booked('2026-11-05', 'Einkauf vom 02.10.2026 Exempla Basel') +
+          '<Ntry><Amt Ccy="CHF">5.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><ValDt><Dt>2026-10-03</Dt></ValDt>' +
+          '<NtryDtls><TxDtls><RmtInf><Ustrd>Einkauf vom 01.10.2026</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>',
+      ),
+    ).rows.map((row) => row.transaction.bookedOn);
+    // Later than the booking or more than 31 days before it: the booking date stays.
+    expect(rows).toEqual(['2026-10-02', '2026-10-03', '2026-10-03', '2026-11-05', '2026-10-01']);
   });
 
   it('reads original amounts by ISO 4217 minor units and ignores unusable ones', () => {

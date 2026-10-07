@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen, waitFor } from 'expo-router/testing-library';
 
-import { i18n } from '@/i18n';
+import { LANGUAGE_STORAGE_KEY, i18n } from '@/i18n';
 import { readEnv } from '@/lib/env';
 import {
+  MANOR_RULE,
   ok,
   page,
   refused,
@@ -34,6 +35,7 @@ const MANOR = transactionJson({
   category_id: 'c-groceries',
   category_confidence: 50,
   needs_review: true,
+  suggested_rule: MANOR_RULE,
 });
 const MANOR_AGAIN = transactionJson({
   id: 't-manor-2',
@@ -41,6 +43,19 @@ const MANOR_AGAIN = transactionJson({
   booked_at: '2026-10-03T09:00:00+00:00',
   merchant: 'MANOR AG 0815',
   source: 'statement_import',
+  needs_review: true,
+  suggested_rule: MANOR_RULE,
+});
+/** Money back from Manor, guessed as a refund of an earlier grocery purchase (D-039). */
+const REFUND = transactionJson({
+  id: 't-refund',
+  amount_rappen: 5000,
+  booked_at: '2026-10-05T09:00:00+00:00',
+  merchant: 'Manor',
+  source: 'statement_import',
+  categorized_by: 'refund',
+  category_id: 'c-groceries',
+  category_confidence: 60,
   needs_review: true,
 });
 const UNKNOWN = transactionJson({
@@ -55,7 +70,7 @@ const UNKNOWN = transactionJson({
 
 /**
  * list_transactions (needs_review) and update_transaction over a store. A rule places every other
- * transaction whose merchant contains the pattern, as the database does.
+ * transaction whose merchant contains (or equals) the pattern, as the database does.
  */
 function start(items: TransactionJson[], updateAnswer?: () => ReturnType<typeof refused>) {
   const store = new Map(items.map((item) => [item.id, { ...item }]));
@@ -75,11 +90,15 @@ function start(items: TransactionJson[], updateAnswer?: () => ReturnType<typeof 
         const next = { ...current, category_id: p.category_id, needs_review: false };
         store.set(p_id, next);
         let recategorized = 0;
-        const rule = p.rule as { pattern: string } | undefined;
+        const rule = p.rule as { match_type: string; pattern: string } | undefined;
         if (rule) {
           for (const row of store.values()) {
             const merchant = typeof row.merchant === 'string' ? row.merchant.toLowerCase() : '';
-            if (row.id !== p_id && row.needs_review && merchant.includes(rule.pattern)) {
+            const matches =
+              rule.match_type === 'equals'
+                ? merchant === rule.pattern
+                : merchant.includes(rule.pattern);
+            if (row.id !== p_id && row.needs_review && matches) {
               store.set(row.id, { ...row, category_id: p.category_id, needs_review: false });
               recategorized += 1;
             }
@@ -190,6 +209,61 @@ describe('review', () => {
       'That category no longer exists. Choose another one.',
     );
     expect(screen.getByTestId('review-question')).toHaveTextContent(/CHF 12\.00/);
+  });
+
+  it('offers exactly the rule the database proposed, and none without a proposal', async () => {
+    const fake = start([
+      { ...MANOR, suggested_rule: { ...MANOR_RULE, match_type: 'equals' } },
+      { ...MANOR_AGAIN, suggested_rule: null },
+    ]);
+    fireEvent.press(await screen.findByTestId('review-category-Dog'));
+    expect(await screen.findByText('Always do this for “manor”?')).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('review-rule-yes'));
+    expect(await screen.findByTestId('review-question')).toHaveTextContent(
+      'CHF 30.00 at MANOR AG 0815: what was it?',
+    );
+    // No proposal: the answer is saved at once, without asking about a rule.
+    fireEvent.press(screen.getByTestId('review-category-groceries'));
+    expect(await screen.findByTestId('review-done')).toBeOnTheScreen();
+    expect(screen.queryByTestId('review-rule')).toBeNull();
+    expect(updates(fake)).toEqual([
+      {
+        p_id: 't-manor',
+        category_id: 'c-dog',
+        rule: { match_field: 'merchant', match_type: 'equals', pattern: 'manor' },
+      },
+      { p_id: 't-manor-2', category_id: 'c-groceries' },
+    ]);
+  });
+
+  it('asks about money that looks like a refund as money back', async () => {
+    const fake = start([REFUND, { ...REFUND, id: 't-refund-2', merchant: null }]);
+    expect(await screen.findByTestId('review-question')).toHaveTextContent(
+      'CHF 50.00 back from Manor: which category?',
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('review-refund')).toHaveTextContent(
+        'Looks like money back for an earlier purchase (Groceries).',
+      ),
+    );
+    fireEvent.press(screen.getByTestId('review-category-groceries'));
+    expect(await screen.findByTestId('review-question')).toHaveTextContent(
+      'CHF 50.00 back on Monday, 5 October: which category?',
+    );
+    expect(updates(fake)).toEqual([{ p_id: 't-refund', category_id: 'c-groceries' }]);
+  });
+
+  it('asks about a refund in German', async () => {
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    start([REFUND]);
+    expect(await screen.findByTestId('review-question')).toHaveTextContent(
+      'CHF 50.00 zurück von Manor: Welche Kategorie?',
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('review-refund')).toHaveTextContent(
+        'Sieht aus wie Geld zurück für einen früheren Einkauf (Lebensmittel).',
+      ),
+    );
   });
 
   it('is reached from the banner on Home', async () => {

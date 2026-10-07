@@ -9,8 +9,11 @@ const MAX_KEY = 100;
 const SUFFIX_ROOM = 6;
 
 export type SourceIds = {
-  /** Id from the bank's own reference (id column, camt AcctSvcrRef / NtryRef). */
-  forReference(iban: string | null, reference: string): string;
+  /**
+   * Id from the bank's own reference (id column, camt AcctSvcrRef / NtryRef); `content` (the
+   * row's date and amount) tells a camt entry listed twice from another booking with that reference.
+   */
+  forReference(iban: string | null, reference: string, content: string): string;
   /** Id from the row's content when the file has no reference. */
   forContent(iban: string | null, date: LocalDate, amount: Rappen, text: string | null): string;
 };
@@ -22,8 +25,11 @@ export type SourceIds = {
  *
  * - With a bank reference: `<format>:<scope>:<reference>`, where scope is the account IBAN, else
  *   the bank, else the format (`csv:CH9300000000000000000:9930273TI0000001`). Should a reference
- *   repeat within the file (some banks give every part of a batch the entry's reference), its
- *   second and later rows get `:2`, `:3`, … so no row is lost.
+ *   repeat within a CSV file (a booking and its parts can share a number), its second and later
+ *   rows get `:2`, `:3`, … so no row is lost. In camt.053 a reference that repeats with the same
+ *   date and amount is the same entry listed twice (two `Stmt` blocks for overlapping periods): it
+ *   gets the same id again, and the database reports it as already imported; with another date or
+ *   amount it is numbered like in a CSV.
  * - Without one: `<format>:<date>:<amountRappen>:<merchantKey(text), ≤ 100>:<occurrence>`, where
  *   occurrence counts identical (date, amount, key) rows in file order: two coffees of CHF 4.50
  *   at the same kiosk on the same day are `…:1` and `…:2` in every export that contains both.
@@ -38,12 +44,19 @@ export function createSourceIds(format: StatementFormat, bank: StatementBank | n
     seen.set(base, occurrence);
     return occurrence;
   };
+  /** camt.053 ids by reference and content, for entries listed twice. */
+  const given = new Map<string, string>();
   return {
-    forReference(iban, reference) {
+    forReference(iban, reference, content) {
       const prefix = `${format}:${iban ?? bank ?? format}:`;
       const base = prefix + reference.slice(0, MAX_ID - prefix.length - SUFFIX_ROOM);
+      const key = `${base}\u0000${content}`;
+      const repeated = format === 'camt053' ? given.get(key) : undefined;
+      if (repeated !== undefined) return repeated;
       const occurrence = count(base);
-      return occurrence === 1 ? base : `${base}:${occurrence}`;
+      const id = occurrence === 1 ? base : `${base}:${occurrence}`;
+      given.set(key, id);
+      return id;
     },
     forContent(iban, date, amount, text) {
       const scope = iban === null ? '' : `${iban}:`;

@@ -1,4 +1,5 @@
-import { addDays, type LocalDate } from '@budget/core';
+import { addDays, formatChf, type Language, type LocalDate } from '@budget/core';
+import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View } from 'react-native';
@@ -52,7 +53,9 @@ const close = () => goBackOr('/');
 
 /**
  * US-3.3: the purchases of this month the app is not sure about, one at a time: "CHF 84.00 at
- * Manor: what was it?", the categories as buttons, then "Always do this for Manor?".
+ * Manor: what was it?", the categories as buttons, then "Always do this for Manor?". Money in
+ * that looks like a refund (D-039) is asked the same way: "CHF 50.00 back from Manor: which
+ * category?".
  */
 export default function ReviewScreen() {
   const { t } = useTranslation();
@@ -160,7 +163,7 @@ function Queue({ from, to }: { from: LocalDate; to: LocalDate }) {
 
   const choices = activeCategories(categories.data ?? []);
   const nameOf = (categoryId: string) => {
-    const category = choices.find((candidate) => candidate.id === categoryId);
+    const category = (categories.data ?? []).find((candidate) => candidate.id === categoryId);
     return category ? categoryName(category, t) : '';
   };
   const next = () => {
@@ -210,11 +213,12 @@ function Queue({ from, to }: { from: LocalDate; to: LocalDate }) {
     next();
   };
 
-  const amount = transactionAmountText(current.amountRappen, language);
   const day = localDayOf(current.bookedAt, timeZone);
-  const question = current.merchant
-    ? t('review.questionAt', { amount, merchant: current.merchant })
-    : t('review.question', { amount, date: formatWeekdayDate(day, language) });
+  const date = formatWeekdayDate(day, language);
+  const question = questionFor(current, date, language, t);
+  // A refund guess names the category of the purchase it seems to pay back.
+  const refundCategory =
+    current.categorizedBy === 'refund' && current.categoryId ? nameOf(current.categoryId) : '';
   const progress = t('review.progress', { current: position + 1, total: queue.length });
 
   return (
@@ -242,8 +246,13 @@ function Queue({ from, to }: { from: LocalDate; to: LocalDate }) {
             <AppText variant="heading" accessibilityRole="header" testID="review-question">
               {question}
             </AppText>
-            {current.merchant ? (
-              <AppText tone="secondary">{formatWeekdayDate(day, language)}</AppText>
+            {current.merchant ? <AppText tone="secondary">{date}</AppText> : null}
+            {current.categorizedBy === 'refund' ? (
+              <AppText tone="secondary" testID="review-refund">
+                {refundCategory
+                  ? t('review.refundGuessIn', { category: refundCategory })
+                  : t('review.refundGuess')}
+              </AppText>
             ) : null}
             {current.rawText ? (
               <AppText variant="caption" tone="secondary" numberOfLines={2}>
@@ -298,6 +307,28 @@ function Queue({ from, to }: { from: LocalDate; to: LocalDate }) {
       </View>
     </>
   );
+}
+
+/**
+ * "CHF 84.00 at Manor: what was it?" for money out; money in (a refund guess) is asked as
+ * "CHF 50.00 back from Manor: which category?". Without a merchant the day names it.
+ */
+function questionFor(
+  transaction: TransactionItem,
+  date: string,
+  language: Language,
+  t: TFunction,
+): string {
+  if (transaction.amountRappen > 0) {
+    const amount = formatChf(transaction.amountRappen, { language, sign: 'never' });
+    return transaction.merchant
+      ? t('review.questionBackFrom', { amount, merchant: transaction.merchant })
+      : t('review.questionBack', { amount, date });
+  }
+  const amount = transactionAmountText(transaction.amountRappen, language);
+  return transaction.merchant
+    ? t('review.questionAt', { amount, merchant: transaction.merchant })
+    : t('review.question', { amount, date });
 }
 
 function Finished({ skipped, empty }: { skipped: number; empty: boolean }) {

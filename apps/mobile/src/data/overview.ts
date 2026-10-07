@@ -1,5 +1,4 @@
 import {
-  CATEGORIZED_BY,
   DEFAULT_CATEGORY_KEYS,
   TRANSACTION_SOURCES,
   buildOverview,
@@ -9,7 +8,6 @@ import {
   type LocalDate,
   type Overview,
   type Rappen,
-  type CategorizedBy,
   type TransactionSource,
 } from '@budget/core';
 import { skipToken, useQuery } from '@tanstack/react-query';
@@ -17,6 +15,8 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { toRequestError } from '@/lib/requestError';
 import { getSupabase } from '@/lib/supabase';
+
+import { TRANSACTION_CATEGORIZED_BY, type TransactionCategorizedBy } from './categorizedBy';
 
 /**
  * The current month for the home screen. The database rolls the month over on payday and adds up
@@ -46,7 +46,7 @@ export type RecentTransaction = {
   isSplit: boolean;
   source: TransactionSource;
   note: string | null;
-  categorizedBy: CategorizedBy;
+  categorizedBy: TransactionCategorizedBy;
   /** No category yet, or only a weak guess: the app asks the person. */
   needsReview: boolean;
 };
@@ -169,7 +169,7 @@ export function parseOverview(json: unknown): OverviewData | null {
         if (typeof row.is_split !== 'boolean') {
           throw new OverviewFormatError(`recent_transactions[${index}].is_split`);
         }
-        if (!(CATEGORIZED_BY as readonly unknown[]).includes(row.categorized_by)) {
+        if (!(TRANSACTION_CATEGORIZED_BY as readonly unknown[]).includes(row.categorized_by)) {
           throw new OverviewFormatError(`recent_transactions[${index}].categorized_by`);
         }
         if (typeof row.needs_review !== 'boolean') {
@@ -184,7 +184,7 @@ export function parseOverview(json: unknown): OverviewData | null {
           isSplit: row.is_split,
           source: row.source as TransactionSource,
           note: optionalText(row.note, `recent_transactions[${index}].note`),
-          categorizedBy: row.categorized_by as CategorizedBy,
+          categorizedBy: row.categorized_by as TransactionCategorizedBy,
           needsReview: row.needs_review,
         };
       },

@@ -1,5 +1,4 @@
-import { readStatement, type ParsedStatement, type SkippedRow } from '@budget/core';
-import { UBS_DE } from '@budget/core/src/import/__fixtures__/statements';
+import type { ParsedStatement, SkippedRow, SourceTransaction } from '@budget/core';
 
 import type { AddResult, AddRowResult } from '@/data/transactions';
 
@@ -29,11 +28,75 @@ import {
   type UnknownColumns,
 } from './model';
 
-// The statement is synthetic (packages/core/src/import/__fixtures__).
+const ID = 'csv:CH9300000000000000000:TEST000000000';
+
+function line(transaction: Partial<SourceTransaction>): SourceTransaction {
+  return {
+    amountRappen: -100,
+    currency: 'CHF',
+    merchant: null,
+    rawText: null,
+    mcc: null,
+    source: 'statement_import',
+    sourceId: null,
+    ...transaction,
+  };
+}
+
+/**
+ * A parsed UBS statement (SYNTHETIC, written out so these tests do not depend on the parser): a
+ * card purchase, an e-banking order without a merchant, a salary and a café purchase.
+ */
 function ubs(): ParsedStatement {
-  const result = readStatement(new TextEncoder().encode(UBS_DE));
-  if (!result.ok) throw new Error('UBS fixture does not parse');
-  return result.statement;
+  return {
+    format: 'csv',
+    bank: 'ubs',
+    account: { iban: 'CH9300000000000000000' },
+    rows: [
+      {
+        line: 11,
+        transaction: line({
+          amountRappen: -2340,
+          bookedOn: '2026-09-29',
+          bookedTime: '14:23:05',
+          merchant: 'Mustermarkt-4567 Zürich',
+          rawText: 'Mustermarkt-4567 Zürich; Zahlung Debitkarte',
+          sourceId: `${ID}1`,
+        }),
+      },
+      {
+        line: 12,
+        transaction: line({
+          amountRappen: -15000,
+          bookedOn: '2026-09-28',
+          rawText: 'Sammelauftrag; e-banking-Auftrag',
+          sourceId: `${ID}2`,
+        }),
+      },
+      {
+        line: 15,
+        transaction: line({
+          amountRappen: 520000,
+          bookedOn: '2026-09-25',
+          merchant: 'Fictiva Arbeitgeber AG',
+          sourceId: `${ID}3`,
+        }),
+      },
+      {
+        line: 16,
+        transaction: line({
+          amountRappen: -850,
+          bookedOn: '2026-09-24',
+          bookedTime: '09:05:00',
+          merchant: 'Exempla Café Bern',
+          sourceId: `${ID}4`,
+        }),
+      },
+    ],
+    skipped: [],
+    from: '2026-09-24',
+    to: '2026-09-29',
+  };
 }
 
 function result(
@@ -63,11 +126,23 @@ const MATCH = {
   source: 'statement_import' as const,
 };
 
+const TYPED_IN = {
+  id: 't-manual',
+  bookedAt: '2026-09-29T12:20:00+00:00',
+  merchant: 'Mustermarkt',
+  amountRappen: -2340,
+  source: 'manual' as const,
+};
+
 function dryRun(): AddResult {
   return {
     dataSourceId: null,
     results: [
-      result(0, 'merged', { transactionId: 't-manual', categoryId: 'c-groceries' }),
+      result(0, 'merged', {
+        transactionId: 't-manual',
+        categoryId: 'c-groceries',
+        duplicateOf: TYPED_IN,
+      }),
       result(1, 'added', { needsReview: true }),
       result(2, 'already_imported', { transactionId: 't-salary', categoryId: 'c-x' }),
       result(3, 'possible_duplicate', { duplicateOf: MATCH }),
@@ -79,17 +154,24 @@ function dryRun(): AddResult {
 describe('preview rows', () => {
   it('marks each line with what importing it would do', () => {
     const rows = toPreviewRows(ubs(), dryRun());
-    expect(
-      rows.map((row) => [row.index, row.line, row.status, row.mergeTargetId, row.match?.id]),
-    ).toEqual([
-      [0, 11, 'merge', 't-manual', undefined],
-      [1, 12, 'new', null, undefined],
-      [2, 15, 'imported_before', null, undefined],
-      [3, 16, 'look_alike', null, 't-cafe'],
+    expect(rows.map((row) => [row.index, row.line, row.status, row.match?.id])).toEqual([
+      [0, 11, 'merge', 't-manual'],
+      [1, 12, 'new', undefined],
+      [2, 15, 'imported_before', undefined],
+      [3, 16, 'look_alike', 't-cafe'],
     ]);
+    // A merge names the transaction it joins straight from the dry run.
+    expect(rows[0]?.match).toEqual(TYPED_IN);
     expect(rows[0]).toMatchObject({ categoryId: 'c-groceries', needsReview: false });
     expect(rows[1]).toMatchObject({ categoryId: null, needsReview: true });
     expect(countByStatus(rows)).toEqual({ new: 1, merge: 1, imported_before: 1, look_alike: 1 });
+  });
+
+  it('keeps a match only for merges and look-alikes', () => {
+    const stray = { ...dryRun(), results: [result(0, 'added', { duplicateOf: MATCH })] };
+    expect(toPreviewRows(ubs(), stray)[0]?.match).toBeNull();
+    const undescribed = { ...dryRun(), results: [result(0, 'merged', { transactionId: 't-1' })] };
+    expect(toPreviewRows(ubs(), undescribed)[0]).toMatchObject({ status: 'merge', match: null });
   });
 
   it('treats a line the dry run did not answer as new', () => {
@@ -139,6 +221,7 @@ describe('preview rows', () => {
     const [first, second] = ubs().rows;
     expect(rowDescription(first!.transaction)).toBe('Mustermarkt-4567 Zürich');
     expect(rowDescription(second!.transaction)).toMatch(/^Sammelauftrag/);
+    expect(rowDescription(first!.transaction)).toBe('Mustermarkt-4567 Zürich');
     expect(rowDescription({ ...second!.transaction, rawText: null })).toBeNull();
     expect(bookingDay(first!.transaction)).toBe('2026-09-29');
     expect(
@@ -183,6 +266,29 @@ describe('skipped lines', () => {
       ['invalid_date', [9]],
     ]);
     expect(groupSkipped([])).toEqual([]);
+  });
+
+  it('knows the collective total, balance and malformed lines (D-043)', () => {
+    const skipped: SkippedRow[] = [
+      { line: 20, reason: 'malformed_row', text: '30.09.2026;Kiosk;1,234.50' },
+      { line: 4, reason: 'collective_detail', text: 'detail' },
+      { line: 21, reason: 'balance_line', text: 'Saldo' },
+      { line: 3, reason: 'collective_total', text: 'Sammelauftrag' },
+    ];
+    expect(groupSkipped(skipped).map((group) => group.reason)).toEqual([
+      'collective_detail',
+      'collective_total',
+      'balance_line',
+      'malformed_row',
+    ]);
+  });
+
+  it('lists a reason it does not know yet as not valid, so no line goes missing', () => {
+    const future = [
+      { line: 2, reason: 'something_new', text: 'a' },
+      { line: 1, reason: 'invalid', text: 'b' },
+    ] as unknown as SkippedRow[];
+    expect(groupSkipped(future)).toEqual([{ reason: 'invalid', rows: [future[1], future[0]] }]);
   });
 });
 
@@ -229,7 +335,14 @@ describe('column mapping', () => {
       amount: null,
       debit: null,
       credit: null,
+      direction: null,
+      invertAmounts: false,
       text: [1, 3],
+    });
+    expect(mappingDraftFrom({ amount: 2, direction: 4 })).toMatchObject({
+      amount: 2,
+      direction: 4,
+      invertAmounts: false,
     });
     expect(mappingDraftFrom({ debit: 2, credit: 3 })).toMatchObject({
       date: null,
@@ -260,6 +373,35 @@ describe('column mapping', () => {
       credit: 3,
       text: [1],
     });
+  });
+
+  it('adds the debit/credit column or the sign switch to a single amount column', () => {
+    const single: MappingDraft = { ...mappingDraftFrom({}), date: 0, amount: 2, text: [1] };
+    expect(toColumnMapping({ ...single, direction: 3 }, 1)).toEqual({
+      headerRow: 1,
+      date: 0,
+      amount: 2,
+      direction: 3,
+      text: [1],
+    });
+    expect(toColumnMapping({ ...single, invertAmounts: true }, 1)).toEqual({
+      headerRow: 1,
+      date: 0,
+      amount: 2,
+      invertAmounts: true,
+      text: [1],
+    });
+    // The direction column gives the sign on its own; the switch is then left out.
+    expect(toColumnMapping({ ...single, direction: 3, invertAmounts: true }, 1)).not.toHaveProperty(
+      'invertAmounts',
+    );
+    // Separate debit and credit columns carry the sign already.
+    expect(
+      toColumnMapping(
+        { ...single, amountKind: 'split', debit: 2, direction: 3, invertAmounts: true },
+        1,
+      ),
+    ).toEqual({ headerRow: 1, date: 0, debit: 2, text: [1] });
   });
 
   it('toggles description columns, kept in column order', () => {

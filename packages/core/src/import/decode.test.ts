@@ -81,6 +81,49 @@ describe('decodeText', () => {
     });
   });
 
+  it('reads UTF-8 with a few stray bytes as UTF-8 (QA L11)', () => {
+    // UTF-8 for text below U+0800, built by hand (no TextEncoder in this package's types).
+    const line = (text: string) =>
+      [...text].flatMap((char) => {
+        const code = char.charCodeAt(0);
+        return code < 0x80 ? [code] : [0xc0 | (code >> 6), 0x80 | (code & 0x3f)];
+      });
+    // "Café Müller" pasted in from a Windows-1252 file: é = 0xE9 (cut off by a space), ü = 0xFC.
+    const pasted = [...ascii('Caf'), 0xe9, ...ascii(' M'), 0xfc, ...ascii('ller;-3.00\n')];
+    const body = line('Datum;Text;Betrag\n03.10.2026;Bäckerei Zürich;-4.50\n'.repeat(10));
+    const { text, encoding } = decodeText(bytes(...body, ...pasted));
+    expect(encoding).toBe('utf-8');
+    expect(text).toContain('Bäckerei Zürich');
+    expect(text.endsWith('Caf\uFFFD M\uFFFDller;-3.00\n')).toBe(true);
+  });
+
+  it('reads a file as Windows-1252 when stray bytes exceed 1 % or nothing else is UTF-8', () => {
+    const multiByte = [0xc3, 0xbc]; // "ü" in UTF-8
+    // 2 stray bytes in 120: 1.7 %.
+    const many = bytes(...multiByte, ...ascii('x'.repeat(116)), 0xfc, 0xe9);
+    expect(decodeText(many).encoding).toBe('windows-1252');
+    // 1 stray byte in 200, but no UTF-8 character at all: a plain Windows-1252 file.
+    const plain = bytes(...ascii('x'.repeat(199)), 0xfc);
+    expect(decodeText(plain)).toEqual({ text: `${'x'.repeat(199)}ü`, encoding: 'windows-1252' });
+    // 1 stray byte (a cut-off sequence) in 200 with a UTF-8 character: UTF-8.
+    const cut = bytes(...multiByte, ...ascii('x'.repeat(196)), 0xe2, 0x82);
+    expect(decodeText(cut)).toEqual({ text: `ü${'x'.repeat(196)}\uFFFD`, encoding: 'utf-8' });
+  });
+
+  it('recognises UTF-16 without a BOM by its zero bytes', () => {
+    const units = (text: string) => [...text].map((char) => char.charCodeAt(0));
+    const le = bytes(...units('Datum;Zürich').flatMap((unit) => [unit & 0xff, unit >> 8]));
+    expect(decodeText(le)).toEqual({ text: 'Datum;Zürich', encoding: 'utf-16le' });
+    const be = bytes(...units('Datum;€ 5').flatMap((unit) => [unit >> 8, unit & 0xff]));
+    expect(decodeText(be)).toEqual({ text: 'Datum;€ 5', encoding: 'utf-16be' });
+  });
+
+  it('does not take binary data with zero bytes on both sides for UTF-16', () => {
+    expect(decodeText(bytes(0x00, 0x00, 0x00, 0x00, 0x41, 0x00)).encoding).toBe('utf-8');
+    expect(decodeText(bytes(0x00, 0x00, 0x41, 0x00, 0x00, 0x42)).encoding).toBe('utf-8');
+    expect(decodeText(bytes(0x41, 0x00)).encoding).toBe('utf-8');
+  });
+
   it('decodes files larger than one chunk', () => {
     const big = new Uint8Array(20000).fill(0x61);
     expect(decodeText(big).text).toBe('a'.repeat(20000));

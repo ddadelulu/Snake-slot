@@ -70,6 +70,85 @@ describe('toCsv', () => {
     ]);
   });
 
+  it('defuses formulas after a separator and spaces, changing nothing else (QA L13)', () => {
+    const rows = [
+      ['Exempla, =1+1'],
+      ['Exempla,   +41 79 000 00 00'],
+      ['Zeile 1\n  @SUM(A1)'],
+      ['a\t -1'],
+      [' =1+1'],
+      ['  -Exempla'],
+      ['Essen, 20% Rabatt'],
+      ['a, b ,c'],
+      ['Exempla, - '],
+    ];
+    expect(toCsv(['Text'], rows).split('\r\n').slice(1, 10)).toEqual([
+      "Exempla, '=1+1",
+      "Exempla,   '+41 79 000 00 00",
+      `"Zeile 1\n  '@SUM(A1)"`,
+      "a\t '-1",
+      "' =1+1",
+      "'  -Exempla",
+      'Essen, 20% Rabatt',
+      'a, b ,c',
+      `"Exempla, '- "`,
+    ]);
+  });
+
+  it('keeps multi-line notes with dashes readable (QA L13)', () => {
+    expect(toCsv(['Notiz'], [['- Milch\n- Brot'], ['Einkauf:\n- Milch\n  - Brot\r\n-Eier']])).toBe(
+      '\uFEFFNotiz\r\n' +
+        `"'- Milch\n'- Brot"\r\n` +
+        `"Einkauf:\n'- Milch\n  '- Brot\r\n'-Eier"\r\n`,
+    );
+  });
+
+  it('reproduces the QA export cases', () => {
+    // csv3: notes and texts with commas.
+    expect(
+      toCsv(
+        ['note'],
+        [['Einkauf:\n- Milch\n- Brot'], ['Essen, -20% Rabatt'], ['Max, +41 79 123 45 67'], ['a,b']],
+      ),
+    ).toBe(
+      '\uFEFFnote\r\n"Einkauf:\n\'- Milch\n\'- Brot"\r\n' +
+        "Essen, '-20% Rabatt\r\nMax, '+41 79 123 45 67\r\na,b\r\n",
+    );
+    // misc: the injection corpus.
+    expect(
+      toCsv(
+        ['a', 'b'],
+        [
+          ['=HYPERLINK("http://x")', '+41 79 123 45 67'],
+          ['-5', '-23.40'],
+          ['-1+1', '@SUM(A1)'],
+          ['\t=1+1', '\r=1'],
+          [' =1+1', '\n=1+1'],
+          ['＝1+1', '%0A=1'],
+          ['a;b', 'a"b'],
+          ['multi\nline', 'trailing '],
+          [null, 1.5],
+          ['|calc', '0x41'],
+          ['−1+1', '=1'],
+        ],
+      ).split('\r\n'),
+    ).toEqual([
+      '\uFEFFa;b',
+      `"'=HYPERLINK(""http://x"")";'+41 79 123 45 67`,
+      '-5;-23.40',
+      "'-1+1;'@SUM(A1)",
+      `'\t'=1+1;"'\r'=1"`,
+      `' =1+1;"\n'=1+1"`,
+      '＝1+1;%0A=1',
+      '"a;b";"a""b"',
+      '"multi\nline";"trailing "',
+      ';1.5',
+      '|calc;0x41',
+      "−1+1;'=1",
+      '',
+    ]);
+  });
+
   it('keeps plain decimal amounts numeric', () => {
     expect(toCsv(['Betrag'], [['-23.40'], ['-1234'], ['-1e5']])).toBe(
       "\uFEFFBetrag\r\n-23.40\r\n-1234\r\n'-1e5\r\n",

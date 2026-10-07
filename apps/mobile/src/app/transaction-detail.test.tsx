@@ -5,6 +5,7 @@ import { i18n } from '@/i18n';
 import { readEnv } from '@/lib/env';
 import type { RpcHandler } from '@/test/fakeSupabase';
 import {
+  MANOR_RULE,
   ok,
   refused,
   rpcCalls,
@@ -41,6 +42,7 @@ const STATEMENT = transactionJson({
   category_id: 'c-groceries',
   category_confidence: 50,
   needs_review: true,
+  suggested_rule: MANOR_RULE,
 });
 
 const CASH = transactionJson({
@@ -228,6 +230,61 @@ describe('transaction detail', () => {
     await waitFor(() =>
       expect(screen.getByTestId('detail-category')).toHaveTextContent(/Not categorized/),
     );
+  });
+
+  it('offers the rule the database proposed as it is, and asks nothing without one', async () => {
+    const { fake } = start({
+      ...STATEMENT,
+      merchant: 'Coop Vitality Bahnhof',
+      suggested_rule: { match_field: 'merchant', match_type: 'equals', pattern: 'coop vitality' },
+    });
+    fireEvent.press(await screen.findByTestId('detail-category'));
+    fireEvent.press(await screen.findByTestId('detail-category-option-Dog'));
+    expect(await screen.findByText('Always do this for “coop vitality”?')).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('detail-rule-yes'));
+    await waitFor(() =>
+      expect(updates(fake)).toEqual([
+        {
+          category_id: 'c-dog',
+          rule: { match_field: 'merchant', match_type: 'equals', pattern: 'coop vitality' },
+        },
+      ]),
+    );
+  });
+
+  it('saves the category at once when the database proposes no rule', async () => {
+    const { fake } = start({ ...STATEMENT, suggested_rule: null });
+    fireEvent.press(await screen.findByTestId('detail-category'));
+    fireEvent.press(await screen.findByTestId('detail-category-option-eating_out'));
+    await waitFor(() => expect(updates(fake)).toEqual([{ category_id: 'c-eating-out' }]));
+    expect(screen.queryByTestId('detail-rule')).toBeNull();
+  });
+
+  it('asks about money that looks like a refund like any other guess', async () => {
+    const { fake } = start(
+      transactionJson({
+        id: 't-refund',
+        amount_rappen: 5000,
+        merchant: 'Manor',
+        source: 'statement_import',
+        categorized_by: 'refund',
+        category_id: 'c-groceries',
+        category_confidence: 60,
+        needs_review: true,
+      }),
+    );
+    const banner = await screen.findByTestId('detail-needs-review');
+    expect(banner).toHaveTextContent(
+      'Looks like money back for an earlier purchaseSo it got that purchase’s category. Is that right? Choose a category to confirm.',
+    );
+    expect(screen.getByTestId('detail-amount')).toHaveTextContent('CHF +50.00');
+    await waitFor(() =>
+      expect(screen.getByTestId('detail-category')).toHaveTextContent(/Groceries/),
+    );
+    fireEvent.press(screen.getByTestId('detail-category'));
+    fireEvent.press(await screen.findByTestId('detail-category-option-groceries'));
+    await waitFor(() => expect(updates(fake)).toEqual([{ category_id: 'c-groceries' }]));
+    await waitFor(() => expect(screen.queryByTestId('detail-needs-review')).toBeNull());
   });
 
   it('splits across categories, checks the sum, and removes the split again', async () => {

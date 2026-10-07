@@ -17,15 +17,17 @@ jest.mock('@/lib/supabase', () => ({
 
 type AddArgs = { p: { rows: Record<string, unknown>[]; dry_run: boolean } };
 
-function addResult(outcome: 'added' | 'merged' | 'already_imported') {
+type Outcome = 'added' | 'merged' | 'already_imported' | 'possible_duplicate';
+
+function addResult(outcome: Outcome, duplicateOf: Record<string, unknown> | null = null) {
   return {
     data_source_id: null,
     results: [
       {
         index: 0,
         outcome,
-        transaction_id: outcome === 'already_imported' ? null : 't-new',
-        duplicate_of: null,
+        transaction_id: outcome === 'added' || outcome === 'merged' ? 't-new' : null,
+        duplicate_of: duplicateOf,
         category_id: null,
         categorized_by: 'user',
         category_confidence: 100,
@@ -37,10 +39,30 @@ function addResult(outcome: 'added' | 'merged' | 'already_imported') {
       added: outcome === 'added' ? 1 : 0,
       merged: outcome === 'merged' ? 1 : 0,
       already_imported: outcome === 'already_imported' ? 1 : 0,
-      possible_duplicate: 0,
+      possible_duplicate: outcome === 'possible_duplicate' ? 1 : 0,
       needs_review: 0,
     },
   };
+}
+
+/** A purchase typed in by hand on Friday, 2 October (14:05 in Zurich). */
+const TYPED_IN = {
+  id: 't-typed',
+  booked_at: '2026-10-02T12:05:00+00:00',
+  merchant: 'Bäckerei Hug',
+  amount_rappen: -440,
+  source: 'manual',
+};
+
+/**
+ * add_transactions that holds a row back as a look-alike of `match` unless it says
+ * allow_duplicate, as the database does (D-040).
+ */
+function lookAlikeOf(match: Record<string, unknown>): RpcHandler {
+  return (args) =>
+    (args as AddArgs).p.rows[0]?.allow_duplicate === true
+      ? ok(addResult('added'))
+      : ok(addResult('possible_duplicate', match));
 }
 
 function start(addTransactions: RpcHandler = () => ok(addResult('added'))) {
@@ -245,6 +267,102 @@ describe('quick add', () => {
     fireEvent.press(await screen.findByTestId('add-category-groceries'));
     fireEvent.press(screen.getByTestId('add-save'));
     expect(await screen.findByTestId('add-merged')).toHaveTextContent(/nothing was added twice/);
+  });
+
+  it('shows a look-alike and, on "Add anyway", stores the same row again', async () => {
+    const fake = start(lookAlikeOf(TYPED_IN));
+    fireEvent.changeText(await screen.findByTestId('add-amount'), '4.40');
+    fireEvent.press(await screen.findByTestId('add-category-eating_out'));
+    fireEvent.changeText(screen.getByTestId('add-merchant'), 'Bäckerei Hug');
+    fireEvent.press(screen.getByTestId('add-save'));
+
+    const card = await screen.findByTestId('add-duplicate');
+    expect(card).toHaveTextContent(
+      /^Already in your list\?This looks like a purchase you already have:/,
+    );
+    expect(card).toHaveTextContent(/Add it only if it is a separate purchase\.$/);
+    expect(screen.getByTestId('add-duplicate-merchant')).toHaveTextContent('Bäckerei Hug');
+    expect(screen.getByTestId('add-duplicate-when')).toHaveTextContent(
+      'CHF 4.40 · Friday, 2 October',
+    );
+    expect(screen.getByTestId('add-duplicate-source')).toHaveTextContent('Added by hand');
+    expect(screen.getByTestId('add-duplicate-match')).toHaveAccessibleName(
+      'Bäckerei Hug, CHF 4.40, Friday, 2 October, Added by hand',
+    );
+    expect(screen.queryByTestId('add-amount')).toBeNull();
+    expect(screen.queryByTestId('home-screen')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('add-duplicate-add-anyway'));
+    expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
+    const [first, second] = (rpcCalls(fake, 'add_transactions') as AddArgs[]).map(
+      (call) => call.p.rows,
+    );
+    expect(first).toHaveLength(1);
+    expect(first?.[0]).not.toHaveProperty('allow_duplicate');
+    expect(second).toEqual([{ ...first?.[0], allow_duplicate: true }]);
+  });
+
+  it('closes without storing on "Don’t add"', async () => {
+    const fake = start(
+      lookAlikeOf({ ...TYPED_IN, merchant: null, amount_rappen: -990, source: 'statement_import' }),
+    );
+    fireEvent.changeText(await screen.findByTestId('add-amount'), '9.90');
+    fireEvent.press(await screen.findByTestId('add-category-groceries'));
+    fireEvent.press(screen.getByTestId('add-save'));
+    expect(await screen.findByTestId('add-duplicate-merchant')).toHaveTextContent('No name');
+    expect(screen.getByTestId('add-duplicate-when')).toHaveTextContent(
+      'CHF 9.90 · Friday, 2 October',
+    );
+    expect(screen.getByTestId('add-duplicate-source')).toHaveTextContent('From your statement');
+    expect(screen.getByTestId('add-duplicate-cancel')).toHaveTextContent('Don’t add');
+
+    fireEvent.press(screen.getByTestId('add-duplicate-cancel'));
+    expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
+    expect(rpcCalls(fake, 'add_transactions')).toHaveLength(1);
+  });
+
+  it('keeps the look-alike when "Add anyway" fails, and tries again', async () => {
+    let fail = true;
+    const answer = lookAlikeOf(TYPED_IN);
+    const fake = start((args) => {
+      const row = (args as AddArgs).p.rows[0];
+      if (row?.allow_duplicate === true && fail) return refused('invalid_row');
+      return answer(args);
+    });
+    fireEvent.changeText(await screen.findByTestId('add-amount'), '4.40');
+    fireEvent.press(await screen.findByTestId('add-category-eating_out'));
+    fireEvent.press(screen.getByTestId('add-save'));
+    fireEvent.press(await screen.findByTestId('add-duplicate-add-anyway'));
+    expect(await screen.findByTestId('add-error')).toHaveTextContent(
+      'Something in the entry is not valid. Check it and try again.',
+    );
+    expect(screen.getByTestId('add-duplicate')).toBeOnTheScreen();
+
+    fail = false;
+    fireEvent.press(screen.getByTestId('add-duplicate-add-anyway'));
+    expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
+    expect(rpcCalls(fake, 'add_transactions')).toHaveLength(3);
+  });
+
+  it('shows a look-alike in Swiss German', async () => {
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    startApp({
+      url: '/add',
+      profile: { language: 'de' },
+      rpc: { add_transactions: lookAlikeOf({ ...TYPED_IN, merchant: null }) },
+    });
+    fireEvent.changeText(await screen.findByTestId('add-amount'), '4.40');
+    fireEvent.press(await screen.findByTestId('add-category-eating_out'));
+    fireEvent.press(screen.getByTestId('add-save'));
+    expect(await screen.findByTestId('add-duplicate')).toHaveTextContent(
+      /^Schon in deiner Liste\?Das sieht aus wie ein Einkauf, den du schon hast:Ohne Namen/,
+    );
+    expect(screen.getByTestId('add-duplicate-when')).toHaveTextContent(
+      'CHF 4.40 · Freitag, 2. Oktober',
+    );
+    expect(screen.getByTestId('add-duplicate-source')).toHaveTextContent('Von Hand erfasst');
+    expect(screen.getByTestId('add-duplicate-add-anyway')).toHaveTextContent('Trotzdem hinzufügen');
+    expect(screen.getByTestId('add-duplicate-cancel')).toHaveTextContent('Nicht hinzufügen');
   });
 
   it('shows a refusal inline, keeps the entry and saves on the next try', async () => {

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
+import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
 import { i18n, LANGUAGE_STORAGE_KEY } from '@/i18n';
 import { readEnv } from '@/lib/env';
@@ -29,23 +29,33 @@ const CAMT = importRow({
   },
 });
 
-/** remove_import as the database does it: the source is marked revoked. */
-function removeImport(tables: { data_sources: FakeRow[] }, count = 12): RpcHandler {
+/**
+ * remove_import as the database does it (D-041): the source is marked revoked; the answer says
+ * how many transactions were removed and how many earlier ones were restored.
+ */
+function removeImport(
+  tables: { data_sources: FakeRow[] },
+  result = { removed: 12, restored: 0 },
+): RpcHandler {
   return (args) => {
     const id = (args as { p_data_source_id: string }).p_data_source_id;
     const row = tables.data_sources.find((candidate) => candidate.id === id);
     if (!row) return refused('import_not_found');
     row.status = 'revoked';
-    return ok(count);
+    return ok(result);
   };
 }
 
-function start(rows: FakeRow[] = [POSTFINANCE, CAMT], rpc: Record<string, RpcHandler> = {}) {
+function start(
+  rows: FakeRow[] = [POSTFINANCE, CAMT],
+  rpc: Record<string, RpcHandler> = {},
+  removal?: { removed: number; restored: number },
+) {
   const tables = { data_sources: rows.map((row) => ({ ...row })) };
   const fake = startImportsApp({
     url: '/data-sources',
     tables,
-    rpc: { remove_import: removeImport(tables), ...rpc },
+    rpc: { remove_import: removeImport(tables, removal), ...rpc },
   });
   return { ...fake, tables };
 }
@@ -85,13 +95,15 @@ describe('data sources', () => {
     fireEvent.press(await screen.findByTestId('data-sources-remove-ds-1'));
     const sheet = await screen.findByTestId('data-sources-remove-sheet-panel');
     expect(sheet).toHaveTextContent(
-      /The transactions that came from konto-september\.csv are deleted\. Transactions you typed in yourself stay\./,
+      /The transactions that came from konto-september\.csv are deleted for good\. Transactions you typed in yourself stay; what the file added to them is undone\./,
     );
     fireEvent.press(within(sheet).getByTestId('data-sources-remove-confirm'));
 
     expect(await screen.findByTestId('data-sources-removed')).toHaveTextContent(
       /^12 transactions from konto-september\.csv were removed\./,
     );
+    // Nothing earlier was changed by this file, so nothing was put back.
+    expect(screen.queryByTestId('data-sources-removed-detail')).toBeNull();
     expect(rpcCalls(fake, 'remove_import')).toEqual([{ p_data_source_id: 'ds-1' }]);
     await waitFor(() =>
       expect(screen.getByTestId('data-sources-import-ds-1-state')).toHaveTextContent('Removed'),
@@ -101,12 +113,32 @@ describe('data sources', () => {
     expect(screen.queryByTestId('data-sources-removed')).toBeNull();
   });
 
+  it('also says how many earlier transactions were put back as they were', async () => {
+    start([POSTFINANCE], {}, { removed: 1, restored: 3 });
+    fireEvent.press(await screen.findByTestId('data-sources-remove-ds-1'));
+    fireEvent.press(await screen.findByTestId('data-sources-remove-confirm'));
+    expect(await screen.findByTestId('data-sources-removed')).toHaveTextContent(
+      /^1 transaction from konto-september\.csv was removed\.3 earlier transactions were put back as they were\./,
+    );
+    expect(screen.getByTestId('data-sources-removed-detail')).toHaveTextContent(
+      '3 earlier transactions were put back as they were.',
+    );
+    expect(screen.getByRole('alert')).toHaveAccessibleName(
+      '1 transaction from konto-september.csv was removed. 3 earlier transactions were put back as they were.',
+    );
+  });
+
   it('keeps the import when the person changes their mind', async () => {
     const fake = start();
     fireEvent.press(await screen.findByTestId('data-sources-remove-ds-1'));
     fireEvent.press(await screen.findByTestId('data-sources-remove-cancel'));
-    await waitFor(() => expect(screen.queryByTestId('data-sources-remove-sheet-panel')).toBeNull());
+    // Let the sheet slide out.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.queryByTestId('data-sources-remove-sheet-panel')).toBeNull();
     expect(rpcCalls(fake, 'remove_import')).toEqual([]);
+    expect(screen.getByTestId('data-sources-remove-ds-1')).toBeOnTheScreen();
   });
 
   it('explains a failed removal and an import that no longer exists', async () => {
@@ -156,6 +188,22 @@ describe('data sources', () => {
     );
     expect(screen.getByTestId('data-sources-import-ds-1-state')).toHaveTextContent(
       '12 hinzugefügt, 1 zusammengeführt',
+    );
+  });
+
+  it('says what was removed and restored in German', async () => {
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    start([POSTFINANCE], {}, { removed: 12, restored: 1 });
+    fireEvent.press(await screen.findByTestId('data-sources-remove-ds-1'));
+    expect(await screen.findByTestId('data-sources-remove-sheet-panel')).toHaveTextContent(
+      /Die Buchungen aus konto-september\.csv werden endgültig gelöscht\./,
+    );
+    fireEvent.press(screen.getByTestId('data-sources-remove-confirm'));
+    expect(await screen.findByTestId('data-sources-removed')).toHaveTextContent(
+      /^12 Buchungen aus konto-september\.csv wurden entfernt\./,
+    );
+    expect(screen.getByTestId('data-sources-removed-detail')).toHaveTextContent(
+      '1 frühere Buchung wurde wiederhergestellt, wie sie war.',
     );
   });
 });

@@ -20,6 +20,7 @@ function item(id: string, bookedAt: string): TransactionItem {
     fixedCostId: null,
     original: null,
     items: null,
+    suggestedRule: null,
     splits: [],
     mergedSources: [],
     needsReview: false,

@@ -1,4 +1,5 @@
 import type { Language, ParsedStatement } from '@budget/core';
+import type { TFunction } from 'i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +17,7 @@ import { useCategories, type Category } from '@/data/categories';
 import { useFixedCosts, type FixedCost } from '@/data/fixedCosts';
 import { importKeys } from '@/data/imports';
 import { useProfile } from '@/data/profile';
-import { useAddTransactions, type TransactionItem } from '@/data/transactions';
+import { useAddTransactions } from '@/data/transactions';
 import { categoryName } from '@/features/categories/categoryName';
 import { useLanguage } from '@/i18n';
 import { deviceTimeZone } from '@/i18n/format';
@@ -40,11 +41,11 @@ import {
   toggleSelection,
   type ImportSummary,
   type PreviewRow,
+  type RowMatch,
   type RowStatus,
 } from './model';
 import type { PickedFile } from './readFile';
 import { SkippedLines } from './SkippedLines';
-import { useMergeTargets } from './useMergeTargets';
 
 const useStyles = makeStyles((theme) => ({
   list: { flex: 1 },
@@ -83,8 +84,39 @@ type ItemProps = {
   timeZone: string;
   /** The category or fixed cost the dry run placed the line in, already named. */
   placement: string | null;
-  mergeTarget: TransactionItem | undefined;
 };
+
+/** "Mustermarkt, CHF 23.40, 29 Sept": the stored transaction a line merges with or resembles. */
+function describeMatch(match: RowMatch, language: Language, timeZone: string, t: TFunction) {
+  return t('imports.status.match', {
+    merchant: match.merchant ?? t('imports.preview.noDescription'),
+    amount: transactionAmountText(match.amountRappen, language),
+    day: formatInstantDay(match.bookedAt, language, timeZone),
+  });
+}
+
+/**
+ * Why a line is left unchecked: it looks like one from the same statement source, or like one
+ * from another source, e.g. "You added CHF 9.90 by hand on 2 Oct" (D-040).
+ */
+function lookAlikeText(match: RowMatch, language: Language, timeZone: string, t: TFunction) {
+  if (match.source === 'statement_import') {
+    return t('imports.status.lookAlike', {
+      match: describeMatch(match, language, timeZone, t),
+    });
+  }
+  if (match.source === 'manual') {
+    const amount = transactionAmountText(match.amountRappen, language);
+    const day = formatInstantDay(match.bookedAt, language, timeZone);
+    return match.merchant
+      ? t('imports.status.lookAlikeByHandAt', { amount, merchant: match.merchant, day })
+      : t('imports.status.lookAlikeByHand', { amount, day });
+  }
+  return t('imports.status.lookAlikeFrom', {
+    source: t(`transactions.sources.${match.source}`),
+    match: describeMatch(match, language, timeZone, t),
+  });
+}
 
 /** One line of the file. Memoized: checking a line re-renders only that line. */
 const PreviewItem = memo(function PreviewItem({
@@ -94,18 +126,11 @@ const PreviewItem = memo(function PreviewItem({
   language,
   timeZone,
   placement,
-  mergeTarget,
 }: ItemProps) {
   const { t } = useTranslation();
-  const { transaction, status } = row;
+  const { transaction, status, match } = row;
   const testID = `import-row-${row.index}`;
   const day = formatRowDay(bookingDay(transaction), language);
-  const describe = (merchant: string | null, amount: number, instant: string) =>
-    t('imports.status.match', {
-      merchant: merchant ?? t('imports.preview.noDescription'),
-      amount: transactionAmountText(amount, language),
-      day: formatInstantDay(instant, language, timeZone),
-    });
 
   const details: CheckRowDetail[] = [];
   const placed = status === 'new' || status === 'merge';
@@ -122,25 +147,17 @@ const PreviewItem = memo(function PreviewItem({
   }
   if (status === 'merge') {
     details.push({
-      text: mergeTarget
-        ? t('imports.status.merge', {
-            match: describe(
-              mergeTarget.merchant ?? mergeTarget.rawText,
-              mergeTarget.amountRappen,
-              mergeTarget.bookedAt,
-            ),
-          })
+      text: match
+        ? t('imports.status.merge', { match: describeMatch(match, language, timeZone, t) })
         : t('imports.status.mergeUnknown'),
       tone: 'accent',
       testID: `${testID}-status`,
     });
   } else if (status === 'imported_before') {
     details.push({ text: t('imports.status.importedBefore'), testID: `${testID}-status` });
-  } else if (status === 'look_alike' && row.match) {
+  } else if (status === 'look_alike' && match) {
     details.push({
-      text: t('imports.status.lookAlike', {
-        match: describe(row.match.merchant, row.match.amountRappen, row.match.bookedAt),
-      }),
+      text: lookAlikeText(match, language, timeZone, t),
       tone: 'warning',
       testID: `${testID}-status`,
     });
@@ -164,7 +181,7 @@ function placementOf(
   row: PreviewRow,
   categories: ReadonlyMap<string, Category>,
   fixedCosts: ReadonlyMap<string, FixedCost>,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction,
 ): string | null {
   const fixedCost = row.fixedCostId ? fixedCosts.get(row.fixedCostId) : undefined;
   if (fixedCost) {
@@ -248,11 +265,6 @@ export function ImportPreview({
     () => new Map((fixedCosts.data ?? []).map((fixedCost) => [fixedCost.id, fixedCost])),
     [fixedCosts.data],
   );
-  const mergeIds = useMemo(
-    () => (rows ?? []).flatMap((row) => (row.mergeTargetId ? [row.mergeTargetId] : [])),
-    [rows],
-  );
-  const mergeTargets = useMergeTargets(mergeIds);
 
   const counts = useMemo(() => countByStatus(rows ?? []), [rows]);
   const selectable = useMemo(() => (rows ?? []).filter(isSelectable).length, [rows]);
@@ -435,7 +447,6 @@ export function ImportPreview({
             language={language}
             timeZone={timeZone}
             placement={placementOf(item, categoryMap, fixedCostMap, t)}
-            mergeTarget={item.mergeTargetId ? mergeTargets.get(item.mergeTargetId) : undefined}
           />
         )}
       />

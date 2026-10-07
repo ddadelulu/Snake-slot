@@ -2,7 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
-import type { ExportFile } from './exportFiles';
+import { isExportFileName, type ExportFile } from './exportFiles';
 
 /** The phone offers no share sheet (some Android builds without a file-sharing app). */
 export class SharingUnavailableError extends Error {
@@ -18,10 +18,38 @@ export type Delivery = 'shared' | 'downloaded';
 /** How long the browser keeps the download's object URL (it only needs it for the click). */
 const REVOKE_AFTER_MS = 1000;
 
+/** Deletes a file if it is there; cleaning up must never fail an export. */
+function deleteQuietly(file: File): void {
+  try {
+    if (file.exists) file.delete();
+  } catch {
+    // Already gone, or the system is clearing the cache itself.
+  }
+}
+
+/**
+ * Deletes export files an earlier export left in the app cache (e.g. when the app was closed
+ * while the share sheet was open), so personal data does not pile up there. Other cache files
+ * stay.
+ */
+export function deleteCachedExports(): void {
+  let entries: ReturnType<typeof Paths.cache.list>;
+  try {
+    entries = Paths.cache.list();
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry instanceof File && isExportFileName(entry.name)) deleteQuietly(entry);
+  }
+}
+
 /**
  * Hands an export file to the person. On phones it is written to the app cache and the share
- * sheet opens (save to Files, mail it, open it in Excel). On the web build, which the end-to-end
- * tests drive, the browser downloads it.
+ * sheet opens (save to Files, mail it, open it in Excel); once the sheet closes the file is
+ * deleted again, and leftovers of earlier exports go before a new one is written (security
+ * review: personal financial data should not stay in the cache). On the web build, which the
+ * end-to-end tests drive, the browser downloads it.
  */
 export async function deliverFile(file: ExportFile): Promise<Delivery> {
   if (Platform.OS === 'web') {
@@ -29,14 +57,19 @@ export async function deliverFile(file: ExportFile): Promise<Delivery> {
     return 'downloaded';
   }
   if (!(await Sharing.isAvailableAsync())) throw new SharingUnavailableError();
+  deleteCachedExports();
   const target = new File(Paths.cache, file.name);
-  target.create({ overwrite: true });
-  target.write(file.content);
-  await Sharing.shareAsync(target.uri, {
-    mimeType: file.mimeType,
-    UTI: file.uti,
-    dialogTitle: file.name,
-  });
+  try {
+    target.create({ overwrite: true });
+    target.write(file.content);
+    await Sharing.shareAsync(target.uri, {
+      mimeType: file.mimeType,
+      UTI: file.uti,
+      dialogTitle: file.name,
+    });
+  } finally {
+    deleteQuietly(target);
+  }
   return 'shared';
 }
 

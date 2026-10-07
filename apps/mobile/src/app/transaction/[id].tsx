@@ -341,11 +341,21 @@ function Detail({ transaction }: { transaction: TransactionItem }) {
         />
       ) : null}
       {transaction.needsReview && !ruleOffer ? (
-        <AlertBanner
-          tone="warning"
-          message={t('transactionDetail.needsReview')}
-          testID="detail-needs-review"
-        />
+        // A refund guess (D-039) is asked like any other guess, saying what it is based on.
+        transaction.categorizedBy === 'refund' ? (
+          <AlertBanner
+            tone="warning"
+            title={t('transactionDetail.refundTitle')}
+            message={t('transactionDetail.refundReview')}
+            testID="detail-needs-review"
+          />
+        ) : (
+          <AlertBanner
+            tone="warning"
+            message={t('transactionDetail.needsReview')}
+            testID="detail-needs-review"
+          />
+        )
       ) : null}
       {error ? (
         <AlertBanner

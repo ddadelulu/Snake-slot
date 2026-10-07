@@ -1,4 +1,4 @@
-import { BASE_CURRENCY, localDateIn, type LocalDate } from '@budget/core';
+import { BASE_CURRENCY, localDateIn, type IngestRow, type LocalDate } from '@budget/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
@@ -20,12 +20,13 @@ import {
 } from '@/components';
 import { useCategories } from '@/data/categories';
 import { useProfile } from '@/data/profile';
-import { useAddTransactions } from '@/data/transactions';
+import { useAddTransactions, type AddRowResult, type DuplicateMatch } from '@/data/transactions';
 import { categoryName } from '@/features/categories/categoryName';
 import { parseAmountInput } from '@/features/transactions/amount';
 import { transactionErrorCode, type TransactionErrorCode } from '@/features/transactions/errors';
 import { formatShortWeekdayDate, formatWeekdayDate } from '@/features/transactions/format';
 import { activeCategories, categoryTestKey } from '@/features/transactions/labels';
+import { LookAlikeCard } from '@/features/transactions/LookAlikeCard';
 import {
   MERCHANT_MAX_LENGTH,
   NOTE_MAX_LENGTH,
@@ -48,9 +49,15 @@ const useStyles = makeStyles((theme) => ({
 
 type DayOption = 'today' | 'yesterday' | 'other';
 
+/** The row the database held back as a possible duplicate, and what it looks like. */
+type LookAlike = { row: IngestRow; match: DuplicateMatch | null };
+
 /**
  * Quick add (US-3.1), opened by "+" on Home and by batzen://add: the amount field has focus, the
  * categories are one tap away and Save stays above the keyboard. Amount, category, Save: done.
+ * When the entry looks like a transaction already stored (D-040), the screen shows that one and
+ * the person decides: "Add anyway" stores the same row again with `allow_duplicate`, "Don't add"
+ * closes without storing.
  */
 export default function AddScreen() {
   const { t } = useTranslation();
@@ -64,6 +71,7 @@ export default function AddScreen() {
   const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<TransactionErrorCode | null>(null);
   const [notice, setNotice] = useState<'merged' | 'duplicate' | null>(null);
+  const [lookAlike, setLookAlike] = useState<LookAlike | null>(null);
   const [pickingDay, setPickingDay] = useState(false);
 
   const timezone = profile?.timezone ?? 'Europe/Zurich';
@@ -82,20 +90,35 @@ export default function AddScreen() {
 
   const close = () => goBackOr('/');
 
+  /** Sends one row; afterwards the screen closes, explains, or asks about a look-alike. */
+  const send = async (row: IngestRow) => {
+    setError(null);
+    let result: AddRowResult | undefined;
+    try {
+      result = (await add.mutateAsync({ rows: [row] })).results[0];
+    } catch (failure) {
+      setError(transactionErrorCode(failure));
+      return;
+    }
+    setLookAlike(null);
+    if (result?.outcome === 'merged') setNotice('merged');
+    else if (result?.outcome === 'possible_duplicate' && row.allow_duplicate !== true) {
+      setLookAlike({ row, match: result.duplicateOf });
+    } else if (result !== undefined && result.outcome !== 'added') setNotice('duplicate');
+    else close();
+  };
+
   const save = async () => {
     setAttempted(true);
     setError(null);
     const result = buildQuickAddRow(form, new Date());
     if (!result.ok || add.isPending) return;
-    try {
-      const outcome = await add.mutateAsync({ rows: [result.row] });
-      const row = outcome.results[0];
-      if (row?.outcome === 'merged') setNotice('merged');
-      else if (row !== undefined && row.outcome !== 'added') setNotice('duplicate');
-      else close();
-    } catch (failure) {
-      setError(transactionErrorCode(failure));
-    }
+    await send(result.row);
+  };
+
+  const addAnyway = async () => {
+    if (!lookAlike || add.isPending) return;
+    await send({ ...lookAlike.row, allow_duplicate: true });
   };
 
   const dayOption: DayOption =
@@ -112,13 +135,32 @@ export default function AddScreen() {
     else setPickingDay(true);
   };
 
+  const errorBanner = error ? (
+    <AlertBanner tone="danger" message={t(`transactionErrors.${error}`)} testID="add-error" />
+  ) : null;
+
   const footer = notice ? (
     <PrimaryButton label={t('quickAdd.ok')} onPress={close} testID="add-done" />
+  ) : lookAlike ? (
+    <>
+      {errorBanner}
+      <PrimaryButton
+        label={t('quickAdd.lookAlike.addAnyway')}
+        onPress={() => void addAnyway()}
+        loading={add.isPending}
+        testID="add-duplicate-add-anyway"
+      />
+      <PrimaryButton
+        variant="secondary"
+        label={t('quickAdd.lookAlike.dontAdd')}
+        onPress={close}
+        disabled={add.isPending}
+        testID="add-duplicate-cancel"
+      />
+    </>
   ) : (
     <>
-      {error ? (
-        <AlertBanner tone="danger" message={t(`transactionErrors.${error}`)} testID="add-error" />
-      ) : null}
+      {errorBanner}
       <PrimaryButton
         label={t('quickAdd.save')}
         onPress={() => void save()}
@@ -142,6 +184,8 @@ export default function AddScreen() {
           message={notice === 'merged' ? t('quickAdd.merged') : t('quickAdd.duplicate')}
           testID="add-merged"
         />
+      ) : lookAlike ? (
+        <LookAlikeCard match={lookAlike.match} timeZone={timezone} testID="add-duplicate" />
       ) : (
         <>
           <AmountInput
