@@ -319,6 +319,23 @@ describe('transaction detail', () => {
     expect(screen.queryByTestId('detail-edit-save')).toBeNull();
   });
 
+  it('keeps the amount of a split purchase until the split is removed', async () => {
+    start({
+      ...CASH,
+      category_id: null,
+      splits: [
+        { id: 's-1', category_id: 'c-groceries', amount_rappen: -1000, note: null },
+        { id: 's-2', category_id: 'c-dog', amount_rappen: -250, note: null },
+      ],
+    });
+    const amount = await screen.findByTestId('detail-edit-amount');
+    expect(amount).toHaveProp('editable', false);
+    expect(
+      screen.getByText('The amount is split across categories. Remove the split to change it.'),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('detail-category')).toHaveTextContent(/Split into 2 parts/);
+  });
+
   it('deletes after confirmation and brings it back with Undo', async () => {
     const { fake } = start(CASH);
     fireEvent.press(await screen.findByTestId('detail-delete'));

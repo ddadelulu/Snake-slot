@@ -91,7 +91,7 @@ export const transactionsEn = {
     save: 'Save',
     alreadyTitle: 'Already in your list',
     merged:
-      'This purchase already came in from your statement, so it is counted once. Your category and note were added to it.',
+      'This purchase already came in from your statement, so it is counted once. Your category and note were added unless you had already sorted it yourself.',
     duplicate: 'This purchase is already in your list, so nothing was added twice.',
     ok: 'OK',
   },
@@ -142,6 +142,7 @@ export const transactionsEn = {
     splitCancel: 'Cancel',
     splitRemove: 'Remove split',
     splitIsSplit: 'The category is set per part. Change the split below.',
+    splitAmountHint: 'The amount is split across categories. Remove the split to change it.',
     fixedCost: 'Payment of a fixed cost',
     fixedCostNone: 'No',
     fixedCostTitle: 'Is this a fixed cost?',

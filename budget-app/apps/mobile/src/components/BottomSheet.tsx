@@ -39,6 +39,8 @@ const useStyles = makeStyles((theme) => ({
   scrimPressable: { flex: 1 },
   keyboard: { width: '100%', maxHeight: '90%' },
   panel: {
+    // Shrinks to the 90 % limit above, so a long list inside can scroll instead of overflowing.
+    flexShrink: 1,
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radii.xl,
     borderTopRightRadius: theme.radii.xl,

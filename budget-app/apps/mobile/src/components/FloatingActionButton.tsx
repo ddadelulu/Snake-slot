@@ -17,7 +17,7 @@ export type FloatingActionButtonProps = {
 const useStyles = makeStyles((theme) => ({
   button: {
     position: 'absolute',
-    end: theme.layout.screenPadding,
+    right: theme.layout.screenPadding,
     bottom: theme.spacing.xl,
     width: theme.sizes.fab,
     height: theme.sizes.fab,

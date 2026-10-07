@@ -9,6 +9,7 @@ import {
   type TransactionSource,
 } from '@budget/core';
 import {
+  keepPreviousData,
   skipToken,
   useInfiniteQuery,
   useMutation,
@@ -222,7 +223,10 @@ export const transactionKeys = {
   detail: (userId: string, id: string) => ['transactions', userId, 'detail', id] as const,
 };
 
-/** Pages of transactions, newest first, for a filter. Idle while nobody is signed in. */
+/**
+ * Pages of transactions, newest first, for a filter. Idle while nobody is signed in. While a new
+ * filter or search loads, the previous result stays on screen instead of a spinner.
+ */
 export function useTransactions(filter: TransactionFilter) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -234,6 +238,7 @@ export function useTransactions(filter: TransactionFilter) {
       : skipToken,
     initialPageParam: null as TransactionCursor | null,
     getNextPageParam: (page: TransactionPage) => page.nextCursor,
+    placeholderData: keepPreviousData,
   });
 }
 

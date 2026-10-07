@@ -71,6 +71,11 @@ describe('BottomSheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('lets the panel shrink to the screen so long content can scroll', async () => {
+    await renderWithTheme(sheet(true));
+    expect(screen.getByTestId('sheet-panel')).toHaveStyle({ flexShrink: 1 });
+  });
+
   it('pads the panel above the home indicator', async () => {
     await renderWithTheme(sheet(true), { insets: { bottom: 34 } });
     expect(screen.getByTestId('sheet-panel')).toHaveStyle({

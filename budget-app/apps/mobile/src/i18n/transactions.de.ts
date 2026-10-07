@@ -92,7 +92,7 @@ export const transactionsDe: Widen<typeof transactionsEn> = {
     save: 'Speichern',
     alreadyTitle: 'Schon in deiner Liste',
     merged:
-      'Dieser Einkauf kam schon mit deinem Kontoauszug, deshalb zählt er nur einmal. Deine Kategorie und Notiz wurden ergänzt.',
+      'Dieser Einkauf kam schon mit deinem Kontoauszug, deshalb zählt er nur einmal. Deine Kategorie und Notiz wurden übernommen, ausser du hattest ihn schon selbst eingeordnet.',
     duplicate: 'Dieser Einkauf ist schon in deiner Liste, deshalb wurde nichts doppelt erfasst.',
     ok: 'OK',
   },
@@ -144,6 +144,8 @@ export const transactionsDe: Widen<typeof transactionsEn> = {
     splitCancel: 'Abbrechen',
     splitRemove: 'Aufteilung entfernen',
     splitIsSplit: 'Die Kategorie gilt pro Teil. Ändere die Aufteilung unten.',
+    splitAmountHint:
+      'Der Betrag ist auf Kategorien aufgeteilt. Entferne die Aufteilung, um ihn zu ändern.',
     fixedCost: 'Zahlung von Fixkosten',
     fixedCostNone: 'Nein',
     fixedCostTitle: 'Sind das Fixkosten?',

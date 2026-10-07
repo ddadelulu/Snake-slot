@@ -67,8 +67,8 @@ const useStyles = makeStyles((theme) => ({
     paddingHorizontal: theme.layout.screenPadding,
     paddingVertical: theme.spacing.lg,
   },
-  sheetBody: { gap: theme.spacing.lg },
-  sheetScroll: { flexGrow: 0 },
+  sheetBody: { flexShrink: 1, gap: theme.spacing.lg },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
 }));
 
 type Sheet = 'category' | 'source' | 'period';

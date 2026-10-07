@@ -193,12 +193,12 @@ describe('review', () => {
   });
 
   it('is reached from the banner on Home', async () => {
-    start([UNKNOWN]);
+    const app = start([UNKNOWN]);
     fireEvent.press(await screen.findByTestId('review-header-back'));
     const banner = await screen.findByTestId('home-review');
     expect(banner).toHaveAccessibleName('1 purchase needs a category');
     fireEvent.press(banner);
     expect(await screen.findByTestId('review-question')).toBeOnTheScreen();
-    await waitFor(() => expect(screen.getPathname()).toBe('/review'));
+    await waitFor(() => expect(app.getPathname()).toBe('/review'));
   });
 });

@@ -232,7 +232,7 @@ describe('quick add', () => {
     fireEvent.press(await screen.findByTestId('add-category-groceries'));
     fireEvent.press(screen.getByTestId('add-save'));
     expect(await screen.findByTestId('add-merged')).toHaveTextContent(
-      /Already in your list.*already came in from your statement.*Your category and note were added to it\./,
+      /Already in your list.*already came in from your statement.*Your category and note were added unless you had already sorted it yourself\./,
     );
     expect(screen.queryByTestId('home-screen')).toBeNull();
     fireEvent.press(screen.getByTestId('add-done'));
