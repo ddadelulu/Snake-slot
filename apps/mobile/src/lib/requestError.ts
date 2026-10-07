@@ -7,12 +7,23 @@ export class RequestError extends Error {
   readonly status: number;
   /** PostgREST / Postgres error code (e.g. "PGRST116", "23514"), or '' when there was none. */
   readonly code: string;
+  /** The error's detail line, e.g. "row 3: amount_rappen must not be 0"; '' when there was none. */
+  readonly details: string;
 
-  constructor(message: string, status: number, code: string) {
+  constructor(message: string, status: number, code: string, details = '') {
     super(message);
     this.name = 'RequestError';
     this.status = status;
     this.code = code;
+    this.details = details;
+  }
+
+  /**
+   * The reason a database function gave for refusing the request (its message when that is a
+   * snake_case code such as "invalid_splits"), or null for any other failure.
+   */
+  get reason(): string | null {
+    return /^[a-z][a-z0-9_]*$/.test(this.message) ? this.message : null;
   }
 
   get isNetworkError(): boolean {
@@ -22,13 +33,18 @@ export class RequestError extends Error {
 
 /** The fields of a postgrest-js response this module needs. */
 export type PostgrestFailure = {
-  error: { message: string; code?: string } | null;
+  error: { message: string; code?: string; details?: string | null } | null;
   status: number;
 };
 
 /** Wraps a postgrest-js error. The message stays developer-facing; screens show their own text. */
 export function toRequestError({ error, status }: PostgrestFailure): RequestError {
-  return new RequestError(error?.message ?? 'Request failed', status, error?.code ?? '');
+  return new RequestError(
+    error?.message ?? 'Request failed',
+    status,
+    error?.code ?? '',
+    error?.details ?? '',
+  );
 }
 
 /**

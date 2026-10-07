@@ -71,3 +71,133 @@ derives the month with the engine) and `useCompleteOnboarding()` (`src/data/onbo
   "uncategorized_spent_rappen": 0,
   "recent_transactions": [ { "id", "amount_rappen", "booked_at", "merchant", "category_id", "is_split", "source", "note" } ] }
 ```
+
+## Transactions (Milestone 3)
+
+Every transaction reaches the database through **one pipeline**, `add_transactions`, whatever its
+source: manual entry and statement files today, bank feeds, notifications and receipts from M6
+(those call the same steps from server code). The pipeline validates, recognizes re-imports,
+merges duplicates across sources, detects fixed-cost payments, categorizes and stores
+([CATEGORIZATION.md](CATEGORIZATION.md) explains the rules). All functions below run with the
+caller's rights (row-level security applies), need a signed-in user (else `42501`) and raise
+`22023` with the message in the error lists for invalid input.
+
+### `add_transactions(p jsonb) → jsonb`
+
+```json
+{ "rows": [ IngestRow, … ],                       // 1–2000 rows, processed in order
+  "import": { "file_name": "konto.csv", "format": "csv" | "camt053", "bank": "postfinance" | null },
+  "dry_run": false }
+```
+
+`IngestRow` is built by `toIngestRow()` in `@budget/core` (`packages/core/src/ingest.ts`):
+
+| Key                                            | Meaning                                                                                                                |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `amount_rappen`                                | Signed, non-zero (negative = money out)                                                                                |
+| `booked_at` _or_ `booked_on` (+ `booked_time`) | An instant with offset, or a local date (and `HH:MM[:SS]`) placed in the user's time zone; no time means 12:00         |
+| `merchant`, `raw_text`, `mcc`                  | What the source knows (`merchant` 1–200, `raw_text` ≤ 4000, `mcc` 0–9999)                                              |
+| `source`                                       | `manual` or `statement_import` from the app (`statement_import` exactly when `import` is given)                        |
+| `external_id`                                  | The source's own id (statement parsers always set one); a second row with the same source and id is `already_imported` |
+| `original_amount_minor`, `original_currency`   | Foreign amount, display only; both or neither                                                                          |
+| `items`                                        | `[{ description, amount_rappen, quantity? }]`                                                                          |
+| `category_id`                                  | Chosen by the person: one of their active categories; stored as `categorized_by = 'user'`, confidence 100              |
+| `splits`                                       | `[{ category_id, amount_rappen, note }]`, ≥ 2 parts, same sign, exact sum; `category_id` must then be absent or null   |
+| `note`                                         | ≤ 500 characters                                                                                                       |
+| `allow_duplicate`                              | Store even if it looks like a row already stored from the same source                                                  |
+
+Result (`dry_run: true` computes the same without storing anything; ids of new rows are then
+null and no data source is created):
+
+```json
+{ "data_source_id": "uuid" | null,
+  "results": [ { "index": 0,
+                 "outcome": "added" | "merged" | "already_imported" | "possible_duplicate",
+                 "transaction_id": "uuid" | null,
+                 "duplicate_of": { "id", "booked_at", "merchant", "amount_rappen", "source" } | null,
+                 "category_id": "uuid" | null, "categorized_by": "none|user|rule|merchant_list|mcc",
+                 "category_confidence": 0-100 | null, "fixed_cost_id": "uuid" | null,
+                 "needs_review": false } ],
+  "counts": { "added": 0, "merged": 0, "already_imported": 0, "possible_duplicate": 0, "needs_review": 0 } }
+```
+
+- `added`: stored as a new transaction (`transaction_id`).
+- `merged`: the same purchase already came from another source; it is stored as evidence with
+  `merged_into_id` and `transaction_id` is the surviving transaction, which gains what it lacked.
+- `already_imported`: this source sent this id before; nothing stored.
+- `possible_duplicate`: same source, same amount, same day, same merchant, different id; not
+  stored unless the row says `allow_duplicate`.
+- With `import`, the call creates one `data_sources` row (kind `statement_import`) for the
+  file when anything was stored, and links the stored rows to it. Imported rows are stored as
+  already acknowledged (no cash-feel moment for history, D-033).
+
+Errors (`22023`): `invalid_input`, `too_many_rows`, `invalid_row` (detail names the row index
+and the problem), `category_not_found`, `invalid_splits`. `55000 not_onboarded` before onboarding.
+
+### Reading
+
+`list_transactions(p jsonb) → { items: TransactionItem[], next_cursor }`. Filters, all optional,
+combined with AND (categories and `uncategorized` with OR): `search` (merchant, note or statement
+text), `category_ids` (a split matches by any part), `uncategorized`, `sources`, `from` / `to`
+(local dates, inclusive), `needs_review`; `limit` 1–100 (default 50); `cursor` from the previous
+page. Newest first; deleted and merged rows are left out.
+
+`get_transaction(p_id uuid) → TransactionItem | null` (null for unknown or merged ids; deleted
+rows are returned with `deleted_at`).
+
+```json
+TransactionItem = { "id", "amount_rappen", "booked_at", "merchant", "raw_text", "note", "mcc",
+  "source", "data_source_id", "data_source_name", "category_id", "categorized_by",
+  "category_confidence", "fixed_cost_id", "original_amount_minor", "original_currency", "items",
+  "splits": [ { "id", "category_id", "amount_rappen", "note" } ],
+  "merged_sources": [ "statement_import" ], "needs_review": true, "deleted_at": null,
+  "created_at" }
+```
+
+`needs_review` is true when the transaction counts against the budget (money out, or money in
+with a category), is not a fixed-cost payment or a split, was not placed by the person or one of
+their rules, and has no category or a confidence below 70 (`REVIEW_CONFIDENCE` in
+`@budget/core`).
+
+`get_overview()` additionally returns `needs_review_count` (transactions of the current period
+that need a category) and, per recent transaction, `categorized_by` and `needs_review`.
+
+### Changing
+
+`update_transaction(p_id uuid, p jsonb) → { transaction, rule_id, recategorized_count }`, keys
+all optional:
+
+| Key                          | Effect                                                                                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `category_id`                | The person's choice (`categorized_by = 'user'`, confidence 100; null = "no category", not asked again); ends a fixed-cost link                                                                                                                                |
+| `rule`                       | With a non-null `category_id`: `{ match_field: 'merchant' \| 'raw_text', match_type: 'contains' \| 'equals', pattern }` creates (or re-targets) a rule with top priority and applies it to every transaction not placed by the person (`recategorized_count`) |
+| `fixed_cost_id`              | Marks the transaction as the payment of one of the person's fixed costs (null removes it); the fixed cost learns the merchant (`merchant_hint`) when it has none                                                                                              |
+| `note`, `merchant`           | Text; empty string clears                                                                                                                                                                                                                                     |
+| `amount_rappen`, `booked_at` | Manual entries only (`not_editable` otherwise)                                                                                                                                                                                                                |
+| `deleted`                    | `true` deletes (soft, `deleted_at`), `false` restores                                                                                                                                                                                                         |
+
+Errors (`22023`): `invalid_input`, `transaction_not_found`, `category_not_found`,
+`fixed_cost_not_found`, `transaction_is_split`, `not_editable`, `rule_needs_category`.
+
+`set_transaction_splits(p_id uuid, p_parts jsonb) → TransactionItem`: replaces the parts
+(`[{ category_id, amount_rappen, note }]`, ≥ 2, same sign, exact sum) and clears the
+transaction's own category; `[]` removes the split. Errors: `transaction_not_found`,
+`invalid_splits`, `category_not_found`.
+
+Rules: `categorization_rules` is read and deleted through the REST API (own rows). Deleting a rule
+does not change transactions it already placed.
+
+### Imports and export
+
+`remove_import(p_data_source_id uuid) → integer`: deletes (soft) every transaction stored from
+that file, brings back rows that had been merged into them, marks the source `revoked`; returns
+how many transactions were removed. Error: `import_not_found`. Imports are listed from
+`data_sources` (`kind = 'statement_import'`; `settings` holds `file_name`, `format`, `bank`,
+`added`, `merged`).
+
+`export_my_data() → jsonb`: everything stored about the signed-in user, for the data export
+(revDSG art. 28, GDPR art. 20): `format_version`, `exported_at`, `profile`,
+`notification_settings`, `subscription`, `fixed_costs`, `categories`, `budget_periods`, `budgets`,
+`transactions` (all, including deleted and merged rows), `transaction_splits`,
+`categorization_rules`, `data_sources` (never tokens), `alerts`, `ai_conversations`,
+`ai_messages`, `consent_events`. The app turns it into `transactions.csv` or saves it as JSON.

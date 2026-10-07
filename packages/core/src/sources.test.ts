@@ -56,6 +56,29 @@ describe('validateSourceTransaction', () => {
     expect(problemsOf({ bookedAt: '2026-13-45T12:34:00Z' })).toHaveLength(1);
   });
 
+  it('accepts a local day, with or without a local time, instead of an instant', () => {
+    const local = { bookedAt: undefined, bookedOn: '2026-10-01' };
+    expect(problemsOf(local)).toEqual([]);
+    expect(problemsOf({ ...local, bookedTime: '07:05' })).toEqual([]);
+    expect(problemsOf({ ...local, bookedTime: '23:59:59' })).toEqual([]);
+  });
+
+  it('needs exactly one valid way of saying when', () => {
+    expect(problemsOf({ bookedOn: '2026-10-01' })).toEqual([
+      'exactly one of bookedAt and bookedOn must be set',
+    ]);
+    expect(problemsOf({ bookedAt: undefined })).toEqual([
+      'exactly one of bookedAt and bookedOn must be set',
+    ]);
+    expect(problemsOf({ bookedTime: '12:00' })).toEqual(['bookedTime belongs to bookedOn']);
+    expect(problemsOf({ bookedAt: undefined, bookedOn: '2026-02-30' })).toEqual([
+      'bookedOn must be a date YYYY-MM-DD',
+    ]);
+    expect(problemsOf({ bookedAt: undefined, bookedOn: '2026-10-01', bookedTime: '24:00' })).toEqual(
+      ['bookedTime must be HH:MM or HH:MM:SS'],
+    );
+  });
+
   it('checks text lengths, MCC, source and source id', () => {
     expect(problemsOf({ merchant: '  ' })).toHaveLength(1);
     expect(problemsOf({ merchant: 'x'.repeat(201) })).toHaveLength(1);

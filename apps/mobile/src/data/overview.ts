@@ -1,4 +1,5 @@
 import {
+  CATEGORIZED_BY,
   DEFAULT_CATEGORY_KEYS,
   TRANSACTION_SOURCES,
   buildOverview,
@@ -8,6 +9,7 @@ import {
   type LocalDate,
   type Overview,
   type Rappen,
+  type CategorizedBy,
   type TransactionSource,
 } from '@budget/core';
 import { skipToken, useQuery } from '@tanstack/react-query';
@@ -44,6 +46,9 @@ export type RecentTransaction = {
   isSplit: boolean;
   source: TransactionSource;
   note: string | null;
+  categorizedBy: CategorizedBy;
+  /** No category yet, or only a weak guess: the app asks the person. */
+  needsReview: boolean;
 };
 
 export type OverviewData = {
@@ -59,6 +64,8 @@ export type OverviewData = {
   };
   categories: OverviewCategory[];
   uncategorizedSpentRappen: Rappen;
+  /** Transactions of this month that need a category from the person. */
+  needsReviewCount: number;
   recentTransactions: RecentTransaction[];
 };
 
@@ -90,6 +97,13 @@ function text(value: unknown, field: string): string {
 
 function optionalText(value: unknown, field: string): string | null {
   return value === null || value === undefined ? null : text(value, field);
+}
+
+function count(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new OverviewFormatError(field);
+  }
+  return value;
 }
 
 function date(value: unknown, field: string): LocalDate {
@@ -145,6 +159,7 @@ export function parseOverview(json: unknown): OverviewData | null {
       };
     }),
     uncategorizedSpentRappen: rappen(root.uncategorized_spent_rappen, 'uncategorized_spent_rappen'),
+    needsReviewCount: count(root.needs_review_count, 'needs_review_count'),
     recentTransactions: array(root.recent_transactions, 'recent_transactions').map(
       (entry, index) => {
         const row = object(entry, `recent_transactions[${index}]`);
@@ -153,6 +168,12 @@ export function parseOverview(json: unknown): OverviewData | null {
         }
         if (typeof row.is_split !== 'boolean') {
           throw new OverviewFormatError(`recent_transactions[${index}].is_split`);
+        }
+        if (!(CATEGORIZED_BY as readonly unknown[]).includes(row.categorized_by)) {
+          throw new OverviewFormatError(`recent_transactions[${index}].categorized_by`);
+        }
+        if (typeof row.needs_review !== 'boolean') {
+          throw new OverviewFormatError(`recent_transactions[${index}].needs_review`);
         }
         return {
           id: text(row.id, `recent_transactions[${index}].id`),
@@ -163,6 +184,8 @@ export function parseOverview(json: unknown): OverviewData | null {
           isSplit: row.is_split,
           source: row.source as TransactionSource,
           note: optionalText(row.note, `recent_transactions[${index}].note`),
+          categorizedBy: row.categorized_by as CategorizedBy,
+          needsReview: row.needs_review,
         };
       },
     ),

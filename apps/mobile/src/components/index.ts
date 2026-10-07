@@ -13,6 +13,7 @@ export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { PrimaryButton, type ButtonVariant, type PrimaryButtonProps } from './PrimaryButton';
 export { ProgressBar, STATUS_COLOR_ROLE, type ProgressBarProps } from './ProgressBar';
 export { Screen, type ScreenEdge, type ScreenProps } from './Screen';
+export { ScreenHeader, type ScreenHeaderProps } from './ScreenHeader';
 export { SettingsRow, type SettingsRowProps } from './SettingsRow';
 export { Stepper, type StepperProps } from './Stepper';
 export { StepProgress, type StepProgressProps } from './StepProgress';

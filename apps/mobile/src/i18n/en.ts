@@ -1,3 +1,6 @@
+import { importsEn } from './imports.en';
+import { transactionsEn } from './transactions.en';
+
 /**
  * English strings. This catalogue defines the shape every other language must match (see
  * `de.ts`); the type checker rejects a missing or extra key. Plurals use i18next's `_one` /
@@ -133,10 +136,8 @@ export const en = {
     loadError: 'Your month could not be loaded.',
     retry: 'Try again',
   },
-  transactions: {
-    emptyTitle: 'No transactions yet',
-    emptyMessage: 'Purchases show up here as soon as they are tracked.',
-  },
+  ...transactionsEn,
+  ...importsEn,
   assistant: {
     emptyTitle: 'Ask about your money',
     emptyMessage:
@@ -334,7 +335,7 @@ export const en = {
   },
 } as const;
 
-type Widen<T> = { readonly [K in keyof T]: T[K] extends string ? string : Widen<T[K]> };
+export type Widen<T> = { readonly [K in keyof T]: T[K] extends string ? string : Widen<T[K]> };
 
 /** The shape every language catalogue implements. */
 export type Translations = Widen<typeof en>;

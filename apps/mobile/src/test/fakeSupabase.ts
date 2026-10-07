@@ -40,20 +40,118 @@ export type RpcHandler = (args: unknown) => {
   error: { message: string; code?: string } | null;
 };
 
+export type FakeRow = Record<string, unknown>;
+
 export type FakeSupabaseState = {
   profile: Tables<'profiles'>;
   rpc: Record<string, RpcHandler>;
+  /** Rows of other tables, read and deleted through `from(table)` (see FakeQuery). */
+  tables: Record<string, FakeRow[]>;
+  /** Makes every request to a table fail with this error. */
+  tableErrors: Record<string, { message: string; code?: string }>;
 };
+
+/**
+ * A chainable stand-in for postgrest-js queries on a table: `select`, `delete`, the filters
+ * `eq`, `neq`, `is`, `in`, then `order` and `limit`. Awaiting it runs the query against
+ * `state.tables`.
+ */
+class FakeQuery implements PromiseLike<{ data: unknown; error: unknown; status: number }> {
+  private operation: 'select' | 'delete' = 'select';
+  private readonly filters: ((row: FakeRow) => boolean)[] = [];
+  private sort: { column: string; ascending: boolean }[] = [];
+  private max: number | null = null;
+
+  constructor(
+    private readonly state: FakeSupabaseState,
+    private readonly table: string,
+  ) {}
+
+  select() {
+    return this;
+  }
+  delete() {
+    this.operation = 'delete';
+    return this;
+  }
+  eq(column: string, value: unknown) {
+    this.filters.push((row) => row[column] === value);
+    return this;
+  }
+  neq(column: string, value: unknown) {
+    this.filters.push((row) => row[column] !== value);
+    return this;
+  }
+  is(column: string, value: null | boolean) {
+    this.filters.push((row) => (row[column] ?? null) === value);
+    return this;
+  }
+  in(column: string, values: readonly unknown[]) {
+    this.filters.push((row) => values.includes(row[column]));
+    return this;
+  }
+  order(column: string, options: { ascending?: boolean } = {}) {
+    this.sort.push({ column, ascending: options.ascending ?? true });
+    return this;
+  }
+  limit(count: number) {
+    this.max = count;
+    return this;
+  }
+
+  private run() {
+    const failure = this.state.tableErrors[this.table];
+    if (failure) return { data: null, error: failure, status: 400 };
+    const rows = this.state.tables[this.table] ?? [];
+    const matches = rows.filter((row) => this.filters.every((filter) => filter(row)));
+    if (this.operation === 'delete') {
+      this.state.tables[this.table] = rows.filter((row) => !matches.includes(row));
+      return { data: null, error: null, status: 204 };
+    }
+    const sorted = [...matches].sort((a, b) => {
+      for (const { column, ascending } of this.sort) {
+        const left = String(a[column] ?? '');
+        const right = String(b[column] ?? '');
+        const order =
+          typeof a[column] === 'number' && typeof b[column] === 'number'
+            ? (a[column] as number) - (b[column] as number)
+            : left.localeCompare(right);
+        if (order !== 0) return ascending ? order : -order;
+      }
+      return 0;
+    });
+    const data = (this.max === null ? sorted : sorted.slice(0, this.max)).map((row) => ({
+      ...row,
+    }));
+    return { data, error: null, status: 200 };
+  }
+
+  then<TResult1 = { data: unknown; error: unknown; status: number }, TResult2 = never>(
+    onfulfilled?:
+      | ((value: {
+          data: unknown;
+          error: unknown;
+          status: number;
+        }) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2> {
+    return Promise.resolve(this.run()).then(onfulfilled, onrejected);
+  }
+}
 
 export function createFakeSupabase(options: {
   session: Session | null;
   profile?: Partial<Tables<'profiles'>>;
   rpc?: Record<string, RpcHandler>;
+  tables?: Record<string, FakeRow[]>;
 }) {
   const auth = createFakeAuthClient(options.session);
   const state: FakeSupabaseState = {
     profile: profileRow(options.profile),
     rpc: options.rpc ?? {},
+    tables: options.tables ?? {},
+    tableErrors: {},
   };
 
   const ok = (data: unknown) => ({ data, error: null, status: 200 });
@@ -61,7 +159,12 @@ export function createFakeSupabase(options: {
   const client = {
     auth: auth.client.auth,
     from: jest.fn((table: string) => {
-      if (table !== 'profiles') throw new Error(`fake supabase: unexpected table ${table}`);
+      if (table !== 'profiles') {
+        if (!(table in state.tables) && !(table in state.tableErrors)) {
+          throw new Error(`fake supabase: unexpected table ${table}`);
+        }
+        return new FakeQuery(state, table);
+      }
       return {
         select: () => ({
           eq: () => ({ single: async () => ok({ ...state.profile }) }),
