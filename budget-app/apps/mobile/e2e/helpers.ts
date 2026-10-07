@@ -88,6 +88,12 @@ export async function apiAs(request: APIRequestContext, email: string, password 
       expect(response.ok(), await response.text()).toBe(true);
       return (await response.json()) as T;
     },
+    /** Calls a database function as the signed-in user and returns its JSON answer. */
+    async rpc<T>(name: string, args: object): Promise<T> {
+      const response = await request.post(`${url}/rest/v1/rpc/${name}`, { headers, data: args });
+      expect(response.ok(), await response.text()).toBe(true);
+      return (await response.json()) as T;
+    },
     /** Inserts rows one by one (PostgREST bulk inserts need identical keys in every row). */
     async insert(table: string, rows: object[]) {
       for (const row of rows) {

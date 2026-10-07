@@ -34,6 +34,10 @@ budget-app/
 │       ├── sources.ts          transaction source plug-in contract + validator
 │       ├── engine/             budget engine: dates, periods, plan, suggestion, pace,
 │       │                       overview, leftover, hours of work, overspend cover
+│       ├── import/             statement parsers: text decoding, CSV layouts, camt.053
+│       ├── export/             CSV writer for the data export
+│       ├── ingest.ts           the add_transactions row shape (every source)
+│       ├── merchant.ts         merchant keys (mirror of internal.merchant_key)
 │       ├── model.ts            row types with narrowed vocabularies
 │       └── database.types.ts   generated from the schema (never edit by hand)
 ├── supabase/                 @budget/db: Supabase project
@@ -98,16 +102,45 @@ Navigation: signed in but not onboarded → `/onboarding/*` (questionnaire, answ
 device per account until saved); onboarded → tabs. `complete_onboarding` stores profile, fixed
 costs, categories, the first period and its budgets in one transaction.
 
+## Transactions (Milestone 3)
+
+```
+statement file ──▶ readStatement (on the phone, @budget/core) ─┐
+quick add (+, batzen://add) ───────────────────────────────────┤── toIngestRow ──▶ add_transactions
+                                                               │      (dry run for the preview)
+bank, notifications, email, receipts (M6, server) ─────────────┘
+add_transactions: validate → already imported? → same purchase from another source (merge,
+  keep the richest data) → look-alike? → fixed-cost payment? → rules → known merchants → MCC
+  → (AI guess, M5) → store; anything unsure is "to review"
+```
+
+| Concern                                              | Where                                                                                     | Why there                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Reading statement files (CSV layouts, camt.053)      | `packages/core/src/import`                                                                | The file never leaves the phone (D-032); pure functions, 100 % coverage  |
+| Deduplication, fixed-cost detection, categorization  | `public.add_transactions` + schema `internal` (merchant keys, known merchants, MCC table) | One pipeline for every source (D-028), under row-level security (D-038)  |
+| Questions ("CHF 84 at Manor: what was it?")          | `needs_review` in the database; Home banner, Transactions tab, `/review`                  | One definition for Home, the list and (M4) push questions                |
+| Rules ("Always do this for Manor?")                  | `update_transaction` with `rule`; the database proposes the pattern (`suggested_rule`)    | The rule is applied to earlier purchases in the same transaction (D-042) |
+| Listing, search, filters, splits, edits, delete/undo | `list_transactions`, `get_transaction`, `update_transaction`, `set_transaction_splits`    | Filters by split parts and by local day need the database                |
+| Undo an import                                       | `remove_import`                                                                           | Deletes the file's rows and restores what merges changed (D-041)         |
+| Export                                               | `export_my_data` → `features/export` (CSV via `toCsv`, JSON) → share sheet or download    | One server call; files built on the phone (D-034)                        |
+
+App routes added in M3 (all behind the signed-in-and-onboarded guard): `/add` (modal),
+`/transaction/[id]`, `/review`, `/import`, `/data-sources`, `/rules`, `/export`, and the onboarding
+step `/onboarding/sources`. Data hooks: `src/data/transactions.ts`, `categories.ts`,
+`fixedCosts.ts`, `rules.ts`, `imports.ts`, `exportData.ts`.
+
 ## Shared contracts
 
-| Contract                     | Source of truth                               | Guarded by                                        |
-| ---------------------------- | --------------------------------------------- | ------------------------------------------------- |
-| Data model                   | `supabase/migrations/*.sql`                   | `supabase/tests/*`, generated `database.types.ts` |
-| Vocabularies (categories, …) | `packages/core/src/constants.ts` + SQL CHECKs | `supabase/tests/contracts.test.ts`                |
-| Money                        | `packages/core/src/money.ts`                  | `money.test.ts`; DB `bigint` + bounds             |
-| Design tokens                | `apps/mobile/src/theme/tokens.ts`             | `noColorLiterals.test.ts`, `contrast.test.ts`     |
-| Transaction source plug-ins  | `packages/core/src/sources.ts`                | `sources.test.ts`                                 |
-| Translation keys             | `apps/mobile/src/i18n/en.ts`                  | type checker + `catalogue.test.ts`                |
+| Contract                     | Source of truth                                           | Guarded by                                        |
+| ---------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| Data model                   | `supabase/migrations/*.sql`                               | `supabase/tests/*`, generated `database.types.ts` |
+| Vocabularies (categories, …) | `packages/core/src/constants.ts` + SQL CHECKs             | `supabase/tests/contracts.test.ts`                |
+| Money                        | `packages/core/src/money.ts`                              | `money.test.ts`; DB `bigint` + bounds             |
+| Design tokens                | `apps/mobile/src/theme/tokens.ts`                         | `noColorLiterals.test.ts`, `contrast.test.ts`     |
+| Transaction source plug-ins  | `packages/core/src/sources.ts`                            | `sources.test.ts`                                 |
+| Transaction pipeline rows    | `packages/core/src/ingest.ts` + docs/API.md               | `pipeline.test.ts` (database)                     |
+| Merchant keys                | `packages/core/src/merchant.ts` + `internal.merchant_key` | `categorization.test.ts` (parity)                 |
+| Translation keys             | `apps/mobile/src/i18n/en.ts`                              | type checker + `catalogue.test.ts`                |
 
 Changing one: open the change with the architect, update both sides (e.g. constant and CHECK),
 regenerate types (`npm run gen:types --workspace @budget/db`),
@@ -127,9 +160,11 @@ payload, email, OCR result, CSV/camt.053 file, manual form) and returns `SourceT
 | `merchant`, `rawText`, `mcc`, `items` | what the source knows                                            |
 | `source`, `sourceId`                  | which adapter, and its own id (re-imports are ignored by the DB) |
 
-`validateSourceTransaction` checks every adapter's output at the boundary. After that the pipeline
-is shared: deduplicate (M3), categorize (M3), store (`transactions`), queue the cash-feel moment
-(`acknowledged_at is null`, M4), evaluate alerts (M4). Adapters never write to the database
+`validateSourceTransaction` checks every adapter's output at the boundary. Statement files may
+give a local day (`bookedOn`, optional `bookedTime`) instead of an instant; the database places it
+in the person's time zone. After that the pipeline is shared (`add_transactions`, see above):
+deduplicate, detect fixed-cost payments, categorize, store (`transactions`), queue the cash-feel
+moment (`acknowledged_at is null`, M4), evaluate alerts (M4). Adapters never write to the database
 directly.
 
 ## Money

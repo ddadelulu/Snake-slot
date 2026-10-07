@@ -82,22 +82,27 @@ settings stay in M4 (M4-02, M4-05), subscription in M7.
 
 ## Milestone 4 · Cash-feel moment + alerts ⏳
 
-| ID    | Task                                                                                        | Owner             | Review        |
-| ----- | ------------------------------------------------------------------------------------------- | ----------------- | ------------- |
-| M4-01 | Payment moment: odometer spin-down, wallet, bar drain, haptics, sound, hours of work, queue | Jim Carrey        | Tom Hanks     |
-| M4-02 | Pain levels (Mild/Normal/Brutal), Reduce Motion, silent mode                                | Jim Carrey        | Daniel Craig  |
-| M4-03 | Alert engine: thresholds, total low, pace, unusual, daily allowance, payday, dedupe         | Liam Neeson       | Russell Crowe |
-| M4-04 | Push delivery (Expo Notifications), quiet hours, daily cap, push token registration         | Liam Neeson       | Tom Cruise    |
-| M4-05 | Alerts inbox and notification settings screens                                              | Robert Downey Jr. | Tom Hanks     |
+| ID    | Task                                                                                                                                                                                                    | Owner             | Review             |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------ |
+| M4-01 | Payment moment: odometer spin-down, wallet, bar drain, haptics, sound, hours of work, queue                                                                                                             | Jim Carrey        | Tom Hanks          |
+| M4-02 | Pain levels (Mild/Normal/Brutal), Reduce Motion, silent mode                                                                                                                                            | Jim Carrey        | Daniel Craig       |
+| M4-03 | Alert engine: thresholds, total low, pace, unusual, daily allowance, payday, dedupe                                                                                                                     | Liam Neeson       | Russell Crowe      |
+| M4-04 | Push delivery (Expo Notifications), quiet hours, daily cap, push token registration                                                                                                                     | Liam Neeson       | Tom Cruise         |
+| M4-05 | Alerts inbox and notification settings screens                                                                                                                                                          | Robert Downey Jr. | Tom Hanks          |
+| M4-06 | Pipeline guard: clients change transactions, splits and data sources only through the RPCs (accepted M3 security item)                                                                                  | Matt Damon        | Tom Cruise         |
+| M4-07 | Category detail (budget, spent, history, its transactions, edit budget) and Settings editors: profile & income, fixed costs (deactivate, never delete), categories & budgets (gap from the M3 kick-off) | Robert Downey Jr. | Tom Hanks          |
+| M4-08 | Push version of the category question ("CHF 84 at Manor: what was it?", alert type `categorize`)                                                                                                        | Liam Neeson       | Scarlett Johansson |
 
 ## Milestone 5 · AI assistant ⏳
 
-| ID    | Task                                                                             | Owner              | Review                    |
-| ----- | -------------------------------------------------------------------------------- | ------------------ | ------------------------- |
-| M5-01 | Assistant Edge Function with read-only tools, confirmed write tools, guardrails  | Scarlett Johansson | Tom Cruise, Julia Roberts |
-| M5-02 | Chat tab, home input bar, context buttons                                        | Robert Downey Jr.  | Tom Hanks                 |
-| M5-03 | "Can I afford this?", monthly/weekly reviews (scheduled)                         | Scarlett Johansson | Russell Crowe             |
-| M5-04 | Evaluation set: never invents numbers, no investment/credit/tax advice, language | Daniel Craig       | Scarlett Johansson        |
+| ID    | Task                                                                                        | Owner              | Review                    |
+| ----- | ------------------------------------------------------------------------------------------- | ------------------ | ------------------------- |
+| M5-01 | Assistant Edge Function with read-only tools, confirmed write tools, guardrails             | Scarlett Johansson | Tom Cruise, Julia Roberts |
+| M5-02 | Chat tab, home input bar, context buttons                                                   | Robert Downey Jr.  | Tom Hanks                 |
+| M5-03 | "Can I afford this?", monthly/weekly reviews (scheduled)                                    | Scarlett Johansson | Russell Crowe             |
+| M5-04 | Evaluation set: never invents numbers, no investment/credit/tax advice, language            | Daniel Craig       | Scarlett Johansson        |
+| M5-05 | Categorization step 4: AI guess for transactions the first three steps cannot place (D-029) | Scarlett Johansson | Benedict Cumberbatch      |
+| M5-06 | Insights screen (gap from the M3 kick-off)                                                  | Robert Downey Jr.  | Tom Hanks                 |
 
 ## Milestone 6 · Data sources ⏳
 

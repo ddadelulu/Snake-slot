@@ -87,6 +87,9 @@ Set in the Supabase dashboard to match `supabase/config.toml`:
 - Authentication: minimum password length 10, email confirmation on, secure password change on,
   leaked-password protection on (paid plans), redirect URLs `batzen://auth/callback**` (and the
   `.dev`/`.staging` variants used by those builds).
+- API: exposed schemas `public` only (never `internal` or `private`, D-038); no extra search
+  path; GraphQL (pg_graphql) disabled, the app does not use it. Check this before every release
+  (SECURITY.md, "Before release").
 - Apply migrations with `supabase link --project-ref <ref>` and `supabase db push`.
 - EAS environment variables `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` per
   environment ([RELEASE.md](RELEASE.md)).
