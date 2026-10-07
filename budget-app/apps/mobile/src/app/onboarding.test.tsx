@@ -88,9 +88,9 @@ describe('onboarding', () => {
     expect(await screen.findByTestId('onboarding-income')).toBeOnTheScreen();
     expect(screen.getByTestId('onboarding-progress')).toHaveAccessibilityValue({
       min: 1,
-      max: 9,
+      max: 10,
       now: 1,
-      text: 'Step 1 of 9',
+      text: 'Step 1 of 10',
     });
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
@@ -124,11 +124,28 @@ describe('onboarding', () => {
     fireEvent.press(screen.getByTestId('onboarding-payment-twint'));
     await continueTo('pain');
     await continueTo('notifications');
+    await continueTo('sources');
+
+    // Step 9: paying with TWINT suggests importing a statement right after setup.
+    expect(screen.getByTestId('onboarding-progress')).toHaveAccessibilityValue({
+      min: 1,
+      max: 10,
+      now: 9,
+      text: 'Step 9 of 10',
+    });
+    expect(screen.getByTestId('onboarding-sources-import')).toBeChecked();
+    expect(screen.getByTestId('onboarding-sources-import')).toHaveAccessibleName(
+      'Import a statement right after setup, Suggested because you pay by card or phone.',
+    );
     await continueTo('summary');
 
     expect(screen.getByTestId('summary-spendable')).toHaveTextContent(/CHF 4,350\.00/);
     fireEvent.press(screen.getByTestId('onboarding-continue'));
 
+    // Once the month is saved, the import opens on top of Home; "Not now" leads Home.
+    expect(await screen.findByTestId('import-choose')).toBeOnTheScreen();
+    expect(screen.getByTestId('import-header-back')).toHaveTextContent('Not now');
+    fireEvent.press(screen.getByTestId('import-header-back'));
     expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
     expect(submitted).toMatchObject({
       profile: {
@@ -163,10 +180,56 @@ describe('onboarding', () => {
     expect(await screen.findByTestId('onboarding-categories')).toBeOnTheScreen();
   });
 
+  it('resumes a draft saved before step 9 existed at step 9 instead of the summary', async () => {
+    await AsyncStorage.setItem(
+      draftStorageKey(fakeSession().user.id),
+      JSON.stringify({ version: 1, netIncome: '5000', payday: 1, paymentMethods: ['cash'], reached: 8 }),
+    );
+    start();
+    expect(await screen.findByTestId('onboarding-sources')).toBeOnTheScreen();
+    // Paying only cash: no import suggested, so starting the month leads Home.
+    expect(screen.getByTestId('onboarding-sources-import')).not.toBeChecked();
+    await continueTo('summary');
+    fireEvent.press(screen.getByTestId('onboarding-continue'));
+    expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
+    expect(screen.queryByTestId('import-screen')).toBeNull();
+  });
+
+  it('skipping step 9 means no import after setup', async () => {
+    await AsyncStorage.setItem(
+      draftStorageKey(fakeSession().user.id),
+      JSON.stringify({ version: 2, netIncome: '5000', payday: 1, paymentMethods: ['card'], reached: 8 }),
+    );
+    start();
+    expect(await screen.findByTestId('onboarding-sources')).toBeOnTheScreen();
+    expect(screen.getByTestId('onboarding-sources-import')).toBeChecked();
+    fireEvent.press(screen.getByTestId('onboarding-skip'));
+    expect(await screen.findByTestId('onboarding-summary')).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('onboarding-continue'));
+    expect(await screen.findByTestId('home-screen')).toBeOnTheScreen();
+    expect(screen.queryByTestId('import-screen')).toBeNull();
+  });
+
+  it('turns the import on for someone who pays cash only', async () => {
+    await AsyncStorage.setItem(
+      draftStorageKey(fakeSession().user.id),
+      JSON.stringify({ version: 2, netIncome: '5000', payday: 1, paymentMethods: ['cash'], reached: 8 }),
+    );
+    start();
+    expect(await screen.findByTestId('onboarding-sources-import')).toHaveAccessibleName(
+      'Import a statement right after setup, You pay cash, so adding by hand may be all you need.',
+    );
+    fireEvent.press(screen.getByTestId('onboarding-sources-import'));
+    expect(screen.getByTestId('onboarding-sources-import')).toBeChecked();
+    await continueTo('summary');
+    fireEvent.press(screen.getByTestId('onboarding-continue'));
+    expect(await screen.findByTestId('import-choose')).toBeOnTheScreen();
+  });
+
   it('shows a clear message when saving fails and stays on the summary', async () => {
     await AsyncStorage.setItem(
       draftStorageKey(fakeSession().user.id),
-      JSON.stringify({ version: 1, netIncome: '5000', payday: 1, reached: 8 }),
+      JSON.stringify({ version: 2, netIncome: '5000', payday: 1, reached: 9 }),
     );
     start();
     fake.state.rpc.complete_onboarding = () => ({
@@ -176,6 +239,17 @@ describe('onboarding', () => {
     fireEvent.press(await screen.findByTestId('onboarding-continue'));
     expect(await screen.findByTestId('onboarding-summary-error')).toBeOnTheScreen();
     expect(screen.getByTestId('onboarding-summary')).toBeOnTheScreen();
+
+    // A second try that works still opens the import chosen on step 9.
+    fake.state.rpc.complete_onboarding = () => {
+      fake.state.profile = {
+        ...fake.state.profile,
+        onboarding_completed_at: '2026-10-02T08:00:00.000000+00:00',
+      };
+      return { data: 'period-1', error: null };
+    };
+    fireEvent.press(screen.getByTestId('onboarding-continue'));
+    expect(await screen.findByTestId('import-choose')).toBeOnTheScreen();
   });
 
   it('sends a user who already has a month straight to Home', async () => {

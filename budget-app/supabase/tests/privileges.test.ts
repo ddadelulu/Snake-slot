@@ -464,7 +464,9 @@ describe('schema internal (D-038)', () => {
   });
 
   it.each([
-    [`insert into internal.known_merchants (pattern, category_key, confidence) values ('evil', 'other', 99)`],
+    [
+      `insert into internal.known_merchants (pattern, category_key, confidence) values ('evil', 'other', 99)`,
+    ],
     [`update internal.known_merchants set confidence = 100 where pattern = 'manor'`],
     [`delete from internal.known_merchants where pattern = 'manor'`],
     [`insert into internal.mcc_categories values (1, 1, 'other', 99)`],
@@ -526,7 +528,10 @@ describe('column-level grants (D-036)', () => {
           where id = $1`,
         [a],
       );
-      const row = await queryOne<{ overview: unknown }>(db, 'select public.get_overview() as overview');
+      const row = await queryOne<{ overview: unknown }>(
+        db,
+        'select public.get_overview() as overview',
+      );
       expect(row.overview).toBeNull();
     });
   });

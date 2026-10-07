@@ -37,12 +37,21 @@ export const ONBOARDING_STEPS = [
   'payment',
   'pain',
   'notifications',
+  'sources',
   'summary',
 ] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 /** Steps the person may skip (spec: "skip where optional"). */
-export const SKIPPABLE_STEPS: readonly OnboardingStep[] = ['savings', 'payment', 'notifications'];
+export const SKIPPABLE_STEPS: readonly OnboardingStep[] = [
+  'savings',
+  'payment',
+  'notifications',
+  'sources',
+];
+
+/** The steps of drafts saved with `version: 1`, before the sources step existed (D-037). */
+const V1_STEPS: readonly OnboardingStep[] = ONBOARDING_STEPS.filter((step) => step !== 'sources');
 
 export const NOTIFICATION_TYPES = [
   'transaction_moments',
@@ -70,7 +79,8 @@ export type CategoryChoice =
   { kind: 'default'; key: DefaultCategoryKey } | { kind: 'custom'; name: string };
 
 export type OnboardingDraft = {
-  version: 1;
+  /** 2 since the sources step (D-037); version-1 drafts are still restored. */
+  version: 2;
   netIncome: string;
   payday: number | null;
   irregularIncome: boolean;
@@ -91,6 +101,11 @@ export type OnboardingDraft = {
   paymentMethods: PaymentMethod[];
   painLevel: PainLevel;
   notifications: NotificationChoices;
+  /**
+   * Step 9: open the statement import right after setup. Null until the person decides; the
+   * suggestion then follows how they pay (see `wantsImportAfterSetup`).
+   */
+  importAfterSetup: boolean | null;
   /** Index of the furthest step reached, to resume where the person left off. */
   reached: number;
 };
@@ -126,7 +141,7 @@ export const MAX_ALERTS_PER_DAY = { min: 1, max: 20 } as const;
 
 export function createDraft(): OnboardingDraft {
   return {
-    version: 1,
+    version: 2,
     netIncome: '',
     payday: null,
     irregularIncome: false,
@@ -147,6 +162,7 @@ export function createDraft(): OnboardingDraft {
     paymentMethods: [],
     painLevel: 'normal',
     notifications: { ...DEFAULT_NOTIFICATIONS },
+    importAfterSetup: null,
     reached: 0,
   };
 }
@@ -267,6 +283,25 @@ export function validateCategories(draft: OnboardingDraft): Validation<'categori
   return draft.categories.length > 0
     ? { ok: true, errors: {} }
     : { ok: false, errors: { categories: 'categories_required' } };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sources (step 9)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Whether step 9 suggests importing a statement right after setup: yes when the person pays by
+ * card, TWINT, Apple Pay or Google Pay (those payments are on the statement), no when they pay
+ * only cash. Without an answer the import is suggested too, as most purchases in Switzerland are
+ * cashless.
+ */
+export function suggestsImport(paymentMethods: readonly PaymentMethod[]): boolean {
+  return paymentMethods.length === 0 || paymentMethods.some((method) => method !== 'cash');
+}
+
+/** The person's choice on step 9, or the suggestion while they have not made one. */
+export function wantsImportAfterSetup(draft: OnboardingDraft): boolean {
+  return draft.importAfterSetup ?? suggestsImport(draft.paymentMethods);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -436,16 +471,25 @@ const isOneOf = <T extends string>(values: readonly T[], value: unknown): value 
   typeof value === 'string' && (values as readonly string[]).includes(value);
 
 /**
+ * The furthest step a saved draft reached, as an index of today's steps. Version-1 drafts count
+ * the steps without the sources step; one that had reached the summary resumes at the sources
+ * step, so nobody misses it.
+ */
+function restoredReached(reached: unknown, version: 1 | 2): number {
+  const steps = version === 1 ? V1_STEPS : ONBOARDING_STEPS;
+  if (typeof reached !== 'number' || !Number.isInteger(reached)) return 0;
+  const step = steps[Math.min(Math.max(reached, 0), steps.length - 1)] as OnboardingStep;
+  return ONBOARDING_STEPS.indexOf(version === 1 && step === 'summary' ? 'sources' : step);
+}
+
+/**
  * Reads a draft saved by this or an older app version. Anything unexpected falls back to the
  * fresh-draft value for that field, so a corrupt save never blocks onboarding.
  */
 export function restoreDraft(saved: unknown): OnboardingDraft {
   const fresh = createDraft();
-  if (
-    typeof saved !== 'object' ||
-    saved === null ||
-    (saved as { version?: unknown }).version !== 1
-  ) {
+  const version = (saved as { version?: unknown } | null)?.version;
+  if (typeof saved !== 'object' || saved === null || (version !== 1 && version !== 2)) {
     return fresh;
   }
   const s = saved as Partial<Record<keyof OnboardingDraft, unknown>>;
@@ -508,13 +552,8 @@ export function restoreDraft(saved: unknown): OnboardingDraft {
     typeof s.payday === 'number' && Number.isInteger(s.payday) && s.payday >= 1 && s.payday <= 31
       ? s.payday
       : null;
-  const reached =
-    typeof s.reached === 'number' && Number.isInteger(s.reached)
-      ? Math.min(Math.max(s.reached, 0), ONBOARDING_STEPS.length - 1)
-      : 0;
-
   return {
-    version: 1,
+    version: 2,
     netIncome: text(s.netIncome, ''),
     payday,
     irregularIncome: bool(s.irregularIncome, false),
@@ -535,6 +574,7 @@ export function restoreDraft(saved: unknown): OnboardingDraft {
       : [],
     painLevel: isOneOf(PAIN_LEVELS, s.painLevel) ? s.painLevel : 'normal',
     notifications,
-    reached,
+    importAfterSetup: typeof s.importAfterSetup === 'boolean' ? s.importAfterSetup : null,
+    reached: restoredReached(s.reached, version),
   };
 }

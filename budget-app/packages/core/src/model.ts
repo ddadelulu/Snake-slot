@@ -22,12 +22,16 @@ export type Profile = Omit<
   payment_methods: PaymentMethod[];
 };
 
-/** Fields a client may change on its own profile. */
+/**
+ * Fields a client may change on its own profile (the column-level grants of D-036: completing
+ * onboarding happens only through `complete_onboarding`).
+ */
 export type ProfileUpdate = Omit<
   TablesUpdate<'profiles'>,
   | 'id'
   | 'created_at'
   | 'updated_at'
+  | 'onboarding_completed_at'
   | 'language'
   | 'pain_level'
   | 'leftover_policy'

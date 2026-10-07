@@ -16,6 +16,7 @@ import { AuthNoticeProvider } from '@/features/auth/AuthNotice';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { ConfigErrorScreen } from '@/features/config/ConfigErrorScreen';
 import { StartupErrorScreen } from '@/features/config/StartupErrorScreen';
+import { useAfterOnboarding } from '@/features/onboarding/afterOnboarding';
 import { useProfile } from '@/data/profile';
 import { LanguageProvider, ProfileLanguageSync, useLanguage } from '@/i18n';
 import { readEnv } from '@/lib/env';
@@ -66,6 +67,8 @@ function AppNavigator() {
   const ready =
     status !== 'loading' && themeLoaded && languageLoaded && (profileKnown || profile.isError);
   const onboarded = profile.data?.onboarding_completed_at != null;
+  // Right after onboarding: the destination chosen on its last steps (statement import).
+  useAfterOnboarding(ready && signedIn && onboarded);
 
   useEffect(() => {
     if (ready) SplashScreen.hide();

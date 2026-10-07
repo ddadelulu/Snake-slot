@@ -762,10 +762,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_transactions: { Args: { p: Json }; Returns: Json };
       complete_onboarding: { Args: { p: Json }; Returns: string };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       ensure_current_period: { Args: Record<PropertyKey, never>; Returns: string };
+      export_my_data: { Args: Record<PropertyKey, never>; Returns: Json };
       get_overview: { Args: Record<PropertyKey, never>; Returns: Json };
+      get_transaction: { Args: { p_id: string }; Returns: Json };
+      list_transactions: { Args: { p: Json }; Returns: Json };
       move_budget: {
         Args: { p_amount_rappen: number; p_from_budget: string; p_to_budget: string };
         Returns: undefined;
@@ -777,7 +781,10 @@ export type Database = {
           starts_on: string;
         }[];
       };
+      remove_import: { Args: { p_data_source_id: string }; Returns: number };
       roll_due_periods: { Args: Record<PropertyKey, never>; Returns: number };
+      set_transaction_splits: { Args: { p_id: string; p_parts: Json }; Returns: Json };
+      update_transaction: { Args: { p: Json; p_id: string }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;
