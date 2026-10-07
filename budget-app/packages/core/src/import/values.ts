@@ -29,10 +29,11 @@ const TIME = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?$/;
  * Reads the date formats of Swiss statement files: `30.09.2026`, `30.09.26`, `2026-09-30`,
  * `30/09/2026` and `30-09-2026` (day before month, the Swiss order; slash dates month first only
  * with `slashOrder: 'month-first'`), optionally followed by a time `14:23`, `14:23:05` or
- * `00:00:00.0` (Raiffeisen) and an offset `Z` / `+02:00`. Both separators must be the same. Two-digit
- * years are 2000-2069 (`26` = 2026) or 1970-1999. The date must exist (no 31.09.). A time of
- * exactly midnight is how exports print "no time" (`2026-09-30 00:00:00.0`), so it is dropped,
- * unless `exactInstant` is set and the text states an offset. Returns null for anything else.
+ * `00:00:00.0` (Raiffeisen) and an offset `Z` / `+02:00`. Both separators must be the same.
+ * Two-digit years are 2000-2069 (`26` = 2026) or 1970-1999. The date must exist (no 31.09.). A
+ * time of exactly midnight is how exports print "no time" (`2026-09-30 00:00:00.0`), so it is
+ * dropped, unless `exactInstant` is set and the text states an offset. Returns null for anything
+ * else.
  */
 export function parseStatementDate(
   text: string,
@@ -94,7 +95,8 @@ export function slashOrderOf(cells: Iterable<string>): SlashOrder {
  * ("Retrait d'espèces du …"); every part is bounded, so the match stays linear.
  */
 const PURCHASE_DATE = new RegExp(
-  '(?:^|[^a-z])(?:einkauf|kauf|achat|acquisto|purchase|bargeldbezug|retrait|prelevamento|withdrawal)' +
+  '(?:^|[^a-z])' +
+    '(?:einkauf|kauf|achat|acquisto|purchase|bargeldbezug|retrait|prelevamento|withdrawal)' +
     "(?:[/ ][a-z\\u00e0-\\u00ff'\u2019]{1,30}){0,2} (?:vom|du|del|of|on) " +
     '(\\d{4}-\\d{1,2}-\\d{1,2}|\\d{1,2}([./])\\d{1,2}\\2(?:\\d{4}|\\d{2}))(?!\\d)',
 );
@@ -280,7 +282,7 @@ export function compactKey(text: string): string {
 
 const CHF = /^(?:chf|s?fr)\.?$/i;
 
-/** True for the ways Swiss files write francs in a currency cell: "CHF", "Fr.", "SFr." (any case). */
+/** True for the ways Swiss files write francs in a currency cell: CHF, Fr., SFr. (any case). */
 export function isChf(code: string): boolean {
   return CHF.test(code.trim());
 }

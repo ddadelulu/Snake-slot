@@ -102,12 +102,15 @@ describe('camt.053.001.04', () => {
   it('books a reversal as money in and finds the merchant in the text', () => {
     expect(statement.rows[4]).toMatchObject({
       line: 4,
-      transaction: {
-        amountRappen: 2340,
-        merchant: 'Mustermarkt-4567 Zürich',
-        sourceId: `camt053:${IBAN}:TEST-NTRY-0004`,
-      },
+      transaction: { amountRappen: 2340, merchant: 'Mustermarkt-4567 Zürich' },
     });
+  });
+
+  it('never uses NtryRef as an id (it is only unique within one statement)', () => {
+    // The reversal has an NtryRef but no AcctSvcrRef, so its id comes from its content.
+    expect(statement.rows[4]?.transaction.sourceId).toBe(
+      contentId(`camt053:${IBAN}`, '2026-09-26', 2340, 'Storno Gutschrift Mustermarkt Zürich'),
+    );
   });
 
   it('takes the debtor as the counterparty of money in', () => {
@@ -273,7 +276,11 @@ describe('camt.053 entries', () => {
     );
     expect(statement.rows.map((row) => row.transaction)).toMatchObject([
       { amountRappen: -1200, sourceId: `camt053:${IBAN}:TEST-OWN` },
-      { amountRappen: 200, merchant: 'Exempla Rückzahlung', sourceId: `camt053:${IBAN}:TEST-N/2` },
+      {
+        amountRappen: 200,
+        merchant: 'Exempla Rückzahlung',
+        sourceId: contentId(`camt053:${IBAN}`, '2026-09-30', 200, 'Exempla Rückzahlung'),
+      },
       {
         amountRappen: -600,
         merchant: 'Exempla Sechs',
