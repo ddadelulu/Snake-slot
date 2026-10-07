@@ -115,9 +115,9 @@ describe('merchantFromText on crafted input', () => {
     ['digits and dots', '1.'.repeat(20_000) + 'a'],
     ['masks', 'X'.repeat(30_000) + '1'],
   ])('stays fast on %s', (_name, text) => {
-    const started = performance.now();
+    const started = Date.now();
     merchantFromText(text);
-    expect(performance.now() - started).toBeLessThan(250);
+    expect(Date.now() - started).toBeLessThan(250);
   });
 
   it('only reads the first 1000 characters', () => {

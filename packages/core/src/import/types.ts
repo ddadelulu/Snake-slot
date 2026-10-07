@@ -18,11 +18,22 @@ export type StatementBank = 'postfinance' | 'ubs' | 'zkb' | 'raiffeisen' | 'neon
  * - `not_chf`: the row, entry or whole statement is in another currency (EUR account, Revolut
  *   EUR pocket); the app books CHF only.
  * - `collective_detail`: a detail line of a collective booking (UBS "Einzelbetrag", ZKB
- *   "Betrag Detail"); the collective booking itself is imported, its parts would count twice.
+ *   "Betrag Detail") whose details do not add up to the total (or that follows no total); the
+ *   total is imported, its parts would count twice.
+ * - `collective_total`: the total of a collective booking whose detail lines add up to it
+ *   exactly (same sign, CHF); the details are imported instead, as camt.053 does (D-043).
+ * - `balance_line`: a line whose text is only a balance or total label ("Saldo", "Schlusssaldo",
+ *   "Total", "Closing balance", "Solde", "Saldo finale", …), not a booking.
+ * - `malformed_row`: a data line with more filled cells than the header has columns, typically
+ *   an amount with an unquoted thousands separator in a comma-separated file ("-1,234.50"); its
+ *   cells cannot be assigned to the columns safely.
  * - `not_booked`: pending, informational or not completed (camt PDNG/INFO, Revolut PENDING,
  *   REVERTED, DECLINED).
  * - `invalid`: the transaction failed `validateSourceTransaction` (e.g. an amount above the
  *   CHF 100 million limit).
+ *
+ * `invalid_amount` also covers a negative camt.053 `<Amt>` and an unknown or missing
+ * debit/credit marker for an unsigned amount (see `ColumnMapping.direction`).
  */
 export type SkipReason =
   | 'invalid_date'
@@ -31,6 +42,9 @@ export type SkipReason =
   | 'zero_amount'
   | 'not_chf'
   | 'collective_detail'
+  | 'collective_total'
+  | 'balance_line'
+  | 'malformed_row'
   | 'not_booked'
   | 'invalid';
 
@@ -65,6 +79,21 @@ export type ColumnMapping = {
   amount?: number;
   debit?: number;
   credit?: number;
+  /**
+   * A debit/credit marker column ("Soll/Haben", "S/H", "Debit/Credit", "D/C", "CdtDbtInd", …)
+   * that signs the `amount` column: S, D, DR, Debit, Soll, Belastung, Lastschrift, DBIT, Débit,
+   * Addebito, Dare = money out; H, C, CR, Credit, Haben, Gutschrift, CRDT, Crédit, Accredito,
+   * Avere = money in (any case, accents optional). A positive amount gets the marker's sign; an
+   * amount printed with a minus keeps it. An unknown marker, or none for a positive amount, skips
+   * the line as `invalid_amount`. Ignored for `debit` / `credit` columns, which are signed by
+   * their column.
+   */
+  direction?: number;
+  /**
+   * True for files that print purchases as positive numbers and refunds or income as negative
+   * ones: every line's amount changes sign (after `direction` is applied).
+   */
+  invertAmounts?: boolean;
   text: number[];
   merchant?: number;
   currency?: number;
@@ -87,7 +116,11 @@ export type StatementError =
       columns: string[];
       /** Up to 5 data rows after the header, for the mapping screen. */
       sample: string[][];
-      /** The columns that were recognised, to pre-fill the mapping screen. */
+      /**
+       * The columns that were recognised, to pre-fill the mapping screen (`date`, `time`,
+       * `amount`, `debit`, `credit`, `direction`, `merchant`, `currency`, `id`, `text`;
+       * never `invertAmounts`).
+       */
       guess: Partial<ColumnMapping>;
     }
   | { code: 'too_many_rows'; count: number; max: number };

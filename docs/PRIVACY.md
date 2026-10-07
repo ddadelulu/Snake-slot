@@ -31,7 +31,8 @@ No selling, no sharing, no advertising use, no profiling for third parties (spec
   (server timestamps) for terms, privacy policy, each source, AI processing and email access.
 - **Erasure.** Settings → Delete account removes the account and every row (verified by test).
   M6 adds revoking provider tokens at the provider; M7 tells subscribers to cancel in the store.
-- **Access and portability.** Data export (CSV) arrives with transactions in M3 (task M3-07).
+- **Access and portability.** Settings → Export my data: transactions as CSV, and everything
+  stored about the person (including the account's email address) as JSON (D-034).
 - **Isolation.** Row-level security per user (see SECURITY.md).
 
 ## Hosting
@@ -52,6 +53,26 @@ email delivery) must be listed in the privacy policy.
 | Android notification listener: Google Play policy declaration for financial data                     | M6        |
 | Retention periods (e.g. how long transactions and consent records are kept after inactivity)         | M7        |
 | Trademark check of the final app name                                                                | M7        |
+
+## Milestone 3 review
+
+- **Statement files** are read on the phone; the file itself is never uploaded. Its transactions
+  are checked against the account for the preview without being stored (dry run), and only the
+  ones the person keeps are stored. The picked file's copy is deleted after reading.
+- **Third-party data.** Statement texts can contain names and IBANs of the people and companies
+  the person paid or was paid by. They are stored exactly as the bank printed them, only in the
+  person's own rows, used only to show and sort the person's transactions, and removed with the
+  import (Settings → Data sources → Remove deletes the file's transactions for good and undoes
+  what it added to other transactions, D-041) or with the account.
+- **Categorization** runs in the database on the person's own data plus a public list of
+  merchant names; nothing is sent to third parties (the AI step waits for M5 and its provider
+  agreement).
+- **Export.** The CSV and JSON exports contain personal financial data; the app says so before
+  sharing and removes the temporary file from the phone after the share sheet closes.
+- **Retention.** Transactions deleted by the person are kept (restorable) until the account is
+  deleted; the retention period is part of the open M7 item above.
+
+— Julia Roberts, 2026-10-07
 
 ## Milestone 2 review
 

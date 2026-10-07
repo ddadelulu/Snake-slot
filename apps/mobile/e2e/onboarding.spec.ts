@@ -88,10 +88,12 @@ test.describe('onboarding to a correct month', () => {
     const now = new Date().toISOString();
     const user = (await api.get<{ id: string }[]>('profiles?select=id'))[0]!.id;
     const base = { user_id: user, booked_at: now, source: 'manual' };
+    const chosen = { categorized_by: 'user', category_confidence: 100 };
     await api.insert('transactions', [
-      { ...base, amount_rappen: -8400, merchant: 'Migros', category_id: groceries!.id },
+      { ...base, ...chosen, amount_rappen: -8400, merchant: 'Migros', category_id: groceries!.id },
       {
         ...base,
+        ...chosen,
         amount_rappen: 2000,
         merchant: 'Migros',
         category_id: groceries!.id,
@@ -110,6 +112,8 @@ test.describe('onboarding to a correct month', () => {
       `CHF ${remaining.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} left`,
     );
     await expect(page.getByTestId('home-uncategorized')).toContainText('CHF 15.00');
+    // Only the kiosk purchase has no category, so it is the one question waiting.
+    await expect(page.getByTestId('home-review')).toContainText('1 purchase needs a category');
     await expect(page.getByTestId('home-transaction-0')).toBeVisible();
   });
 

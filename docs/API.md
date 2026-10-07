@@ -123,10 +123,13 @@ null and no data source is created):
 
 - `added`: stored as a new transaction (`transaction_id`).
 - `merged`: the same purchase already came from another source; it is stored as evidence with
-  `merged_into_id` and `transaction_id` is the surviving transaction, which gains what it lacked.
+  `merged_into_id` and `transaction_id` is the surviving transaction, which gains what it lacked
+  (`duplicate_of` describes it too).
 - `already_imported`: this source sent this id before; nothing stored.
-- `possible_duplicate`: same source, same amount, same day, same merchant, different id; not
-  stored unless the row says `allow_duplicate`.
+- `possible_duplicate`: looks like a stored transaction (`duplicate_of`): from the same source
+  with the same amount, day and merchant but a different id, or from another source with the
+  same amount within four days when the merchants cannot be compared (no merchant, or a split).
+  Not stored unless the row says `allow_duplicate` (quick add offers "Add anyway").
 - With `import`, the call creates one `data_sources` row (kind `statement_import`) for the
   file when anything was stored, and links the stored rows to it. Imported rows are stored as
   already acknowledged (no cash-feel moment for history, D-033).
@@ -149,6 +152,7 @@ rows are returned with `deleted_at`).
 TransactionItem = { "id", "amount_rappen", "booked_at", "merchant", "raw_text", "note", "mcc",
   "source", "data_source_id", "data_source_name", "category_id", "categorized_by",
   "category_confidence", "fixed_cost_id", "original_amount_minor", "original_currency", "items",
+  "suggested_rule": { "match_field": "merchant", "match_type": "contains", "pattern": "manor" } | null,
   "splits": [ { "id", "category_id", "amount_rappen", "note" } ],
   "merged_sources": [ "statement_import" ], "needs_review": true, "deleted_at": null,
   "created_at" }
@@ -189,9 +193,11 @@ does not change transactions it already placed.
 
 ### Imports and export
 
-`remove_import(p_data_source_id uuid) → integer`: deletes (soft) every transaction stored from
-that file, brings back rows that had been merged into them, marks the source `revoked`; returns
-how many transactions were removed. Error: `import_not_found`. Imports are listed from
+`remove_import(p_data_source_id uuid) → { removed, restored }`: deletes every transaction stored
+from that file for good (D-041), brings back rows that had been merged into them, restores what
+its merges had copied into earlier transactions (unless changed since), and marks the source
+`revoked`; `removed` counts the visible transactions deleted, `restored` the earlier transactions
+put back. Error: `import_not_found`. Imports are listed from
 `data_sources` (`kind = 'statement_import'`; `settings` holds `file_name`, `format`, `bank`,
 `added`, `merged`).
 
