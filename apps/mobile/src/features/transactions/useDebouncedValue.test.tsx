@@ -7,9 +7,10 @@ describe('useDebouncedValue', () => {
   afterEach(() => jest.useRealTimers());
 
   it('follows the value only after it has stopped changing', () => {
-    const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value), {
-      initialProps: { value: '' },
-    });
+    const { result, rerender } = renderHook(
+      ({ value }: { value: string }) => useDebouncedValue(value),
+      { initialProps: { value: '' } },
+    );
     rerender({ value: 'm' });
     act(() => jest.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 50));
     rerender({ value: 'ma' });

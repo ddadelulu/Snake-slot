@@ -81,8 +81,8 @@ const useStyles = makeStyles((theme) => ({
   },
   section: { gap: theme.spacing.sm },
   buttons: { gap: theme.spacing.md },
-  sheetBody: { gap: theme.spacing.lg },
-  sheetScroll: { flexGrow: 0 },
+  sheetBody: { flexShrink: 1, gap: theme.spacing.lg },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
 }));
 
 const NONE = '__none__';
@@ -554,6 +554,8 @@ function Detail({ transaction }: { transaction: TransactionItem }) {
             currency={BASE_CURRENCY}
             value={amountText}
             onChangeText={setAmountText}
+            editable={!isSplit}
+            hint={isSplit ? t('transactionDetail.splitAmountHint') : undefined}
             error={
               amountCheck.ok
                 ? undefined

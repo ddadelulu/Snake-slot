@@ -161,11 +161,14 @@ export function startApp(options: {
   });
   jest.mocked(getSupabaseIfConfigured).mockReturnValue(fake.client as never);
   jest.mocked(getSupabase).mockReturnValue(fake.client as never);
-  renderRouter('src/app', { initialUrl: options.url });
-  return fake;
+  const rendered = renderRouter('src/app', { initialUrl: options.url });
+  return { ...fake, getPathname: () => rendered.getPathname() };
 }
 
 /** The arguments of every call to one database function, in order. */
-export function rpcCalls(fake: ReturnType<typeof createFakeSupabase>, name: string): unknown[] {
+export function rpcCalls(
+  fake: Pick<ReturnType<typeof createFakeSupabase>, 'client'>,
+  name: string,
+): unknown[] {
   return fake.client.rpc.mock.calls.filter(([called]) => called === name).map(([, args]) => args);
 }

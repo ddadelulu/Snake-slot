@@ -41,8 +41,8 @@ function start(overview: () => Answer) {
   });
   jest.mocked(getSupabaseIfConfigured).mockReturnValue(fake.client as never);
   jest.mocked(getSupabase).mockReturnValue(fake.client as never);
-  renderRouter('src/app', { initialUrl: '/' });
-  return fake;
+  const rendered = renderRouter('src/app', { initialUrl: '/' });
+  return { ...fake, getPathname: () => rendered.getPathname() };
 }
 
 beforeEach(async () => {
@@ -119,12 +119,12 @@ describe('home', () => {
   });
 
   it('opens quick add from the floating + button', async () => {
-    start(() => ({ data: OVERVIEW_JSON, error: null }));
+    const app = start(() => ({ data: OVERVIEW_JSON, error: null }));
     const add = await screen.findByTestId('home-add');
     expect(add).toHaveAccessibleName('Add a purchase');
     fireEvent.press(add);
     expect(await screen.findByTestId('add-amount')).toBeOnTheScreen();
-    expect(screen.getPathname()).toBe('/add');
+    expect(app.getPathname()).toBe('/add');
   });
 
   it('keeps the + button when the month cannot be loaded', async () => {
@@ -134,12 +134,12 @@ describe('home', () => {
   });
 
   it('says how many purchases need a category and leads to the questions', async () => {
-    start(() => ({ data: { ...OVERVIEW_JSON, needs_review_count: 3 }, error: null }));
+    const app = start(() => ({ data: { ...OVERVIEW_JSON, needs_review_count: 3 }, error: null }));
     const banner = await screen.findByTestId('home-review');
     expect(banner).toHaveAccessibleName('3 purchases need a category');
     fireEvent.press(banner);
     expect(await screen.findByTestId('review-screen')).toBeOnTheScreen();
-    expect(screen.getPathname()).toBe('/review');
+    expect(app.getPathname()).toBe('/review');
   });
 
   it('uses the singular for one purchase and shows nothing when none waits', async () => {
@@ -154,9 +154,9 @@ describe('home', () => {
   });
 
   it('opens a recent purchase', async () => {
-    start(() => ({ data: OVERVIEW_JSON, error: null }));
+    const app = start(() => ({ data: OVERVIEW_JSON, error: null }));
     fireEvent.press(await screen.findByTestId('home-transaction-0'));
     expect(await screen.findByTestId('detail-amount')).toHaveTextContent('CHF 42.50');
-    expect(screen.getPathname()).toBe('/transaction/t-1');
+    expect(app.getPathname()).toBe('/transaction/t-1');
   });
 });

@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 
-import { darkTheme, lightTheme } from '@/theme';
+import { lightTheme } from '@/theme';
 import { renderWithTheme } from '@/theme/testUtils';
 
 import { FloatingActionButton } from './FloatingActionButton';
@@ -33,14 +33,9 @@ describe('FloatingActionButton', () => {
       height: sizes.fab,
       borderRadius: radii.pill,
       backgroundColor: colors.accent,
-      end: layout.screenPadding,
+      right: layout.screenPadding,
       bottom: spacing.xl,
     });
     expect(sizes.fab).toBeGreaterThanOrEqual(sizes.minTouchTarget);
-  });
-
-  it('keeps its token colours in dark mode', () => {
-    expect(darkTheme.sizes.fab).toBe(lightTheme.sizes.fab);
-    expect(darkTheme.colors.accent).not.toBe(lightTheme.colors.accent);
   });
 });

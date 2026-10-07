@@ -150,10 +150,10 @@ describe('transactions tab', () => {
   });
 
   it('opens a transaction', async () => {
-    start();
+    const app = start();
     fireEvent.press(await screen.findByTestId('transactions-row-t-migros'));
     expect(await screen.findByTestId('detail-amount')).toHaveTextContent('CHF 42.50');
-    expect(screen.getPathname()).toBe('/transaction/t-migros');
+    expect(app.getPathname()).toBe('/transaction/t-migros');
   });
 
   it('searches merchant, note and statement text once typing stops', async () => {
@@ -161,8 +161,9 @@ describe('transactions tab', () => {
     await screen.findByTestId('transactions-row-t-migros');
     fireEvent.changeText(screen.getByTestId('transactions-search'), 'manor');
     await waitFor(() => expect(lastListParams(fake)).toEqual({ limit: 50, search: 'manor' }));
-    expect(await screen.findByTestId('transactions-row-t-manor')).toBeOnTheScreen();
-    expect(screen.queryByTestId('transactions-row-t-migros')).toBeNull();
+    // The previous list stays on screen until the search answer arrives.
+    await waitFor(() => expect(screen.queryByTestId('transactions-row-t-migros')).toBeNull());
+    expect(screen.getByTestId('transactions-row-t-manor')).toBeOnTheScreen();
   });
 
   it('offers to show everything when nothing matches', async () => {
@@ -310,11 +311,11 @@ describe('transactions tab', () => {
   });
 
   it('leads to the questions when this month has purchases to review', async () => {
-    start({ overview: { ...OVERVIEW_JSON, needs_review_count: 2 } });
+    const app = start({ overview: { ...OVERVIEW_JSON, needs_review_count: 2 } });
     const entry = await screen.findByTestId('transactions-review');
     expect(entry).toHaveAccessibleName('2 purchases this month to review');
     fireEvent.press(entry);
-    await waitFor(() => expect(screen.getPathname()).toBe('/review'));
+    await waitFor(() => expect(app.getPathname()).toBe('/review'));
   });
 
   it('shows no review entry when nothing waits', async () => {

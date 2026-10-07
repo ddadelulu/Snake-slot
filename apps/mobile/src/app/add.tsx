@@ -22,6 +22,7 @@ import { useCategories } from '@/data/categories';
 import { useProfile } from '@/data/profile';
 import { useAddTransactions } from '@/data/transactions';
 import { categoryName } from '@/features/categories/categoryName';
+import { parseAmountInput } from '@/features/transactions/amount';
 import { transactionErrorCode, type TransactionErrorCode } from '@/features/transactions/errors';
 import { formatShortWeekdayDate, formatWeekdayDate } from '@/features/transactions/format';
 import { activeCategories, categoryTestKey } from '@/features/transactions/labels';
@@ -34,7 +35,6 @@ import {
   setSplitting,
   type QuickAddForm,
 } from '@/features/transactions/quickAdd';
-import { parseAmountInput } from '@/features/transactions/amount';
 import { SplitFields } from '@/features/transactions/SplitFields';
 import { useLanguage } from '@/i18n';
 import { goBackOr } from '@/lib/navigation';
@@ -43,7 +43,7 @@ import { makeStyles, useTheme } from '@/theme';
 const useStyles = makeStyles((theme) => ({
   section: { gap: theme.spacing.sm },
   loading: { paddingVertical: theme.spacing.lg, alignItems: 'flex-start' },
-  sheetList: { flexGrow: 0 },
+  sheetList: { flexGrow: 0, flexShrink: 1 },
 }));
 
 type DayOption = 'today' | 'yesterday' | 'other';
