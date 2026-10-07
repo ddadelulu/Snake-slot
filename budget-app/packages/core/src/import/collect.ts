@@ -57,7 +57,7 @@ export function createCollector(format: StatementFormat, bank: StatementBank | n
         sourceId:
           draft.reference === null
             ? ids.forContent(draft.iban, date, draft.amountRappen, draft.rawText ?? draft.merchant)
-            : ids.forReference(draft.iban, draft.reference),
+            : ids.forReference(draft.iban, draft.reference, `${date}:${draft.amountRappen}`),
       };
       if (validateSourceTransaction(transaction).ok) {
         rows.push({ line: draft.line, transaction });

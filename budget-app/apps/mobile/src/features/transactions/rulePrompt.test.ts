@@ -1,36 +1,23 @@
-import { rulePromptFor, suggestRule } from './rulePrompt';
+import { rulePromptFor } from './rulePrompt';
 
-describe('suggestRule', () => {
-  it('builds the pattern from the merchant', () => {
-    expect(suggestRule({ merchant: 'MANOR AG 0815', rawText: 'Kauf MANOR' })).toEqual({
-      matchField: 'merchant',
-      matchType: 'contains',
-      pattern: 'manor',
-    });
-  });
-
-  it('uses the statement text when the merchant gives nothing to match', () => {
-    expect(suggestRule({ merchant: null, rawText: 'TWINT *Coop Pronto 4567' })).toEqual({
-      matchField: 'raw_text',
-      matchType: 'contains',
-      pattern: 'coop',
-    });
-    expect(suggestRule({ merchant: 'TWINT', rawText: 'Bäckerei Hug, Zug' })).toEqual({
-      matchField: 'raw_text',
-      matchType: 'contains',
-      pattern: 'backerei',
-    });
-  });
-
-  it('offers nothing without anything to recognise the purchase by', () => {
-    expect(suggestRule({ merchant: null, rawText: null })).toBeNull();
-    expect(suggestRule({ merchant: '1234', rawText: 'TWINT' })).toBeNull();
-  });
-});
+const MANOR = { matchField: 'merchant', matchType: 'contains', pattern: 'manor' } as const;
 
 describe('rulePromptFor', () => {
+  it('offers exactly the rule the database proposed', () => {
+    expect(rulePromptFor('c-clothes', { suggestedRule: MANOR })).toBe(MANOR);
+    const exact = {
+      matchField: 'merchant',
+      matchType: 'equals',
+      pattern: 'coop vitality',
+    } as const;
+    expect(rulePromptFor('c-health', { suggestedRule: exact })).toEqual(exact);
+  });
+
+  it('asks nothing without a proposal', () => {
+    expect(rulePromptFor('c-clothes', { suggestedRule: null })).toBeNull();
+  });
+
   it('asks only for a real category', () => {
-    expect(rulePromptFor('c-clothes', { merchant: 'Manor', rawText: null })?.pattern).toBe('manor');
-    expect(rulePromptFor(null, { merchant: 'Manor', rawText: null })).toBeNull();
+    expect(rulePromptFor(null, { suggestedRule: MANOR })).toBeNull();
   });
 });

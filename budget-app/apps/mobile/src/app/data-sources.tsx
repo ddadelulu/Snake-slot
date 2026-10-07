@@ -39,12 +39,15 @@ const useStyles = makeStyles((theme) => ({
   sheet: { gap: theme.spacing.md },
 }));
 
-type Removed = { name: string; count: number };
+/** What the last removal did: transactions of the file deleted, earlier ones put back. */
+type Removed = { name: string; removed: number; restored: number };
 
 /**
  * Settings → Data sources (US-3.2): the statement files imported so far, each with its counts
- * and a way to undo it, and the way to import another one. Purchases typed in with "+" need no
- * source. Only the sources that exist today are shown.
+ * and a way to undo it, and the way to import another one. Removing an import deletes its
+ * transactions for good and puts back earlier ones its merges had changed (D-041); the notice
+ * says how many of each. Purchases typed in with "+" need no source. Only the sources that exist
+ * today are shown.
  */
 export default function DataSourcesScreen() {
   const { t } = useTranslation();
@@ -72,9 +75,9 @@ export default function DataSourcesScreen() {
     if (!target) return;
     const item = target;
     remove.mutate(item.id, {
-      onSuccess: (count) => {
+      onSuccess: ({ removed: count, restored }) => {
         setSheetOpen(false);
-        setRemoved({ name: item.fileName, count });
+        setRemoved({ name: item.fileName, removed: count, restored });
       },
     });
   };
@@ -97,7 +100,12 @@ export default function DataSourcesScreen() {
       {removed ? (
         <AlertBanner
           tone="info"
-          message={t('dataSources.removedNotice', { count: removed.count, name: removed.name })}
+          message={t('dataSources.removedNotice', { count: removed.removed, name: removed.name })}
+          detail={
+            removed.restored > 0
+              ? t('dataSources.restoredNotice', { count: removed.restored })
+              : undefined
+          }
           onDismiss={() => setRemoved(null)}
           dismissLabel={t('common.dismiss')}
           testID="data-sources-removed"

@@ -1,7 +1,7 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { RequestError, toRequestError } from '@/lib/requestError';
+import { toRequestError } from '@/lib/requestError';
 import { getSupabase } from '@/lib/supabase';
 
 import { jsonReader } from './json';
@@ -51,15 +51,29 @@ export async function fetchImports(): Promise<StatementImport[]> {
   return (data ?? []).map((row, index) => toStatementImport(row, index));
 }
 
-/** Undoes an import: its transactions are removed; returns how many. */
-export async function removeImport(id: string): Promise<number> {
+/**
+ * What removing an import did (D-041): `removed` transactions of the file deleted for good, and
+ * `restored` earlier transactions put back as they were before the file's merges changed them.
+ */
+export type RemoveImportResult = { removed: number; restored: number };
+
+const readRemoval = jsonReader('remove_import');
+
+export function parseRemoveImportResult(json: unknown): RemoveImportResult {
+  const root = readRemoval.object(json, 'result');
+  return {
+    removed: readRemoval.integer(root.removed, 'removed'),
+    restored: readRemoval.integer(root.restored, 'restored'),
+  };
+}
+
+/** Undoes an import: its transactions are deleted and what its merges changed is restored. */
+export async function removeImport(id: string): Promise<RemoveImportResult> {
   const { data, error, status } = await getSupabase().rpc('remove_import', {
     p_data_source_id: id,
   });
   if (error) throw toRequestError({ error, status });
-  if (typeof data !== 'number')
-    throw new RequestError('remove_import returned no count', status, '');
-  return data;
+  return parseRemoveImportResult(data);
 }
 
 export const importKeys = {

@@ -84,6 +84,9 @@ export const FIXED_COST_ROWS: FakeRow[] = [
 
 export type TransactionJson = Record<string, unknown> & { id: string };
 
+/** The rule the database proposes for Manor purchases (`suggested_rule`, D-042). */
+export const MANOR_RULE = { match_field: 'merchant', match_type: 'contains', pattern: 'manor' };
+
 /** One TransactionItem as list_transactions / get_transaction return it. */
 export function transactionJson(
   overrides: Partial<TransactionJson> & { id: string },
@@ -105,6 +108,7 @@ export function transactionJson(
     original_amount_minor: null,
     original_currency: null,
     items: null,
+    suggested_rule: null,
     splits: [],
     merged_sources: [],
     needs_review: false,

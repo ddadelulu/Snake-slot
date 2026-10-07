@@ -10,6 +10,7 @@ import {
   joinTexts,
   parseDecimalMinor,
   parseStatementDate,
+  purchaseDateIn,
   truncate,
   type StatementDate,
 } from './values';
@@ -49,12 +50,20 @@ const MAX_RAW_TEXT = 4000;
  * Per statement (`Stmt`): the account IBAN and currency; statements in another currency are
  * skipped (`not_chf`), and a file without any CHF statement is refused (`not_chf`). Per entry
  * (`Ntry`): only booked entries (status BOOK, as text in 001.04 or `Sts/Cd` in 001.08; no status
- * counts as booked), in CHF, signed by CdtDbtInd (DBIT = money out). A batch entry whose
- * transaction details (`TxDtls`) each carry a CHF amount, adding up to the entry, becomes one row
- * per detail; otherwise the entry is one row. The date is the card's acceptance time
- * (`RltdDts/AccptncDtTm`, the moment of purchase), else the booking date, else the value date. The
- * merchant is the creditor of a debit or the debtor of a credit, else taken from the texts. The
- * original amount comes from `AmtDtls/InstdAmt` when it is not CHF.
+ * counts as booked), in CHF, signed by CdtDbtInd (DBIT = money out); a negative `Amt` (the sign
+ * belongs in CdtDbtInd) is `invalid_amount`. A batch entry whose transaction details (`TxDtls`)
+ * each carry a positive CHF amount, adding up to the entry, becomes one row per detail; otherwise
+ * the entry is one row. The date is the card's acceptance time (`RltdDts/AccptncDtTm`, the moment
+ * of purchase; with an offset it is kept as that exact instant, also at midnight), else the
+ * purchase day the text states ("KAUF/DIENSTLEISTUNG VOM 02.10.2026", see `purchaseDateIn`, as the
+ * CSV import does, D-043), else the booking date, else the value date. The merchant is the
+ * creditor of a debit or the debtor of a credit, else taken from the texts. The original amount
+ * comes from `AmtDtls/InstdAmt` when it is not CHF.
+ *
+ * Ids: the entry's `AcctSvcrRef` (else `NtryRef`); batch parts use their own reference when no
+ * other part shares it, else the entry's with their position (`REF/1`, `REF/2`). The same entry
+ * listed twice (e.g. in two `Stmt` blocks of one file) gets the same id both times, so the second
+ * is reported as already imported (see `createSourceIds`).
  */
 export function parseCamt053(xml: string): PartsResult {
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) {
@@ -141,7 +150,7 @@ function readEntry(entry: XmlObject, context: EntryContext): void {
   }
   const sign = direction(entry.CdtDbtInd);
   const amount = parseDecimalMinor(text(entry.Amt) ?? '', 2);
-  if (amount === null || sign === null) {
+  if (amount === null || amount < 0 || sign === null) {
     collector.skip(line, 'invalid_amount', display);
     return;
   }
@@ -155,10 +164,9 @@ function readEntry(entry: XmlObject, context: EntryContext): void {
   const parts = splitBatch(details, sign, total);
   const entryReference = text(entry.AcctSvcrRef) ?? text(entry.NtryRef);
   if (parts !== null) {
+    const own = parts.map((part) => text(path(part.detail, 'Refs', 'AcctSvcrRef')));
     parts.forEach((part, index) => {
-      const own = text(path(part.detail, 'Refs', 'AcctSvcrRef'));
-      const reference =
-        own ?? (entryReference === undefined ? null : `${entryReference}/${index + 1}`);
+      const reference = partReference(entryReference, own, index);
       addRow(entry, part.detail, part.rappen, reference, context, display);
     });
     return;
@@ -169,7 +177,29 @@ function readEntry(entry: XmlObject, context: EntryContext): void {
   addRow(entry, detail, total, reference ?? null, context, display);
 }
 
-/** The parts of a batch entry, when every part has a CHF amount and together they make the entry. */
+/**
+ * A batch part's reference: its own when no other part shares it (some banks give every part the
+ * entry's reference), else the entry's (or the shared one) with the part's position; null when
+ * there is none, for an id from the content.
+ */
+function partReference(
+  entry: string | undefined,
+  own: readonly (string | undefined)[],
+  index: number,
+): string | null {
+  const reference = own[index];
+  if (
+    reference !== undefined &&
+    reference !== entry &&
+    own.indexOf(reference) === own.lastIndexOf(reference)
+  ) {
+    return reference;
+  }
+  const base = entry ?? reference;
+  return base === undefined ? null : `${base}/${index + 1}`;
+}
+
+/** The parts of a batch entry, when every part has a positive CHF amount and together they make the entry. */
 function splitBatch(
   details: readonly XmlObject[],
   entrySign: number,
@@ -181,7 +211,7 @@ function splitBatch(
   for (const detail of details) {
     const node = detail.Amt ?? path(detail, 'AmtDtls', 'TxAmt', 'Amt');
     const amount = parseDecimalMinor(text(node) ?? '', 2);
-    if (attribute(node, 'Ccy') !== 'CHF' || !amount) return null;
+    if (attribute(node, 'Ccy') !== 'CHF' || amount === null || amount <= 0) return null;
     const rappen = (direction(detail.CdtDbtInd) ?? entrySign) * amount;
     parts.push({ detail, rappen });
     sum += rappen;
@@ -197,20 +227,14 @@ function addRow(
   context: EntryContext,
   display: string,
 ): void {
-  const when = firstDate([
-    path(detail, 'RltdDts', 'AccptncDtTm'),
-    path(entry, 'BookgDt', 'Dt'),
-    path(entry, 'BookgDt', 'DtTm'),
-    path(entry, 'ValDt', 'Dt'),
-    path(entry, 'ValDt', 'DtTm'),
-  ]);
+  const entryInfo = texts(entry.AddtlNtryInf);
+  const detailInfo = texts(detail?.AddtlTxInf);
+  const remittance = texts(obj(detail?.RmtInf)?.Ustrd);
+  const when = entryDate(entry, detail, [...detailInfo, ...entryInfo, ...remittance]);
   if (when === null) {
     context.collector.skip(context.line, 'invalid_date', display);
     return;
   }
-  const entryInfo = texts(entry.AddtlNtryInf);
-  const detailInfo = texts(detail?.AddtlTxInf);
-  const remittance = texts(obj(detail?.RmtInf)?.Ustrd);
   const merchant =
     partyName(detail, rappen < 0) ??
     [...detailInfo, ...entryInfo, ...remittance].map(merchantFromText).find(Boolean) ??
@@ -255,6 +279,30 @@ function originalAmount(
   const minor = parseDecimalMinor(text(node) ?? '', currencyExponent(currency));
   if (!minor) return undefined;
   return { amountMinor: Math.sign(rappen) * Math.abs(minor), currency };
+}
+
+/**
+ * When the purchase happened: the acceptance time (an exact instant), else the purchase day the
+ * texts state when the entry was booked within 31 days of it, else the booking or value date.
+ */
+function entryDate(
+  entry: XmlObject,
+  detail: XmlObject | undefined,
+  entryTexts: readonly string[],
+): StatementDate | null {
+  const accepted = parseStatementDate(text(path(detail, 'RltdDts', 'AccptncDtTm')) ?? '', {
+    exactInstant: true,
+  });
+  if (accepted !== null) return accepted;
+  const booked = firstDate([
+    path(entry, 'BookgDt', 'Dt'),
+    path(entry, 'BookgDt', 'DtTm'),
+    path(entry, 'ValDt', 'Dt'),
+    path(entry, 'ValDt', 'DtTm'),
+  ]);
+  if (booked === null) return null;
+  const purchase = purchaseDateIn(entryTexts, booked.date);
+  return purchase === null || purchase === booked.date ? booked : { date: purchase };
 }
 
 function firstDate(nodes: readonly unknown[]): StatementDate | null {

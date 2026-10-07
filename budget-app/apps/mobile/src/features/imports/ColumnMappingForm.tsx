@@ -9,6 +9,7 @@ import { ChipGroup } from '@/components/ChipGroup';
 import { ChoiceChips } from '@/components/ChoiceChips';
 import { ChoiceList } from '@/components/ChoiceList';
 import { Divider } from '@/components/Divider';
+import { SwitchRow } from '@/components/SwitchRow';
 import { ToggleChip } from '@/components/ToggleChip';
 import { makeStyles } from '@/theme';
 
@@ -30,6 +31,9 @@ const useStyles = makeStyles((theme) => ({
 
 type ColumnRole = 'date' | 'amount' | 'debit' | 'credit';
 
+/** The "None" choice of the optional debit/credit column. */
+const NO_COLUMN = 'none';
+
 const PROBLEM_KEY = {
   date: 'imports.mapping.missingDate',
   amount: 'imports.mapping.missingAmount',
@@ -38,8 +42,9 @@ const PROBLEM_KEY = {
 
 /**
  * For a CSV file whose columns the app does not recognise: the columns with example values,
- * then which one holds the date, the amount (or debit and credit) and the description. Starts
- * from what the parser recognised.
+ * then which one holds the date, the amount (or debit and credit) and the description. A single
+ * amount column may come with a debit/credit column that gives the sign, or show purchases as
+ * positive amounts (D-043). Starts from what the parser recognised.
  */
 export function ColumnMappingForm({
   request,
@@ -145,12 +150,45 @@ export function ColumnMappingForm({
             testID="import-map-amount-kind"
           />
           {draft.amountKind === 'single' ? (
-            <View style={styles.section}>
-              <AppText variant="label" tone="secondary">
-                {t('imports.mapping.amount')}
-              </AppText>
-              {pick('amount')}
-            </View>
+            <>
+              <View style={styles.section}>
+                <AppText variant="label" tone="secondary">
+                  {t('imports.mapping.amount')}
+                </AppText>
+                {pick('amount')}
+              </View>
+              <View style={styles.section}>
+                <AppText variant="label" tone="secondary">
+                  {t('imports.mapping.direction')}
+                </AppText>
+                <AppText variant="caption" tone="secondary">
+                  {t('imports.mapping.directionHint')}
+                </AppText>
+                <ChoiceChips<string>
+                  options={[
+                    { value: NO_COLUMN, label: t('imports.mapping.directionNone') },
+                    ...options,
+                  ]}
+                  selected={draft.direction === null ? NO_COLUMN : String(draft.direction)}
+                  onSelect={(value) =>
+                    onChange({ ...draft, direction: value === NO_COLUMN ? null : Number(value) })
+                  }
+                  accessibilityLabel={t('imports.mapping.direction')}
+                  testID="import-map-direction"
+                />
+              </View>
+              {draft.direction === null ? (
+                <Card padded={false}>
+                  <SwitchRow
+                    label={t('imports.mapping.invert')}
+                    hint={t('imports.mapping.invertHint')}
+                    value={draft.invertAmounts}
+                    onValueChange={(invertAmounts) => onChange({ ...draft, invertAmounts })}
+                    testID="import-map-invert"
+                  />
+                </Card>
+              ) : null}
+            </>
           ) : (
             <>
               <View style={styles.section}>

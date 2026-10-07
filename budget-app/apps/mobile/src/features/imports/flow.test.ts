@@ -1,8 +1,16 @@
-import { UBS_DE } from '@budget/core/src/import/__fixtures__/statements';
+import { readStatement } from '@budget/core';
+
+import { UBS_STATEMENT } from '@/test/statementFixture';
 
 import { applyMapping, readPickedFile, type MappingStep } from './flow';
 
-// All statements are synthetic (packages/core/src/import/__fixtures__).
+// The real parser, watched: the tests check the column mapping handed to it.
+jest.mock('@budget/core', () => {
+  const actual = jest.requireActual('@budget/core');
+  return { ...actual, readStatement: jest.fn(actual.readStatement) };
+});
+
+// All statements are synthetic.
 const file = (name: string, text: string) => ({ name, bytes: new TextEncoder().encode(text) });
 
 const UNKNOWN = [
@@ -20,7 +28,7 @@ function mappingStep(text = UNKNOWN): MappingStep {
 
 describe('readPickedFile', () => {
   it('previews a statement it knows', () => {
-    const step = readPickedFile(file('ubs.csv', UBS_DE));
+    const step = readPickedFile(file('ubs.csv', UBS_STATEMENT));
     expect(step).toMatchObject({ kind: 'preview', file: { name: 'ubs.csv' } });
     expect(step.kind === 'preview' && step.statement.rows).toHaveLength(4);
   });
@@ -54,6 +62,24 @@ describe('applyMapping', () => {
     expect(
       next.kind === 'preview' && next.statement.rows.map((row) => row.transaction.amountRappen),
     ).toEqual([-450, -1800]);
+  });
+
+  it('hands the debit/credit column and the sign switch to the parser', () => {
+    const step = mappingStep();
+    applyMapping({
+      ...step,
+      draft: { ...step.draft, date: 0, amount: 2, direction: 3, text: [1] },
+    });
+    expect(jest.mocked(readStatement).mock.calls.at(-1)?.[1]).toEqual({
+      mapping: { headerRow: 2, date: 0, amount: 2, direction: 3, text: [1] },
+    });
+    applyMapping({
+      ...step,
+      draft: { ...step.draft, date: 0, amount: 2, invertAmounts: true, text: [1, 3] },
+    });
+    expect(jest.mocked(readStatement).mock.calls.at(-1)?.[1]).toEqual({
+      mapping: { headerRow: 2, date: 0, amount: 2, invertAmounts: true, text: [1, 3] },
+    });
   });
 
   it('stays on the mapping while it is incomplete', () => {

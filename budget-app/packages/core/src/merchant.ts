@@ -1,12 +1,14 @@
 /**
- * Merchant names as sources print them ("COOP-4567 ZÜRICH", "TWINT *Coop Pronto", "Coop") are
- * compared through a key: lower-case ASCII words without accents, numbers or legal forms
- * ("coop zurich", "twint coop pronto", "coop"). A pattern matches a name when the pattern's
- * words appear in the name's key as a contiguous run.
+ * Merchant names as sources print them ("COOP-4567 ZÜRICH", "TWINT *Coop Pronto", "McDonald's",
+ * "BAECKEREI HUG") are compared through a key: lower-case ASCII words without accents,
+ * apostrophes, numbers or legal forms, with "ae", "oe" and "ue" folded to "a", "o" and "u"
+ * ("coop zurich", "twint coop pronto", "mcdonalds", "backerei hug"). A pattern matches a name when
+ * the pattern's words appear in the name's key as a contiguous run.
  *
- * The database does the matching (`private.merchant_key`, used for rules, the known-merchant list
- * and deduplication). This is its exact mirror, used by the app to propose rule patterns;
- * supabase/tests/categorization.test.ts compares the two on a corpus of real-world spellings.
+ * The database does the matching (`internal.merchant_key`, used for rules, the known-merchant
+ * list, deduplication and search). This is its exact mirror, used where the app needs the same
+ * key without the database (statement import ids); supabase/tests/categorization.test.ts compares
+ * the two on a corpus of real-world spellings and on seeded pseudo-random text.
  */
 
 /** Accented letters and ligatures, mapped explicitly so both implementations agree byte for byte. */
@@ -29,6 +31,8 @@ const LIGATURES: ReadonlyArray<readonly [string, string]> = [
   ['Œ', 'oe'],
   ['œ', 'oe'],
 ];
+/** Apostrophes are dropped, so "McDonald's" and "MCDONALDS" share a key. */
+const APOSTROPHES = new Set(["'", '’', '´', '`']);
 
 const SINGLE_LETTERS = new Map<string, string>();
 for (const [letters, plain] of LETTER_MAP) {
@@ -54,13 +58,23 @@ export const MERCHANT_STOPWORDS: readonly string[] = [
 ];
 const STOPWORDS = new Set(MERCHANT_STOPWORDS);
 
-/** The comparison key of a merchant name or statement text; '' when nothing identifying is left. */
+/**
+ * The comparison key of a merchant name or statement text; '' when nothing identifying is left:
+ *   1. apostrophes (' ’ ´ `) dropped, accented letters mapped by LETTER_MAP, then the ligatures;
+ *   2. ASCII upper case to lower case (nothing else changes case);
+ *   3. every "e" directly after "a", "o" or "u" dropped (Bäckerei/BAECKEREI, Müller/MUELLER);
+ *   4. split into words at every run of characters other than a-z and 0-9;
+ *   5. words containing a digit and the stopwords dropped, the rest joined by one space.
+ */
 export function merchantKey(text: string | null | undefined): string {
   if (text === null || text === undefined) return '';
   let plain = '';
-  for (const char of text) plain += SINGLE_LETTERS.get(char) ?? char;
+  for (const char of text) {
+    if (!APOSTROPHES.has(char)) plain += SINGLE_LETTERS.get(char) ?? char;
+  }
   for (const [ligature, letters] of LIGATURES) plain = plain.split(ligature).join(letters);
   plain = plain.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+  plain = plain.replace(/([aou])e/g, '$1');
   return plain
     .split(/[^a-z0-9]+/)
     .filter((word) => word !== '' && !/[0-9]/.test(word) && !STOPWORDS.has(word))
@@ -71,53 +85,4 @@ export function merchantKey(text: string | null | undefined): string {
 export function keyContains(textKey: string, patternKey: string): boolean {
   if (patternKey === '' || textKey === '') return false;
   return ` ${textKey} `.includes(` ${patternKey} `);
-}
-
-/**
- * Words that say how someone paid, not where: a rule "always do this for twint" would catch
- * every Twint payment, so rule suggestions skip them.
- */
-export const PAYMENT_WORDS: readonly string[] = [
-  'twint',
-  'sumup',
-  'payrexx',
-  'paypal',
-  'stripe',
-  'kauf',
-  'einkauf',
-  'dienstleistung',
-  'zahlung',
-  'karte',
-  'karten',
-  'card',
-  'purchase',
-  'debit',
-  'pos',
-  'maestro',
-  'visa',
-  'mastercard',
-  'apple',
-  'google',
-  'pay',
-  'achat',
-  'paiement',
-  'carte',
-  'acquisto',
-  'pagamento',
-];
-const PAYMENT = new Set(PAYMENT_WORDS);
-
-/**
- * The pattern proposed for "Always do this for …?": the merchant's first identifying word, or its
- * first two words when the first is shorter than three letters ("mc donalds"). Null when the name
- * has nothing to build a rule from.
- */
-export function suggestRulePattern(merchant: string | null | undefined): string | null {
-  const words = merchantKey(merchant)
-    .split(' ')
-    .filter((word) => word !== '' && !PAYMENT.has(word));
-  const [first, second] = words;
-  if (first === undefined) return null;
-  if (first.length >= 3 || second === undefined) return first;
-  return `${first} ${second}`;
 }

@@ -1,18 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MAX_IMPORT_FILE_BYTES, type IngestRow } from '@budget/core';
-import { POSTFINANCE_OLD, REVOLUT, UBS_DE } from '@budget/core/src/import/__fixtures__/statements';
+import {
+  MAX_IMPORT_FILE_BYTES,
+  readStatement,
+  type IngestRow,
+  type ParsedStatement,
+  type SkippedRow,
+} from '@budget/core';
+import { POSTFINANCE_OLD, REVOLUT } from '@budget/core/src/import/__fixtures__/statements';
 import * as DocumentPicker from 'expo-document-picker';
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
-import { i18n } from '@/i18n';
+import { LANGUAGE_STORAGE_KEY, i18n } from '@/i18n';
 import { readEnv } from '@/lib/env';
 import {
+  UBS_STATEMENT,
   failed,
   ok,
   refused,
   rpcCalls,
   startImportsApp,
-  transactionJson,
   utf8,
 } from '@/test/importsFixture';
 import type { RpcHandler } from '@/test/fakeSupabase';
@@ -25,6 +31,11 @@ jest.mock('@/lib/supabase', () => ({
   authRedirectUrl: jest.fn(() => 'batzen://auth/callback'),
 }));
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
+// The real parser, watched: tests check the column mapping the screen hands to it.
+jest.mock('@budget/core', () => {
+  const actual = jest.requireActual('@budget/core');
+  return { ...actual, readStatement: jest.fn(actual.readStatement) };
+});
 jest.mock('expo-file-system', () => {
   const files = new Map<string, Uint8Array>();
   class MockFile {
@@ -61,7 +72,8 @@ type Plan = {
 /**
  * A stand-in for add_transactions: the dry run (every line of the file, in order) answers line
  * i with plans[i]; the import answers each row by its external id with the plan of its line,
- * stores nothing on a dry run, and adds a checked look-alike (allow_duplicate).
+ * stores nothing on a dry run, and adds a checked look-alike (allow_duplicate). Merged rows and
+ * look-alikes describe the stored transaction in `duplicate_of`, as the database does.
  */
 function pipeline(plans: Plan[]): RpcHandler {
   let ids: (string | null)[] = [];
@@ -86,7 +98,10 @@ function pipeline(plans: Plan[]): RpcHandler {
         outcome,
         transaction_id:
           plan.transactionId ?? (outcome === 'added' && !p.dry_run ? `t-new-${index}` : null),
-        duplicate_of: outcome === 'possible_duplicate' ? (plan.duplicateOf ?? null) : null,
+        duplicate_of:
+          outcome === 'possible_duplicate' || outcome === 'merged'
+            ? (plan.duplicateOf ?? null)
+            : null,
         category_id: plan.categoryId ?? null,
         categorized_by: plan.categoryId ? 'merchant_list' : 'none',
         category_confidence: plan.categoryId ? 90 : null,
@@ -98,10 +113,24 @@ function pipeline(plans: Plan[]): RpcHandler {
   };
 }
 
-/** The UBS file: a purchase typed in before, an unclear collective order, the salary imported
+/** The purchase typed in by hand that the UBS card purchase merges with. */
+const MANUAL_ENTRY = {
+  id: 't-manual',
+  booked_at: '2026-09-29T12:20:00+00:00',
+  merchant: 'Mustermarkt',
+  amount_rappen: -2340,
+  source: 'manual',
+};
+
+/** The UBS file: a purchase typed in before, an unclear e-banking order, the salary imported
  * before and a café purchase that looks like one already imported. */
 const UBS_PLANS: Plan[] = [
-  { outcome: 'merged', transactionId: 't-manual', categoryId: 'c-groceries' },
+  {
+    outcome: 'merged',
+    transactionId: 't-manual',
+    categoryId: 'c-groceries',
+    duplicateOf: MANUAL_ENTRY,
+  },
   { outcome: 'added', needsReview: true },
   { outcome: 'already_imported', transactionId: 't-salary' },
   {
@@ -115,16 +144,6 @@ const UBS_PLANS: Plan[] = [
     },
   },
 ];
-
-const MANUAL_ENTRY = transactionJson({
-  id: 't-manual',
-  amount_rappen: -2340,
-  booked_at: '2026-09-29T12:20:00+00:00',
-  merchant: 'Mustermarkt',
-  category_id: 'c-groceries',
-  categorized_by: 'user',
-  category_confidence: 100,
-});
 
 function pick(name: string, content: string | Uint8Array, size?: number) {
   const bytes = typeof content === 'string' ? utf8(content) : content;
@@ -147,7 +166,6 @@ function start(rpc: Record<string, RpcHandler> = {}, url = '/import') {
     url,
     rpc: {
       add_transactions: pipeline(UBS_PLANS),
-      get_transaction: () => ok(MANUAL_ENTRY),
       ...rpc,
     },
   });
@@ -178,7 +196,7 @@ describe('statement import', () => {
   it('explains the import with one privacy line and lets the person cancel the picker', async () => {
     start();
     expect(await screen.findByTestId('import-privacy')).toHaveTextContent(
-      'The file is read on your phone; only the transactions you keep are saved.',
+      'The file is read on your phone. Its transactions are checked against your account, and only the ones you keep are saved.',
     );
     jest
       .mocked(DocumentPicker.getDocumentAsync)
@@ -196,7 +214,7 @@ describe('statement import', () => {
 
   it('previews every kind of line, imports the checked ones and shows the result', async () => {
     const fake = start();
-    pick('ubs-september.csv', UBS_DE);
+    pick('ubs-september.csv', UBS_STATEMENT);
     await choose();
 
     expect(await screen.findByTestId('import-source')).toHaveTextContent('UBS');
@@ -204,10 +222,7 @@ describe('statement import', () => {
       '24 September 2026 to 29 September 2026',
     );
     expect(screen.getByTestId('import-count')).toHaveTextContent('4 transactions');
-    expect(screen.getByTestId('import-skipped')).toHaveTextContent(/^2 lines skipped/);
-    expect(screen.getByTestId('import-skipped-reasons')).toHaveTextContent(
-      'Part of a collective payment (the total is imported) (2)',
-    );
+    expect(screen.queryByTestId('import-skipped')).toBeNull();
 
     // The dry run covers every line and stores nothing.
     expect(await screen.findByTestId('import-row-0')).toBeOnTheScreen();
@@ -225,12 +240,10 @@ describe('statement import', () => {
       external_id: 'csv:CH9300000000000000000:TEST0000000001',
     });
 
-    // 0: merges with the purchase typed in by hand (named), checked.
+    // 0: merges with the purchase typed in by hand, named from the dry run, checked.
     expect(screen.getByTestId('import-row-0')).toBeChecked();
-    await waitFor(() =>
-      expect(screen.getByTestId('import-row-0-status')).toHaveTextContent(
-        /^Merges with one you have: Mustermarkt, CHF 23\.40, 29 Sept?$/,
-      ),
+    expect(screen.getByTestId('import-row-0-status')).toHaveTextContent(
+      /^Merges with one you have: Mustermarkt, CHF 23\.40, 29 Sept?$/,
     );
     expect(screen.getByTestId('import-row-0-day')).toHaveTextContent(/29 Sept?.* · Groceries/);
     // 1: new, needs a category, checked.
@@ -279,14 +292,72 @@ describe('statement import', () => {
     );
     expect(screen.getByTestId('import-result-already')).toHaveTextContent('Already there0');
     expect(screen.getByTestId('import-result-review')).toHaveTextContent('Need a category1');
+    // The merge target came with the dry run: no transaction was fetched one by one.
+    expect(rpcCalls(fake, 'get_transaction')).toEqual([]);
 
     fireEvent.press(screen.getByTestId('import-done'));
     expect(await screen.findByTestId('transactions-screen')).toBeOnTheScreen();
   });
 
+  it('explains a look-alike typed in by hand and leaves it unchecked', async () => {
+    start({
+      add_transactions: pipeline([
+        { outcome: 'added' },
+        {
+          outcome: 'possible_duplicate',
+          duplicateOf: { ...MANUAL_ENTRY, id: 't-typed', merchant: null, amount_rappen: -15000 },
+        },
+        { outcome: 'added' },
+        {
+          outcome: 'possible_duplicate',
+          duplicateOf: { ...MANUAL_ENTRY, id: 't-cafe', merchant: 'Café', amount_rappen: -850 },
+        },
+      ]),
+    });
+    pick('ubs.csv', UBS_STATEMENT);
+    await choose();
+    expect(await screen.findByTestId('import-row-1-status')).toHaveTextContent(
+      /^You added CHF 150\.00 by hand on 29 Sept?$/,
+    );
+    expect(screen.getByTestId('import-row-1')).not.toBeChecked();
+    expect(screen.getByTestId('import-row-3-status')).toHaveTextContent(
+      /^You added CHF 8\.50 at Café by hand on 29 Sept?$/,
+    );
+    expect(screen.getByTestId('import-row-3')).not.toBeChecked();
+    expect(screen.getByTestId('import-count-look_alike')).toHaveTextContent(
+      'Look like ones you have: 2',
+    );
+    expect(screen.getByTestId('import-confirm')).toHaveTextContent('Import 2 transactions');
+  });
+
+  it('names a look-alike from another source by that source', async () => {
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+    startImportsApp({
+      url: '/import',
+      profile: { language: 'de' },
+      rpc: {
+        add_transactions: pipeline([
+          {
+            outcome: 'possible_duplicate',
+            duplicateOf: { ...MANUAL_ENTRY, source: 'android_notification' },
+          },
+          { outcome: 'possible_duplicate', duplicateOf: { ...MANUAL_ENTRY, merchant: null } },
+        ]),
+      },
+    });
+    pick('ubs.csv', UBS_STATEMENT);
+    await choose();
+    expect(await screen.findByTestId('import-row-0-status')).toHaveTextContent(
+      /^Sieht aus wie eine aus Zahlungsmitteilung: Mustermarkt, CHF 23\.40, 29\. Sept?\.?$/,
+    );
+    expect(screen.getByTestId('import-row-1-status')).toHaveTextContent(
+      /^Du hast CHF 23\.40 am 29\. Sept?\.? von Hand erfasst$/,
+    );
+  });
+
   it('selects all and none, and imports nothing while nothing is checked', async () => {
     const fake = start();
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose();
     await screen.findByTestId('import-row-3');
     fireEvent.press(screen.getByTestId('import-select-none'));
@@ -306,7 +377,7 @@ describe('statement import', () => {
         UBS_PLANS.map(() => ({ outcome: 'already_imported', transactionId: 't-old' })),
       ),
     });
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose();
     expect(await screen.findByTestId('import-nothing-new')).toHaveTextContent(
       'Every transaction in this file was imported before. There is nothing to add.',
@@ -373,7 +444,7 @@ describe('statement import', () => {
         return answer(args);
       },
     });
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose();
     expect(await screen.findByTestId('import-check-error')).toHaveTextContent(
       /could not be compared.*Something went wrong/,
@@ -449,7 +520,7 @@ describe('statement import', () => {
     pick('export.csv', 'Tag;Was;Wieviel\n30.09.2026;Znüni;-4.50\n');
     await choose();
     expect(await screen.findByTestId('import-map-continue')).toBeOnTheScreen();
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose('import-map-choose-another');
     expect(await screen.findByTestId('import-source')).toHaveTextContent('UBS');
   });
@@ -470,6 +541,122 @@ describe('statement import', () => {
     fireEvent.press(screen.getByTestId('import-map-continue'));
     expect(await screen.findByTestId('import-row-1-value')).toHaveTextContent('CHF +5,200.00');
     expect(screen.getByTestId('import-row-0-value')).toHaveTextContent('CHF 4.50');
+  });
+
+  describe('a single amount column', () => {
+    const csv = [
+      'Tag;Was;Wieviel;Merkmal',
+      '30.09.2026;Exempla Kiosk;4.50;D',
+      '29.09.2026;Fictiva Lohn;5200.00;C',
+    ].join('\n');
+
+    /** The mapping the screen handed to the parser last. */
+    const lastMapping = () =>
+      jest.mocked(readStatement).mock.calls.at(-1)?.[1]?.mapping as Record<string, unknown>;
+
+    async function mapBasics() {
+      start({ add_transactions: pipeline([]) });
+      pick('konto.csv', csv);
+      await choose();
+      await screen.findByText('Which column is which?');
+      fireEvent.press(screen.getByTestId('import-map-date-0'));
+      fireEvent.press(screen.getByTestId('import-map-amount-2'));
+      fireEvent.press(screen.getByTestId('import-map-text-1'));
+    }
+
+    it('takes an optional debit/credit column that gives the sign', async () => {
+      await mapBasics();
+      expect(screen.getByText('Debit/credit column (optional)')).toBeOnTheScreen();
+      expect(screen.getByTestId('import-map-direction-none')).toBeChecked();
+      expect(screen.getByTestId('import-map-invert')).toBeOnTheScreen();
+
+      fireEvent.press(screen.getByTestId('import-map-direction-3'));
+      expect(screen.getByTestId('import-map-direction-3')).toBeChecked();
+      // The direction column decides the sign, so the switch is not needed.
+      expect(screen.queryByTestId('import-map-invert')).toBeNull();
+      fireEvent.press(screen.getByTestId('import-map-continue'));
+
+      expect(await screen.findByTestId('import-count')).toHaveTextContent('2 transactions');
+      expect(lastMapping()).toEqual({ headerRow: 1, date: 0, amount: 2, direction: 3, text: [1] });
+    });
+
+    it('turns amounts round when purchases are shown as positive amounts', async () => {
+      await mapBasics();
+      const invert = screen.getByTestId('import-map-invert');
+      expect(invert).toHaveAccessibleName(/^Purchases are shown as positive amounts/);
+      expect(invert).not.toBeChecked();
+      fireEvent.press(invert);
+      expect(screen.getByTestId('import-map-invert')).toBeChecked();
+      // Picking a direction column and dropping it again keeps the switch as it was.
+      fireEvent.press(screen.getByTestId('import-map-direction-3'));
+      fireEvent.press(screen.getByTestId('import-map-direction-none'));
+      expect(screen.getByTestId('import-map-invert')).toBeChecked();
+      fireEvent.press(screen.getByTestId('import-map-continue'));
+
+      expect(await screen.findByTestId('import-count')).toHaveTextContent('2 transactions');
+      expect(lastMapping()).toEqual({
+        headerRow: 1,
+        date: 0,
+        amount: 2,
+        invertAmounts: true,
+        text: [1],
+      });
+    });
+
+    it('has no such options for separate debit and credit columns', async () => {
+      await mapBasics();
+      fireEvent.press(screen.getByTestId('import-map-amount-kind-split'));
+      expect(screen.queryByTestId('import-map-direction')).toBeNull();
+      expect(screen.queryByTestId('import-map-invert')).toBeNull();
+    });
+  });
+
+  describe('skipped lines', () => {
+    /** The synthetic statement with skipped lines of the reasons D-043 adds. */
+    function withSkipped(): ParsedStatement {
+      const parsed = jest.requireActual('@budget/core').readStatement(utf8(UBS_STATEMENT));
+      const skipped: SkippedRow[] = [
+        { line: 12, reason: 'malformed_row', text: '30.09.2026;Exempla Kiosk;-1,234.50' },
+        { line: 3, reason: 'collective_total', text: 'Sammelauftrag;-150.00' },
+        { line: 13, reason: 'balance_line', text: 'Saldo;1234.56' },
+        { line: 4, reason: 'collective_detail', text: 'Fictiva Versicherung AG;-100.00' },
+      ];
+      return { ...parsed.statement, skipped };
+    }
+
+    it('names the new reasons too', async () => {
+      jest.mocked(readStatement).mockReturnValueOnce({ ok: true, statement: withSkipped() });
+      start();
+      pick('ubs.csv', UBS_STATEMENT);
+      await choose();
+      expect(await screen.findByTestId('import-skipped')).toHaveTextContent(/^4 lines skipped/);
+      expect(screen.getByTestId('import-skipped-reasons')).toHaveTextContent(
+        'Part of a collective payment (the total is imported) (1) · Collective payment (imported as its parts) (1) · Balance or total line (1) · More columns than the header (e.g. an amount like 1,234.50 without quotes) (1)',
+      );
+      fireEvent.press(screen.getByTestId('import-skipped-toggle'));
+      expect(screen.getByTestId('import-skipped-collective_total')).toHaveTextContent(
+        /^Collective payment \(imported as its parts\)Line 3: Sammelauftrag;-150\.00$/,
+      );
+      expect(screen.getByTestId('import-skipped-line-12')).toHaveTextContent(
+        'Line 12: 30.09.2026;Exempla Kiosk;-1,234.50',
+      );
+      expect(screen.getByTestId('import-skipped-balance_line')).toBeOnTheScreen();
+    });
+
+    it('names them in German', async () => {
+      await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, 'de');
+      jest.mocked(readStatement).mockReturnValueOnce({ ok: true, statement: withSkipped() });
+      startImportsApp({
+        url: '/import',
+        profile: { language: 'de' },
+        rpc: { add_transactions: pipeline(UBS_PLANS) },
+      });
+      pick('ubs.csv', UBS_STATEMENT);
+      await choose();
+      expect(await screen.findByTestId('import-skipped-reasons')).toHaveTextContent(
+        'Teil einer Sammelzahlung (der Gesamtbetrag wird importiert) (1) · Sammelzahlung (als einzelne Zahlungen importiert) (1) · Saldo- oder Totalzeile (1) · Mehr Spalten als die Kopfzeile (z. B. ein Betrag wie 1,234.50 ohne Anführungszeichen) (1)',
+      );
+    });
   });
 
   it.each([
@@ -518,7 +705,7 @@ describe('statement import', () => {
         /^1 line skippedNot booked yet \(1\)/,
       );
     }
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose('import-choose-another');
     expect(await screen.findByTestId('import-source')).toHaveTextContent('UBS');
   });
@@ -573,7 +760,7 @@ describe('statement import', () => {
   it('reads the picked copy on a phone and deletes it afterwards', async () => {
     const files = (jest.requireMock('expo-file-system') as { __files: Map<string, Uint8Array> })
       .__files;
-    files.set('file:///cache/DocumentPicker/ubs.csv', utf8(UBS_DE));
+    files.set('file:///cache/DocumentPicker/ubs.csv', utf8(UBS_STATEMENT));
     start();
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce({
       canceled: false,
@@ -600,7 +787,7 @@ describe('statement import', () => {
   it('after onboarding, "Done" goes to Home', async () => {
     start({}, '/import?from=onboarding');
     expect(await screen.findByTestId('import-header-back')).toHaveTextContent('Not now');
-    pick('ubs.csv', UBS_DE);
+    pick('ubs.csv', UBS_STATEMENT);
     await choose();
     fireEvent.press(await screen.findByTestId('import-confirm'));
     fireEvent.press(await screen.findByTestId('import-done'));
@@ -616,7 +803,7 @@ describe('statement import', () => {
   it('shows the reading state while a picked file is parsed', async () => {
     start();
     let release: () => void = () => undefined;
-    const bytes = utf8(UBS_DE);
+    const bytes = utf8(UBS_STATEMENT);
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce({
       canceled: false,
       assets: [

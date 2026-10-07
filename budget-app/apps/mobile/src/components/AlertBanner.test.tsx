@@ -25,6 +25,23 @@ describe('AlertBanner', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
+  it('reads a detail sentence after the message', async () => {
+    await renderWithTheme(
+      <AlertBanner
+        tone="info"
+        message="12 transactions were removed."
+        detail="3 earlier transactions were put back as they were."
+        testID="removed"
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveAccessibleName(
+      '12 transactions were removed. 3 earlier transactions were put back as they were.',
+    );
+    expect(screen.getByTestId('removed-detail')).toHaveTextContent(
+      '3 earlier transactions were put back as they were.',
+    );
+  });
+
   it('interrupts politely for info and warning, assertively for danger', async () => {
     const { rerender } = await renderWithTheme(<AlertBanner tone="info" message="Synced" />);
     expect(screen.getByRole('alert').props.accessibilityLiveRegion).toBe('polite');

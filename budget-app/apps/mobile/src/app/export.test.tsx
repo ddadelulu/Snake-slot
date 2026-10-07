@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { i18n } from '@/i18n';
 import { readEnv } from '@/lib/env';
+import { fakeSession } from '@/test/appHarness';
 import { EXPORT_CSV_LINES_EN, EXPORT_JSON } from '@/test/exportFixture';
 import type { RpcHandler } from '@/test/fakeSupabase';
 import { failed, ok, rpcCalls, startImportsApp } from '@/test/importsFixture';
@@ -20,7 +21,12 @@ jest.mock('expo-sharing', () => ({
   isAvailableAsync: jest.fn(async () => true),
   shareAsync: jest.fn(async () => undefined),
 }));
+/**
+ * The app cache: `__files` is what is there now, `__written` everything ever written (kept after
+ * the export deletes the file again).
+ */
 jest.mock('expo-file-system', () => {
+  const files = new Map<string, string>();
   const written = new Map<string, string>();
   let failWrites = false;
   class MockFile {
@@ -28,16 +34,33 @@ jest.mock('expo-file-system', () => {
     constructor(...parts: (string | { uri: string })[]) {
       this.uri = parts.map((part) => (typeof part === 'string' ? part : part.uri)).join('');
     }
+    get name() {
+      return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+    }
+    get exists() {
+      return files.has(this.uri);
+    }
     create() {
       if (failWrites) throw new Error('disk full');
+      files.set(this.uri, '');
     }
     write(content: string) {
+      files.set(this.uri, content);
       written.set(this.uri, content);
+    }
+    delete() {
+      files.delete(this.uri);
     }
   }
   return {
     File: MockFile,
-    Paths: { cache: { uri: 'file:///cache/' } },
+    Paths: {
+      cache: {
+        uri: 'file:///cache/',
+        list: () => [...files.keys()].map((uri) => new MockFile(uri)),
+      },
+    },
+    __files: files,
     __written: written,
     __failWrites: (fail: boolean) => {
       failWrites = fail;
@@ -47,6 +70,7 @@ jest.mock('expo-file-system', () => {
 
 const fileSystem = () =>
   jest.requireMock('expo-file-system') as {
+    __files: Map<string, string>;
     __written: Map<string, string>;
     __failWrites: (fail: boolean) => void;
   };
@@ -60,6 +84,7 @@ function start(exportMyData: RpcHandler = () => ok(EXPORT_JSON)) {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  fileSystem().__files.clear();
   fileSystem().__written.clear();
   fileSystem().__failWrites(false);
   jest.mocked(readEnv).mockReturnValue({
@@ -95,17 +120,25 @@ describe('export my data', () => {
       UTI: 'public.comma-separated-values-text',
       dialogTitle: 'batzen-transactions-2026-10-07.csv',
     });
+    // Once the share sheet is closed the file is gone from the cache.
+    expect(fileSystem().__files.size).toBe(0);
   });
 
-  it('shares everything as a JSON file', async () => {
+  it('shares everything as a JSON file that names the signed-in account', async () => {
     const fake = start();
+    // An export left from an earlier day goes before the new one is written.
+    fileSystem().__files.set('file:///cache/batzen-data-2026-10-01.json', '{}');
     fireEvent.press(await screen.findByTestId('export-json'));
     expect(await screen.findByTestId('export-done')).toHaveTextContent(
       'batzen-data-2026-10-07.json is ready.',
     );
     expect(rpcCalls(fake, 'export_my_data')).toHaveLength(1);
     const json = fileSystem().__written.get('file:///cache/batzen-data-2026-10-07.json');
-    expect(JSON.parse(json as string)).toEqual(EXPORT_JSON);
+    expect(JSON.parse(json as string)).toEqual({
+      ...EXPORT_JSON,
+      account: { user_id: fakeSession().user.id, email: 'anna@example.ch' },
+    });
+    expect(fileSystem().__files.size).toBe(0);
     expect(Sharing.shareAsync).toHaveBeenCalledWith(
       'file:///cache/batzen-data-2026-10-07.json',
       expect.objectContaining({ mimeType: 'application/json', UTI: 'public.json' }),

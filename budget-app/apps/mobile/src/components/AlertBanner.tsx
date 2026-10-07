@@ -17,6 +17,8 @@ export type AlertBannerProps = {
   tone: AlertTone;
   title?: string;
   message: string;
+  /** A second sentence after the message, e.g. what else happened; testID `${testID}-detail`. */
+  detail?: string;
   testID?: string;
 } & ActionProps &
   DismissProps;
@@ -68,6 +70,7 @@ export function AlertBanner({
   tone,
   title,
   message,
+  detail,
   actionLabel,
   onAction,
   onDismiss,
@@ -75,7 +78,9 @@ export function AlertBanner({
   testID,
 }: AlertBannerProps) {
   const styles = useStyles();
-  const spoken = title ? `${title}. ${message}` : message;
+  const text = title ? `${title}. ${message}` : message;
+  // The detail is a sentence of its own after the message.
+  const spoken = detail === undefined ? text : `${text} ${detail}`;
 
   return (
     <View testID={testID} style={[styles.banner, styles[tone]]}>
@@ -89,6 +94,11 @@ export function AlertBanner({
         >
           {title ? <AppText variant="bodyStrong">{title}</AppText> : null}
           <AppText>{message}</AppText>
+          {detail !== undefined ? (
+            <AppText testID={testID === undefined ? undefined : `${testID}-detail`}>
+              {detail}
+            </AppText>
+          ) : null}
         </View>
         {actionLabel !== undefined && onAction !== undefined ? (
           <Pressable

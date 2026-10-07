@@ -13,7 +13,7 @@ export const importsDe: Widen<typeof importsEn> = {
       howTo:
         'Öffne im E-Banking das Konto, wähle den Zeitraum und exportiere ihn als camt.053 (ISO 20022, XML), wenn möglich, sonst als CSV.',
       privacy:
-        'Die Datei wird auf deinem Handy gelesen; gespeichert werden nur die Buchungen, die du behältst.',
+        'Die Datei wird auf deinem Handy gelesen. Ihre Buchungen werden mit deinem Konto abgeglichen, und nur die, die du behältst, werden gespeichert.',
       limits: 'Bis 5 MB und 2000 Buchungen pro Datei.',
       choose: 'Datei wählen',
       reading: 'Datei wird gelesen…',
@@ -51,6 +51,12 @@ export const importsDe: Widen<typeof importsEn> = {
       amount: 'Betrag',
       debit: 'Belastung (Geld raus)',
       credit: 'Gutschrift (Geld rein)',
+      direction: 'Spalte Belastung/Gutschrift (freiwillig)',
+      directionHint:
+        'Nur wenn eine Spalte sagt, ob Geld raus- oder reinging, z. B. «Belastung» und «Gutschrift» oder «D» und «C». Die Beträge erhalten ihr Vorzeichen dann daraus.',
+      directionNone: 'Keine',
+      invert: 'Einkäufe stehen als positive Beträge',
+      invertHint: 'Schalte das ein, wenn Ausgaben ohne Minus und Eingänge mit Minus stehen.',
       text: 'Beschreibung (eine oder mehrere)',
       missingDate: 'Wähle die Spalte mit dem Datum.',
       missingAmount: 'Wähle die Betragsspalte oder die Spalten für Belastung und Gutschrift.',
@@ -91,6 +97,9 @@ export const importsDe: Widen<typeof importsEn> = {
       mergeUnknown: 'Wird mit einer bestehenden Ausgabe zusammengeführt',
       importedBefore: 'Schon importiert',
       lookAlike: 'Sieht aus wie eine bestehende: {{match}}',
+      lookAlikeByHand: 'Du hast {{amount}} am {{day}} von Hand erfasst',
+      lookAlikeByHandAt: 'Du hast {{amount}} bei {{merchant}} am {{day}} von Hand erfasst',
+      lookAlikeFrom: 'Sieht aus wie eine aus {{source}}: {{match}}',
       lookAlikeHint: 'Wähle sie nur, wenn es ein eigener Einkauf ist.',
       match: '{{merchant}}, {{amount}}, {{day}}',
     },
@@ -104,6 +113,10 @@ export const importsDe: Widen<typeof importsEn> = {
       not_booked: 'Noch nicht gebucht',
       not_chf: 'Nicht in CHF',
       collective_detail: 'Teil einer Sammelzahlung (der Gesamtbetrag wird importiert)',
+      collective_total: 'Sammelzahlung (als einzelne Zahlungen importiert)',
+      balance_line: 'Saldo- oder Totalzeile',
+      malformed_row:
+        'Mehr Spalten als die Kopfzeile (z. B. ein Betrag wie 1,234.50 ohne Anführungszeichen)',
       no_amount: 'Kein Betrag',
       invalid_amount: 'Betrag nicht lesbar',
       zero_amount: 'Betrag null',
@@ -164,7 +177,7 @@ export const importsDe: Widen<typeof importsEn> = {
     sheet: {
       title: 'Diesen Import entfernen?',
       message:
-        'Die Buchungen aus {{name}} werden gelöscht. Ausgaben, die du selbst erfasst hast, bleiben.',
+        'Die Buchungen aus {{name}} werden endgültig gelöscht. Ausgaben, die du selbst erfasst hast, bleiben; was die Datei bei ihnen ergänzt hat, wird rückgängig gemacht.',
       confirm: 'Import entfernen',
       cancel: 'Behalten',
       failed:
@@ -173,6 +186,8 @@ export const importsDe: Widen<typeof importsEn> = {
     },
     removedNotice_one: '{{count}} Buchung aus {{name}} wurde entfernt.',
     removedNotice_other: '{{count}} Buchungen aus {{name}} wurden entfernt.',
+    restoredNotice_one: '{{count}} frühere Buchung wurde wiederhergestellt, wie sie war.',
+    restoredNotice_other: '{{count}} frühere Buchungen wurden wiederhergestellt, wie sie waren.',
   },
   rules: {
     settingsRow: 'Regeln für Kategorien',

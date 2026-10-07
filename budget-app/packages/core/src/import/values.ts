@@ -1,11 +1,24 @@
-import { formatLocalDate, isLocalDate, type LocalDate } from '../engine/dates';
+import { daysBetween, formatLocalDate, isLocalDate, type LocalDate } from '../engine/dates';
 import { parseChf, type Rappen } from '../money';
 
 /** A statement date: the local day, the time when the file states one, and its UTC offset. */
 export type StatementDate = { date: LocalDate; time?: string; offset?: string };
 
+/** How a file writes slash dates (`10/03/2026`): day first (Swiss) or month first (US exports). */
+export type SlashOrder = 'day-first' | 'month-first';
+
+export type StatementDateOptions = {
+  /** The order of slash dates; day first when not given (see `slashOrderOf`). */
+  slashOrder?: SlashOrder;
+  /**
+   * The text is an exact instant (camt `AccptncDtTm`, the moment of a card purchase): with an
+   * offset, a time of midnight is kept instead of being read as "no time".
+   */
+  exactInstant?: boolean;
+};
+
 const DATE_TIME = new RegExp(
-  '^(?:(\\d{4})-(\\d{1,2})-(\\d{1,2})|(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4}|\\d{2}))' +
+  '^(?:(\\d{4})-(\\d{1,2})-(\\d{1,2})|(\\d{1,2})([./-])(\\d{1,2})\\5(\\d{4}|\\d{2}))' +
     '(?:(?:T|\\s+)(\\d{1,2}):(\\d{2})(?::(\\d{2})(?:[.,]\\d+)?)?)?' +
     '\\s*(Z|[+-]\\d{2}:?\\d{2})?$',
   'i',
@@ -14,13 +27,17 @@ const TIME = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?$/;
 
 /**
  * Reads the date formats of Swiss statement files: `30.09.2026`, `30.09.26`, `2026-09-30`,
- * `30/09/2026` and `30-09-2026` (always day before month, the Swiss order), optionally followed by
- * a time `14:23`, `14:23:05` or `00:00:00.0` (Raiffeisen) and an offset `Z` / `+02:00`. Two-digit
+ * `30/09/2026` and `30-09-2026` (day before month, the Swiss order; slash dates month first only
+ * with `slashOrder: 'month-first'`), optionally followed by a time `14:23`, `14:23:05` or
+ * `00:00:00.0` (Raiffeisen) and an offset `Z` / `+02:00`. Both separators must be the same. Two-digit
  * years are 2000-2069 (`26` = 2026) or 1970-1999. The date must exist (no 31.09.). A time of
- * exactly midnight is how exports print "no time" (`2026-09-30 00:00:00.0`), so it is dropped.
- * Returns null for anything else.
+ * exactly midnight is how exports print "no time" (`2026-09-30 00:00:00.0`), so it is dropped,
+ * unless `exactInstant` is set and the text states an offset. Returns null for anything else.
  */
-export function parseStatementDate(text: string): StatementDate | null {
+export function parseStatementDate(
+  text: string,
+  options: StatementDateOptions = {},
+): StatementDate | null {
   const match = DATE_TIME.exec(text.trim());
   if (match === null) return null;
   let year: number;
@@ -31,23 +48,81 @@ export function parseStatementDate(text: string): StatementDate | null {
     month = Number(match[2]);
     day = Number(match[3]);
   } else {
-    const yearText = match[6] as string;
+    const yearText = match[7] as string;
     year = Number(yearText);
     if (yearText.length === 2) year += year < 70 ? 2000 : 1900;
-    month = Number(match[5]);
-    day = Number(match[4]);
+    const monthFirst = match[5] === '/' && options.slashOrder === 'month-first';
+    month = Number(monthFirst ? match[4] : match[6]);
+    day = Number(monthFirst ? match[6] : match[4]);
   }
   const date = formatLocalDate({ year, month, day });
   if (!isLocalDate(date)) return null;
-  if (match[7] === undefined) return { date };
-  const time = clockTime(match[7], match[8] as string, match[9]);
+  if (match[8] === undefined) return { date };
+  const offset = match[11];
+  const keepMidnight = options.exactInstant === true && offset !== undefined;
+  const time = clockTime(match[8], match[9] as string, match[10], keepMidnight);
   if (time === null) return null;
   if (time === '') return { date };
-  const offset = match[10];
   if (offset === undefined) return { date, time };
   const normalized =
     offset.toUpperCase() === 'Z' ? 'Z' : `${offset.slice(0, 3)}:${offset.slice(-2)}`;
   return { date, time, offset: normalized };
+}
+
+const SLASH_DATE = /^(\d{1,2})\/(\d{1,2})\/(?:\d{4}|\d{2})(?!\d)/;
+
+/**
+ * The order of the slash dates in one date column: day first as soon as a first part is above 12
+ * (`31/10/2026`), else month first when a second part is above 12 (`10/31/2026`, US exports),
+ * else day first, the Swiss order. Cells in other formats do not count.
+ */
+export function slashOrderOf(cells: Iterable<string>): SlashOrder {
+  let monthFirst = false;
+  for (const cell of cells) {
+    const match = SLASH_DATE.exec(cell.trim());
+    if (match === null) continue;
+    if (Number(match[1]) > 12) return 'day-first';
+    if (Number(match[2]) > 12) monthFirst = true;
+  }
+  return monthFirst ? 'month-first' : 'day-first';
+}
+
+/**
+ * Card, Twint and cash-withdrawal texts that state the day of the purchase: "Einkauf vom
+ * 02.10.2026", "KAUF/DIENSTLEISTUNG VOM 02.10.2026", "Achat du …", "Acquisto del …", "Purchase
+ * of …", "Bargeldbezug vom …". Up to two words may stand between the keyword and the preposition
+ * ("Retrait d'espèces du …"); every part is bounded, so the match stays linear.
+ */
+const PURCHASE_DATE = new RegExp(
+  '(?:^|[^a-z])(?:einkauf|kauf|achat|acquisto|purchase|bargeldbezug|retrait|prelevamento|withdrawal)' +
+    "(?:[/ ][a-z\\u00e0-\\u00ff'\u2019]{1,30}){0,2} (?:vom|du|del|of|on) " +
+    '(\\d{4}-\\d{1,2}-\\d{1,2}|\\d{1,2}([./])\\d{1,2}\\2(?:\\d{4}|\\d{2}))(?!\\d)',
+);
+/** A purchase date further back than this is not the purchase of this booking. */
+const PURCHASE_WINDOW_DAYS = 31;
+/** The purchase phrase comes first; only this much of each text is searched. */
+const PURCHASE_TEXT_MAX_LENGTH = 1000;
+
+/**
+ * The day of purchase a booking text states (see PURCHASE_DATE), when it is on or before the
+ * booking day and at most 31 days earlier; null otherwise (D-043). Used when a file has no
+ * purchase-date column, so a card purchase is dated as in camt.053 (`AccptncDtTm`). The first text
+ * with such a phrase decides.
+ */
+export function purchaseDateIn(
+  texts: readonly string[],
+  booked: LocalDate,
+  slashOrder: SlashOrder = 'day-first',
+): LocalDate | null {
+  for (const text of texts) {
+    const match = PURCHASE_DATE.exec(text.slice(0, PURCHASE_TEXT_MAX_LENGTH).toLowerCase());
+    if (match === null) continue;
+    const purchase = parseStatementDate(match[1] as string, { slashOrder });
+    if (purchase === null) return null;
+    const days = daysBetween(purchase.date, booked);
+    return days >= 0 && days <= PURCHASE_WINDOW_DAYS ? purchase.date : null;
+  }
+  return null;
 }
 
 /**
@@ -61,12 +136,17 @@ export function parseStatementTime(text: string): string | null {
   return match === null ? null : clockTime(match[1] as string, match[2] as string, match[3]);
 }
 
-function clockTime(hours: string, minutes: string, seconds: string | undefined): string | null {
+function clockTime(
+  hours: string,
+  minutes: string,
+  seconds: string | undefined,
+  keepMidnight = false,
+): string | null {
   const h = Number(hours);
   const m = Number(minutes);
   const s = seconds === undefined ? 0 : Number(seconds);
   if (h > 23 || m > 59 || s > 59) return null;
-  if (h === 0 && m === 0 && s === 0) return '';
+  if (h === 0 && m === 0 && s === 0 && !keepMidnight) return '';
   const hm = `${String(h).padStart(2, '0')}:${minutes}`;
   return seconds === undefined ? hm : `${hm}:${seconds}`;
 }
@@ -168,4 +248,101 @@ const IBAN = /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/;
 export function ibanIn(text: string): string | null {
   const compact = text.replace(/\s/g, '').toUpperCase();
   return IBAN.test(compact) ? compact : null;
+}
+
+const FOLD = new Map<string, string>();
+for (const [letters, plain] of [
+  ['àáâãäå', 'a'],
+  ['ç', 'c'],
+  ['èéêë', 'e'],
+  ['ìíîï', 'i'],
+  ['ñ', 'n'],
+  ['òóôõöø', 'o'],
+  ['ùúûü', 'u'],
+  ['ýÿ', 'y'],
+  ['ß', 'ss'],
+  ['æ', 'ae'],
+  ['œ', 'oe'],
+] as const) {
+  for (const letter of letters) FOLD.set(letter, plain);
+}
+
+/**
+ * Compact key of a column name or marker: lower case, accents folded, no spaces or punctuation
+ * ("Transaktions-Nr." → "transaktionsnr", "Data dell'operazione" → "datadelloperazione",
+ * "Débit" → "debit").
+ */
+export function compactKey(text: string): string {
+  let folded = '';
+  for (const char of text.toLowerCase()) folded += FOLD.get(char) ?? char;
+  return folded.replace(/[^a-z0-9]/g, '');
+}
+
+const CHF = /^(?:chf|s?fr)\.?$/i;
+
+/** True for the ways Swiss files write francs in a currency cell: "CHF", "Fr.", "SFr." (any case). */
+export function isChf(code: string): boolean {
+  return CHF.test(code.trim());
+}
+
+/** Debit/credit markers (as compact keys): money out. */
+const MONEY_OUT = new Set([
+  's',
+  'd',
+  'dr',
+  'debit',
+  'soll',
+  'belastung',
+  'lastschrift',
+  'dbit',
+  'addebito',
+  'dare',
+]);
+/** Debit/credit markers (as compact keys): money in. */
+const MONEY_IN = new Set([
+  'h',
+  'c',
+  'cr',
+  'credit',
+  'haben',
+  'gutschrift',
+  'crdt',
+  'accredito',
+  'avere',
+]);
+
+/**
+ * The sign a debit/credit marker gives an amount: -1 for money out (S, D, DR, Debit, Soll,
+ * Belastung, Lastschrift, DBIT, Débit, Addebito, Dare), 1 for money in (H, C, CR, Credit, Haben,
+ * Gutschrift, CRDT, Crédit, Accredito, Avere), 0 for an empty cell and null for anything else.
+ * Case, accents and punctuation do not matter ("d.", "CRÉDIT").
+ */
+export function directionSign(marker: string): -1 | 0 | 1 | null {
+  const key = compactKey(marker);
+  if (key === '') return 0;
+  if (MONEY_OUT.has(key)) return -1;
+  return MONEY_IN.has(key) ? 1 : null;
+}
+
+/**
+ * Balance and total labels, as compact keys, optionally followed by a currency or by a date with
+ * or without a preposition ("Schlusssaldo per 30.09.2026", "Saldo CHF", "Total:").
+ */
+const BALANCE_LABEL = new RegExp(
+  '^(?:(?:anfangs|schluss|end|eroffnungs|alter|neuer)?saldo(?:vortrag)?|kontostand|' +
+    '(?:gesamt)?(?:total|summe)|totale|' +
+    '(?:opening|closing|starting|ending|final|new|old|available)?balance|' +
+    'solde(?:initial|final|douverture|decloture|nouveau|ancien|precedent)?|' +
+    'saldo(?:iniziale|finale|precedente|contabile|disponibile))' +
+    '(?:chf)?(?:(?:per|am|vom|zum|au|du|al|del|on|at|asof)?\\d{6,8})?(?:chf)?$',
+);
+
+/**
+ * True when a text is only a balance or total label ("Saldo", "Anfangssaldo", "Schlusssaldo",
+ * "Kontostand", "Total", "Summe", "Balance", "Opening/Closing balance", "Solde", "Saldo
+ * iniziale/finale", "Totale"), possibly with a currency or a date: a line with such a text is not
+ * a booking.
+ */
+export function isBalanceLabel(text: string): boolean {
+  return text.length <= 60 && BALANCE_LABEL.test(compactKey(text));
 }

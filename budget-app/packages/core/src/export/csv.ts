@@ -8,12 +8,14 @@ const DELIMITER = ';';
 const LINE_END = '\r\n';
 /** A plain decimal number ("-23.40", "1234"): Excel reads it as a number, never as a formula. */
 const PLAIN_NUMBER = /^-?\d+(?:\.\d+)?$/;
-const FORMULA_START = /^[=+\-@\t\r]/;
+/** A formula character at the start of a cell, also after leading spaces (" =1+1"). */
+const FORMULA_START = /^ *[=+\-@\t\r]/;
 /**
- * A formula character right after a comma, tab or line break inside a text: Excel with a comma
- * list separator (English regional settings) would start a new cell there.
+ * A formula character right after a comma, tab or line break inside a text, also with spaces in
+ * between (", =1+1"): Excel with a comma list separator (English regional settings) would start a
+ * new cell there, and spreadsheets trim the spaces.
  */
-const FORMULA_AFTER_SEPARATOR = /([,\t\r\n])([=+\-@])/g;
+const FORMULA_AFTER_SEPARATOR = /([,\t\r\n] *)([=+\-@])/g;
 const NEEDS_QUOTES = /[;"\r\n]|^\s|\s$/;
 
 /**
@@ -21,11 +23,12 @@ const NEEDS_QUOTES = /[;"\r\n]|^\s|\s$/;
  * Excel by double-click: UTF-8 with a BOM (umlauts survive), `;` as delimiter (Excel's list
  * separator in de-CH), CRLF line ends. Fields with `;`, quotes, line breaks or leading/trailing
  * spaces are quoted, quotes doubled. Against CSV formula injection (a merchant named
- * `=HYPERLINK(…)`), text cells starting with `=`, `+`, `-`, `@`, tab or CR get a leading
- * apostrophe, which Excel shows as text, and so does such a character after a comma, tab or line
- * break inside a text (where Excel with a comma list separator would start a new cell); numbers,
- * and strings that are plain decimal numbers such as `formatCsvAmount` returns, are written as
- * they are. `null` is an empty cell.
+ * `=HYPERLINK(…)`), text cells starting with `=`, `+`, `-`, `@`, tab or CR (also after leading
+ * spaces) get a leading apostrophe, which Excel shows as text, and such a character after a comma,
+ * tab or line break inside a text, also after spaces (where Excel with a comma list separator
+ * would start a new cell, "Essen, -20%" or a note's "\n- Milch"), gets an apostrophe right before
+ * it. Nothing else in the text changes. Numbers, and strings that are plain decimal numbers such
+ * as `formatCsvAmount` returns, are written as they are. `null` is an empty cell.
  */
 export function toCsv(headers: readonly string[], rows: readonly (readonly CsvCell[])[]): string {
   return (

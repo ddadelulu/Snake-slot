@@ -75,8 +75,20 @@ export type DataSourceStatus = (typeof DATA_SOURCE_STATUSES)[number];
 export const TRANSACTION_SOURCES = [...DATA_SOURCE_KINDS, 'manual', 'assistant'] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
-/** Spec section 7: categorization order is user rules, known merchants, MCC, AI guess. */
-export const CATEGORIZED_BY = ['none', 'user', 'rule', 'merchant_list', 'mcc', 'ai'] as const;
+/**
+ * Spec section 7: categorization order is user rules, known merchants, MCC, AI guess. Money in is
+ * never placed by those; `refund` is the category of the purchase it returns, as a guess that is
+ * asked about (D-039).
+ */
+export const CATEGORIZED_BY = [
+  'none',
+  'user',
+  'rule',
+  'merchant_list',
+  'mcc',
+  'ai',
+  'refund',
+] as const;
 export type CategorizedBy = (typeof CATEGORIZED_BY)[number];
 
 /**

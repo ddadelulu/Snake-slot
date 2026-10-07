@@ -35,6 +35,20 @@ describe('parseOverview', () => {
     });
   });
 
+  it('reads money in guessed as a refund (D-039)', () => {
+    const json = clone();
+    Object.assign(json.recent_transactions[0]!, {
+      amount_rappen: 5000,
+      categorized_by: 'refund',
+      needs_review: true,
+    });
+    expect(parseOverview(json)?.recentTransactions[0]).toMatchObject({
+      amountRappen: 5000,
+      categorizedBy: 'refund',
+      needsReview: true,
+    });
+  });
+
   it('returns null when there is no month yet', () => {
     expect(parseOverview(null)).toBeNull();
     expect(parseOverview(undefined)).toBeNull();

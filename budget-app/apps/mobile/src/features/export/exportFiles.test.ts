@@ -10,6 +10,7 @@ import {
   exportFileName,
   exportTimeZone,
   formatMinorAmount,
+  isExportFileName,
   transactionsCsv,
 } from './exportFiles';
 
@@ -101,6 +102,23 @@ describe('files', () => {
     expect(exportFileName('data', '2026-10-07')).toBe('batzen-data-2026-10-07.json');
   });
 
+  it('recognises its own export files, of any day, and nothing else', () => {
+    expect(isExportFileName('batzen-transactions-2026-10-07.csv')).toBe(true);
+    expect(isExportFileName('batzen-data-2025-01-31.json')).toBe(true);
+    for (const name of [
+      'batzen-transactions-2026-10-07.json',
+      'batzen-data-2026-10-07.csv',
+      'batzen-notes.txt',
+      'batzen-transactions-latest.csv',
+      'konto-batzen-data-2026-10-07.json',
+      'batzen-data-2026-10-07.json.tmp',
+      'batzen-data-2026-10-07xjson',
+      'ubs.csv',
+    ]) {
+      expect({ name, export: isExportFileName(name) }).toEqual({ name, export: false });
+    }
+  });
+
   it('takes the time zone from the profile', () => {
     expect(exportTimeZone(data, 'UTC')).toBe('Europe/Zurich');
     expect(exportTimeZone({ ...data, profile: null }, 'UTC')).toBe('UTC');
@@ -135,5 +153,44 @@ describe('files', () => {
     expect(JSON.parse(file.content)).toEqual(EXPORT_JSON);
     expect(file.content).toBe(dataJson(data));
     expect(file.content).toContain('\n  "format_version": 1,\n');
+  });
+
+  it('names the signed-in account in the JSON file, right after the format fields', () => {
+    const account = { userId: 'u-anna', email: 'anna@example.ch' };
+    const file = buildExportFile('data', data, {
+      t: i18n.t,
+      timeZone: 'UTC',
+      now: new Date('2026-10-07T08:00:00Z'),
+      account,
+    });
+    const content = JSON.parse(file.content) as Record<string, unknown>;
+    expect(content).toEqual({
+      ...EXPORT_JSON,
+      account: { user_id: 'u-anna', email: 'anna@example.ch' },
+    });
+    expect(Object.keys(content).slice(0, 4)).toEqual([
+      'format_version',
+      'exported_at',
+      'account',
+      'profile',
+    ]);
+    expect(file.content).toBe(dataJson(data, account));
+    // The session's account wins over anything the server might send under that name.
+    expect(
+      JSON.parse(dataJson({ ...data, account: { user_id: 'other' } }, account)).account,
+    ).toEqual({ user_id: 'u-anna', email: 'anna@example.ch' });
+    expect(JSON.parse(dataJson(data, { userId: 'u-anna', email: null })).account).toEqual({
+      user_id: 'u-anna',
+      email: null,
+    });
+  });
+
+  it('leaves the CSV without account details', () => {
+    const file = buildExportFile('transactions', data, {
+      t: i18n.t,
+      timeZone: 'UTC',
+      account: { userId: 'u-anna', email: 'anna@example.ch' },
+    });
+    expect(file.content).not.toContain('anna@example.ch');
   });
 });

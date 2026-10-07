@@ -12,7 +12,8 @@ export const importsEn = {
         'Bring in your card, TWINT and e-banking payments with the file your e-banking exports: camt.053 (also called ISO 20022 or XML) or CSV.',
       howTo:
         'In your e-banking, open the account, choose the period and export it as camt.053 (ISO 20022, XML) if offered, otherwise as CSV.',
-      privacy: 'The file is read on your phone; only the transactions you keep are saved.',
+      privacy:
+        'The file is read on your phone. Its transactions are checked against your account, and only the ones you keep are saved.',
       limits: 'Up to 5 MB and 2,000 transactions per file.',
       choose: 'Choose file',
       reading: 'Reading the file…',
@@ -47,6 +48,12 @@ export const importsEn = {
       amount: 'Amount',
       debit: 'Debit (money out)',
       credit: 'Credit (money in)',
+      direction: 'Debit/credit column (optional)',
+      directionHint:
+        'Only if a column says whether money went out or came in, e.g. “Debit” and “Credit” or “D” and “C”. The amounts get their sign from it.',
+      directionNone: 'None',
+      invert: 'Purchases are shown as positive amounts',
+      invertHint: 'Turn this on if spending has no minus sign and money in has one.',
       text: 'Description (pick one or more)',
       missingDate: 'Choose the column with the date.',
       missingAmount: 'Choose the amount column, or the debit and credit columns.',
@@ -86,6 +93,9 @@ export const importsEn = {
       mergeUnknown: 'Merges with a transaction you already have',
       importedBefore: 'Imported before',
       lookAlike: 'Looks like one you have: {{match}}',
+      lookAlikeByHand: 'You added {{amount}} by hand on {{day}}',
+      lookAlikeByHandAt: 'You added {{amount}} at {{merchant}} by hand on {{day}}',
+      lookAlikeFrom: 'Looks like one from {{source}}: {{match}}',
       lookAlikeHint: 'Check it only if it is a separate purchase.',
       match: '{{merchant}}, {{amount}}, {{day}}',
     },
@@ -99,6 +109,9 @@ export const importsEn = {
       not_booked: 'Not booked yet',
       not_chf: 'Not in CHF',
       collective_detail: 'Part of a collective payment (the total is imported)',
+      collective_total: 'Collective payment (imported as its parts)',
+      balance_line: 'Balance or total line',
+      malformed_row: 'More columns than the header (e.g. an amount like 1,234.50 without quotes)',
       no_amount: 'No amount',
       invalid_amount: 'Amount not readable',
       zero_amount: 'Amount of zero',
@@ -157,7 +170,7 @@ export const importsEn = {
     sheet: {
       title: 'Remove this import?',
       message:
-        'The transactions that came from {{name}} are deleted. Transactions you typed in yourself stay.',
+        'The transactions that came from {{name}} are deleted for good. Transactions you typed in yourself stay; what the file added to them is undone.',
       confirm: 'Remove import',
       cancel: 'Keep it',
       failed: 'The import could not be removed. Check your connection and try again.',
@@ -165,6 +178,8 @@ export const importsEn = {
     },
     removedNotice_one: '{{count}} transaction from {{name}} was removed.',
     removedNotice_other: '{{count}} transactions from {{name}} were removed.',
+    restoredNotice_one: '{{count}} earlier transaction was put back as it was.',
+    restoredNotice_other: '{{count}} earlier transactions were put back as they were.',
   },
   rules: {
     settingsRow: 'Categorization rules',

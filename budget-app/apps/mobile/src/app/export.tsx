@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { AlertBanner, AppText, Card, PrimaryButton, Screen, ScreenHeader } from '@/components';
 import { fetchMyData, type MyDataExport } from '@/data/exportData';
 import { useProfile } from '@/data/profile';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { SharingUnavailableError, deliverFile, type Delivery } from '@/features/export/deliverFile';
 import { buildExportFile, type ExportKind } from '@/features/export/exportFiles';
 import { deviceTimeZone } from '@/i18n/format';
@@ -26,13 +27,15 @@ type Status =
 
 /**
  * Settings → Export my data (US-3.5, D-034): the transactions as a CSV file that opens in Excel,
- * or everything stored about the person as JSON (revDSG art. 28, GDPR art. 20). Each export
- * reads `export_my_data` once, then shares (phones) or downloads (web) the file.
+ * or everything stored about the person as JSON (revDSG art. 28, GDPR art. 20), which also names
+ * the signed-in account (user id and email from the session). Each export reads
+ * `export_my_data` once, then shares (phones) or downloads (web) the file.
  */
 export default function ExportScreen() {
   const { t } = useTranslation();
   const styles = useStyles();
   const profile = useProfile();
+  const { user } = useAuth();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const working = status.kind === 'working';
 
@@ -49,6 +52,7 @@ export default function ExportScreen() {
       const file = buildExportFile(kind, data, {
         t,
         timeZone: profile.data?.timezone ?? deviceTimeZone(),
+        account: user ? { userId: user.id, email: user.email ?? null } : null,
       });
       const delivery = await deliverFile(file);
       setStatus({ kind: 'done', file: file.name, delivery });
