@@ -9,7 +9,8 @@ export function uniqueEmail(label: string): string {
 
 /**
  * Creates an account. By default it also runs through the questionnaire on the quickest path
- * (income CHF 5'000, payday the 1st, everything else as suggested) and ends on Home.
+ * (income CHF 5'000, payday the 1st, everything else as suggested, no statement import after
+ * setup) and ends on Home.
  */
 export async function signUp(
   page: Page,
@@ -35,6 +36,8 @@ export async function quickOnboarding(page: Page) {
   await next(page, 'payment');
   await skip(page, 'pain');
   await next(page, 'notifications');
+  await skip(page, 'sources');
+  // Skipping step 9 means no statement import right after setup: "Start my month" leads Home.
   await skip(page, 'summary');
   await page.getByTestId('onboarding-continue').filter({ visible: true }).click();
   await expect(page.getByTestId('home-balance')).toBeVisible();

@@ -53,7 +53,7 @@ type TransactionItem = {
   created_at: string;
 };
 
-type Page = { items: TransactionItem[]; next_cursor: string | null };
+type Page = { items: TransactionItem[]; next_cursor: { booked_at: string; id: string } | null };
 
 type UpdateResult = {
   transaction: TransactionItem;
@@ -222,8 +222,18 @@ describe('list_transactions() and get_transaction()', () => {
         original_currency: 'EUR',
         items: [{ description: 'Brot', amount_rappen: -500, quantity: 2 }],
         splits: [
-          { id: expect.any(String) as string, category_id: cat.groceries ?? null, amount_rappen: -7_000, note: 'Essen' },
-          { id: expect.any(String) as string, category_id: cat.hobbies ?? null, amount_rappen: -3_000, note: null },
+          {
+            id: expect.any(String) as string,
+            category_id: cat.groceries ?? null,
+            amount_rappen: -7_000,
+            note: 'Essen',
+          },
+          {
+            id: expect.any(String) as string,
+            category_id: cat.hobbies ?? null,
+            amount_rappen: -3_000,
+            note: null,
+          },
         ],
         merged_sources: ['manual'],
         needs_review: false,
@@ -241,7 +251,10 @@ describe('list_transactions() and get_transaction()', () => {
       const { user } = await onboardedUser(db);
       const older = await make.transaction(db, user, { booked_at: '2026-10-01T10:00:00Z' });
       const newer = await make.transaction(db, user, { booked_at: '2026-10-02T10:00:00Z' });
-      await make.transaction(db, user, { booked_at: '2026-10-03T10:00:00Z', deleted_at: '2026-10-04T00:00:00Z' });
+      await make.transaction(db, user, {
+        booked_at: '2026-10-03T10:00:00Z',
+        deleted_at: '2026-10-04T00:00:00Z',
+      });
       await make.transaction(db, user, {
         booked_at: '2026-10-03T10:00:00Z',
         merged_into_id: older,
@@ -256,7 +269,10 @@ describe('list_transactions() and get_transaction()', () => {
       const { user } = await onboardedUser(db);
       const { user: other } = await onboardedUser(db);
       const survivor = await make.transaction(db, user);
-      const merged = await make.transaction(db, user, { merged_into_id: survivor, source: 'statement_import' });
+      const merged = await make.transaction(db, user, {
+        merged_into_id: survivor,
+        source: 'statement_import',
+      });
       const deleted = await make.transaction(db, user, { deleted_at: '2026-10-04T08:00:00Z' });
       const ofOther = await make.transaction(db, other);
       expect(await getTransaction(db, user, deleted)).toMatchObject({
@@ -267,7 +283,9 @@ describe('list_transactions() and get_transaction()', () => {
       expect(await getTransaction(db, user, merged)).toBeNull();
       expect(await getTransaction(db, user, randomUUID())).toBeNull();
       expect(await getTransaction(db, user, ofOther)).toBeNull();
-      expect((await getTransaction(db, user, survivor))?.merged_sources).toEqual(['statement_import']);
+      expect((await getTransaction(db, user, survivor))?.merged_sources).toEqual([
+        'statement_import',
+      ]);
     });
   });
 
@@ -286,12 +304,19 @@ describe('list_transactions() and get_transaction()', () => {
   it('need a signed-in user (42501); anon cannot call them', async () => {
     await withRollback(async (db) => {
       await asAuthenticatedWithoutUser(db);
-      for (const sql of [`select public.list_transactions('{}')`, 'select public.get_transaction(gen_random_uuid())']) {
+      for (const sql of [
+        `select public.list_transactions('{}')`,
+        'select public.get_transaction(gen_random_uuid())',
+      ]) {
         const error = await expectSqlError(db, SQLSTATE.insufficientPrivilege, sql);
         expect(error.message).toBe('not signed in');
       }
       await asAnon(db);
-      await expectSqlError(db, SQLSTATE.insufficientPrivilege, `select public.list_transactions('{}')`);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        `select public.list_transactions('{}')`,
+      );
     });
   });
 });
@@ -300,9 +325,20 @@ describe('list_transactions() filters', () => {
   it('search: merchant, note or statement text, case-insensitive', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const byMerchant = await make.transaction(db, user, { merchant: 'Bäckerei Hug', booked_at: '2026-10-03T10:00:00Z' });
-      const byNote = await make.transaction(db, user, { merchant: 'X', note: 'Zopf für Sonntag', booked_at: '2026-10-02T10:00:00Z' });
-      const byRaw = await make.transaction(db, user, { merchant: null, raw_text: 'KAUF ZOPFMAN', booked_at: '2026-10-01T10:00:00Z' });
+      const byMerchant = await make.transaction(db, user, {
+        merchant: 'Bäckerei Hug',
+        booked_at: '2026-10-03T10:00:00Z',
+      });
+      const byNote = await make.transaction(db, user, {
+        merchant: 'X',
+        note: 'Zopf für Sonntag',
+        booked_at: '2026-10-02T10:00:00Z',
+      });
+      const byRaw = await make.transaction(db, user, {
+        merchant: null,
+        raw_text: 'KAUF ZOPFMAN',
+        booked_at: '2026-10-01T10:00:00Z',
+      });
       await make.transaction(db, user, { merchant: 'Migros' });
       expect(ids(await list(db, user, { search: 'ZOPF' }))).toEqual([byNote, byRaw]);
       expect(ids(await list(db, user, { search: 'bäckerei' }))).toEqual([byMerchant]);
@@ -315,10 +351,22 @@ describe('list_transactions() filters', () => {
   it('search: % and _ and \\ match themselves', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const percent = await make.transaction(db, user, { merchant: '100% Bio', booked_at: '2026-10-05T10:00:00Z' });
-      const underscore = await make.transaction(db, user, { merchant: 'A_B Shop', booked_at: '2026-10-04T10:00:00Z' });
-      const backslash = await make.transaction(db, user, { merchant: 'C\\D', booked_at: '2026-10-03T10:00:00Z' });
-      await make.transaction(db, user, { merchant: 'AxB Shop 100 Bio', booked_at: '2026-10-02T10:00:00Z' });
+      const percent = await make.transaction(db, user, {
+        merchant: '100% Bio',
+        booked_at: '2026-10-05T10:00:00Z',
+      });
+      const underscore = await make.transaction(db, user, {
+        merchant: 'A_B Shop',
+        booked_at: '2026-10-04T10:00:00Z',
+      });
+      const backslash = await make.transaction(db, user, {
+        merchant: 'C\\D',
+        booked_at: '2026-10-03T10:00:00Z',
+      });
+      await make.transaction(db, user, {
+        merchant: 'AxB Shop 100 Bio',
+        booked_at: '2026-10-02T10:00:00Z',
+      });
       expect(ids(await list(db, user, { search: '%' }))).toEqual([percent]);
       expect(ids(await list(db, user, { search: '0% B' }))).toEqual([percent]);
       expect(ids(await list(db, user, { search: '_' }))).toEqual([underscore]);
@@ -333,29 +381,38 @@ describe('list_transactions() filters', () => {
       const { user, ids: cat } = await onboardedUser(db);
       const rent = await make.fixedCost(db, user);
       const at = (day: number) => `2026-10-${String(day).padStart(2, '0')}T10:00:00Z`;
-      const groceries = await make.transaction(db, user, { category_id: cat.groceries, booked_at: at(9) });
-      const clothes = await make.transaction(db, user, { category_id: cat.clothes, booked_at: at(8) });
+      const groceries = await make.transaction(db, user, {
+        category_id: cat.groceries,
+        booked_at: at(9),
+      });
+      const clothes = await make.transaction(db, user, {
+        category_id: cat.clothes,
+        booked_at: at(8),
+      });
       const none = await make.transaction(db, user, { booked_at: at(7) });
       const fixed = await make.transaction(db, user, { fixed_cost_id: rent, booked_at: at(6) });
       const split = await make.transaction(db, user, { amount_rappen: -1_000, booked_at: at(5) });
       await make.split(db, user, split, -600, { category_id: cat.groceries });
       await make.split(db, user, split, -400);
-      const splitCategorized = await make.transaction(db, user, { amount_rappen: -1_000, booked_at: at(4) });
+      const splitCategorized = await make.transaction(db, user, {
+        amount_rappen: -1_000,
+        booked_at: at(4),
+      });
       await make.split(db, user, splitCategorized, -500, { category_id: cat.hobbies });
       await make.split(db, user, splitCategorized, -500, { category_id: cat.clothes });
       await runDeferredChecks(db);
-      expect(ids(await list(db, user, { category_ids: [cat.groceries] }))).toEqual([groceries, split]);
+      expect(ids(await list(db, user, { category_ids: [cat.groceries] }))).toEqual([
+        groceries,
+        split,
+      ]);
       expect(ids(await list(db, user, { category_ids: [cat.clothes, cat.hobbies] }))).toEqual([
         clothes,
         splitCategorized,
       ]);
       expect(ids(await list(db, user, { uncategorized: true }))).toEqual([none, split]);
-      expect(ids(await list(db, user, { category_ids: [cat.clothes], uncategorized: true }))).toEqual([
-        clothes,
-        none,
-        split,
-        splitCategorized,
-      ]);
+      expect(
+        ids(await list(db, user, { category_ids: [cat.clothes], uncategorized: true })),
+      ).toEqual([clothes, none, split, splitCategorized]);
       expect(ids(await list(db, user, { uncategorized: false, category_ids: [] }))).toEqual([
         groceries,
         clothes,
@@ -378,11 +435,19 @@ describe('list_transactions() filters', () => {
         categorized_by: 'merchant_list',
         category_confidence: 90,
       });
-      const bank = await make.transaction(db, user, { source: 'bank', booked_at: '2026-10-01T10:00:00Z' });
-      expect(ids(await list(db, user, { sources: ['statement_import', 'bank'] }))).toEqual([imported, bank]);
+      const bank = await make.transaction(db, user, {
+        source: 'bank',
+        booked_at: '2026-10-01T10:00:00Z',
+      });
+      expect(ids(await list(db, user, { sources: ['statement_import', 'bank'] }))).toEqual([
+        imported,
+        bank,
+      ]);
       expect(ids(await list(db, user, { needs_review: true }))).toEqual([manual, bank]);
       expect(ids(await list(db, user, { needs_review: false }))).toEqual([imported]);
-      expect(ids(await list(db, user, { sources: ['manual'], needs_review: true }))).toEqual([manual]);
+      expect(ids(await list(db, user, { sources: ['manual'], needs_review: true }))).toEqual([
+        manual,
+      ]);
     });
   });
 
@@ -394,7 +459,10 @@ describe('list_transactions() filters', () => {
       const first = await t('2026-09-30T22:00:00Z'); // 00:00 on 1 Oct
       const last = await t('2026-10-02T21:59:59Z'); // 23:59:59 on 2 Oct
       await t('2026-10-02T22:00:00Z'); // 3 Oct
-      expect(ids(await list(db, user, { from: '2026-10-01', to: '2026-10-02' }))).toEqual([last, first]);
+      expect(ids(await list(db, user, { from: '2026-10-01', to: '2026-10-02' }))).toEqual([
+        last,
+        first,
+      ]);
       expect(ids(await list(db, user, { from: '2026-10-02', to: '2026-10-01' }))).toEqual([]);
     });
   });
@@ -424,8 +492,18 @@ describe('list_transactions() filters', () => {
     ['limit 0', { limit: 0 }],
     ['limit 101', { limit: 101 }],
     ['limit 2.5', { limit: 2.5 }],
-    ['a cursor that is not one', { cursor: 'page-2' }],
-    ['a cursor with an invalid time', { cursor: `2026-13-01T00:00:00.000000Z|${randomUUID()}` }],
+    ['a cursor that is text', { cursor: `2026-10-01T00:00:00.000000Z|${randomUUID()}` }],
+    [
+      'a cursor with an invalid time',
+      { cursor: { booked_at: '2026-13-01T00:00:00Z', id: randomUUID() } },
+    ],
+    ['a cursor without offset', { cursor: { booked_at: '2026-10-01T00:00:00', id: randomUUID() } }],
+    ['a cursor without id', { cursor: { booked_at: '2026-10-01T00:00:00Z' } }],
+    ['a cursor with an invalid id', { cursor: { booked_at: '2026-10-01T00:00:00Z', id: '42' } }],
+    [
+      'a cursor with another key',
+      { cursor: { booked_at: '2026-10-01T00:00:00Z', id: randomUUID(), page: 2 } },
+    ],
   ])('%s → 22023 invalid_input', async (_label, filters) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
@@ -439,11 +517,17 @@ describe('list_transactions() pages', () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       for (let i = 0; i < 51; i += 1) {
-        await make.transaction(db, user, { booked_at: `2026-09-01T10:${String(i).padStart(2, '0')}:00Z` });
+        await make.transaction(db, user, {
+          booked_at: `2026-09-01T10:${String(i).padStart(2, '0')}:00Z`,
+        });
       }
       const page = await list(db, user);
       expect(page.items).toHaveLength(50);
-      expect(page.next_cursor).toEqual(expect.any(String));
+      // The keyset of the last item: its booking time in UTC and its id.
+      expect(page.next_cursor).toEqual({
+        booked_at: page.items[49]?.booked_at,
+        id: page.items[49]?.id,
+      });
       expect((await list(db, user, { limit: 100 })).items).toHaveLength(51);
       expect((await list(db, user, { limit: 100 })).next_cursor).toBeNull();
     });
@@ -552,7 +636,13 @@ describe('update_transaction(): category', () => {
               ? await make.category(db, user, { name: 'Alt', archived_at: '2026-01-01T00:00:00Z' })
               : randomUUID();
         const id = await make.transaction(db, user);
-        await rejects(db, user, UPDATE, [id, JSON.stringify({ category_id: category })], 'category_not_found');
+        await rejects(
+          db,
+          user,
+          UPDATE,
+          [id, JSON.stringify({ category_id: category })],
+          'category_not_found',
+        );
         expect((await getTransaction(db, user, id))?.category_id).toBeNull();
       });
     },
@@ -568,12 +658,32 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
       const t = (values: Row) => make.transaction(db, user, { merchant: 'MANOR AG', ...values });
       const edited = await t({});
       const none = await t({});
-      const guessed = await t({ category_id: cat.groceries, categorized_by: 'merchant_list', category_confidence: 50 });
-      const byMcc = await t({ category_id: cat.groceries, categorized_by: 'mcc', category_confidence: 40 });
-      const byRule = await t({ category_id: cat.groceries, categorized_by: 'rule', category_confidence: 100 });
+      const guessed = await t({
+        category_id: cat.groceries,
+        categorized_by: 'merchant_list',
+        category_confidence: 50,
+      });
+      const byMcc = await t({
+        category_id: cat.groceries,
+        categorized_by: 'mcc',
+        category_confidence: 40,
+      });
+      const byRule = await t({
+        category_id: cat.groceries,
+        categorized_by: 'rule',
+        category_confidence: 100,
+      });
       const viaStatement = await t({ merchant: null, raw_text: 'KAUF MANOR ZUERICH' });
-      const alreadyThere = await t({ category_id: cat.clothes, categorized_by: 'rule', category_confidence: 100 });
-      const byPerson = await t({ category_id: cat.hobbies, categorized_by: 'user', category_confidence: 100 });
+      const alreadyThere = await t({
+        category_id: cat.clothes,
+        categorized_by: 'rule',
+        category_confidence: 100,
+      });
+      const byPerson = await t({
+        category_id: cat.hobbies,
+        categorized_by: 'user',
+        category_confidence: 100,
+      });
       const deleted = await t({ deleted_at: '2026-10-04T00:00:00Z' });
       const fixed = await t({ fixed_cost_id: rent });
       const merged = await t({ merged_into_id: none, source: 'statement_import' });
@@ -587,7 +697,11 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
         rule: { match_field: 'merchant', match_type: 'contains', pattern: 'Manor' },
       });
       expect(result.recategorized_count).toBe(5);
-      expect(result.transaction).toMatchObject({ id: edited, category_id: cat.clothes, categorized_by: 'user' });
+      expect(result.transaction).toMatchObject({
+        id: edited,
+        category_id: cat.clothes,
+        categorized_by: 'user',
+      });
       const rule = await queryOne<Row>(
         db,
         `select id::text, match_field, match_type, pattern, category_id::text, priority
@@ -602,12 +716,18 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
         category_id: cat.clothes,
         priority: 8,
       });
-      const state = await queryRows<{ id: string; category_id: string | null; categorized_by: string }>(
+      const state = await queryRows<{
+        id: string;
+        category_id: string | null;
+        categorized_by: string;
+      }>(
         db,
         `select id::text, category_id::text, categorized_by from public.transactions where user_id = $1`,
         [user],
       );
-      const byId = Object.fromEntries(state.map((row) => [row.id, [row.category_id, row.categorized_by]]));
+      const byId = Object.fromEntries(
+        state.map((row) => [row.id, [row.category_id, row.categorized_by]]),
+      );
       for (const id of [none, guessed, byMcc, byRule, viaStatement]) {
         expect(byId[id]).toEqual([cat.clothes, 'rule']);
       }
@@ -649,12 +769,25 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
   it('a raw_text rule and an equals rule apply to matching rows only', async () => {
     await withRollback(async (db) => {
       const { user, ids: cat } = await onboardedUser(db);
-      const edited = await make.transaction(db, user, { merchant: null, raw_text: 'DAUERAUFTRAG VERMIETER' });
-      const same = await make.transaction(db, user, { merchant: 'Vermieter', raw_text: 'DAUERAUFTRAG VERMIETER 10' });
-      const merchantOnly = await make.transaction(db, user, { merchant: 'Dauerauftrag', raw_text: null });
+      const edited = await make.transaction(db, user, {
+        merchant: null,
+        raw_text: 'DAUERAUFTRAG VERMIETER',
+      });
+      const same = await make.transaction(db, user, {
+        merchant: 'Vermieter',
+        raw_text: 'DAUERAUFTRAG VERMIETER 10',
+      });
+      const merchantOnly = await make.transaction(db, user, {
+        merchant: 'Dauerauftrag',
+        raw_text: null,
+      });
       const raw = await update(db, user, edited, {
         category_id: cat.hobbies,
-        rule: { match_field: 'raw_text', match_type: 'contains', pattern: 'Dauerauftrag Vermieter' },
+        rule: {
+          match_field: 'raw_text',
+          match_type: 'contains',
+          pattern: 'Dauerauftrag Vermieter',
+        },
       });
       expect(raw.recategorized_count).toBe(1);
       expect((await getTransaction(db, user, same))?.category_id).toBe(cat.hobbies);
@@ -694,10 +827,16 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
   });
 
   it.each([
-    ['without category_id', { rule: { match_field: 'merchant', match_type: 'contains', pattern: 'X' } }],
+    [
+      'without category_id',
+      { rule: { match_field: 'merchant', match_type: 'contains', pattern: 'X' } },
+    ],
     [
       'with category_id null',
-      { category_id: null, rule: { match_field: 'merchant', match_type: 'contains', pattern: 'X' } },
+      {
+        category_id: null,
+        rule: { match_field: 'merchant', match_type: 'contains', pattern: 'X' },
+      },
     ],
   ])('a rule %s → rule_needs_category', async (_label, changes) => {
     await withRollback(async (db) => {
@@ -710,16 +849,34 @@ describe('update_transaction(): rules ("Always do this for Manor?")', () => {
   it.each([
     ['not an object', 'Manor'],
     ['an mcc rule', { match_field: 'mcc', match_type: 'equals', pattern: '5411' }],
-    ['an unknown match type', { match_field: 'merchant', match_type: 'starts_with', pattern: 'Manor' }],
+    [
+      'an unknown match type',
+      { match_field: 'merchant', match_type: 'starts_with', pattern: 'Manor' },
+    ],
     ['an empty pattern', { match_field: 'merchant', match_type: 'contains', pattern: ' ' }],
-    ['a pattern without words', { match_field: 'merchant', match_type: 'contains', pattern: '1234 --' }],
-    ['a pattern over 200 characters', { match_field: 'merchant', match_type: 'contains', pattern: 'p'.repeat(201) }],
-    ['an unknown key', { match_field: 'merchant', match_type: 'contains', pattern: 'Manor', priority: 99 }],
+    [
+      'a pattern without words',
+      { match_field: 'merchant', match_type: 'contains', pattern: '1234 --' },
+    ],
+    [
+      'a pattern over 200 characters',
+      { match_field: 'merchant', match_type: 'contains', pattern: 'p'.repeat(201) },
+    ],
+    [
+      'an unknown key',
+      { match_field: 'merchant', match_type: 'contains', pattern: 'Manor', priority: 99 },
+    ],
   ])('a rule that is %s → invalid_input', async (_label, rule) => {
     await withRollback(async (db) => {
       const { user, ids: cat } = await onboardedUser(db);
       const id = await make.transaction(db, user);
-      await rejects(db, user, UPDATE, [id, JSON.stringify({ category_id: cat.groceries, rule })], 'invalid_input');
+      await rejects(
+        db,
+        user,
+        UPDATE,
+        [id, JSON.stringify({ category_id: cat.groceries, rule })],
+        'invalid_input',
+      );
     });
   });
 });
@@ -778,7 +935,13 @@ describe('update_transaction(): fixed costs', () => {
       const theirs = await make.fixedCost(db, other);
       const mine = await make.fixedCost(db, user);
       const id = await make.transaction(db, user);
-      await rejects(db, user, UPDATE, [id, JSON.stringify({ fixed_cost_id: theirs })], 'fixed_cost_not_found');
+      await rejects(
+        db,
+        user,
+        UPDATE,
+        [id, JSON.stringify({ fixed_cost_id: theirs })],
+        'fixed_cost_not_found',
+      );
       await rejects(
         db,
         user,
@@ -794,8 +957,14 @@ describe('update_transaction(): texts, amounts, time and deletion', () => {
   it('note and merchant: set, and an empty string clears', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const id = await make.transaction(db, user, { source: 'statement_import', merchant: 'KAUF X' });
-      expect((await update(db, user, id, { note: 'Geschenk für Tom', merchant: ' Laden X ' })).transaction).toMatchObject({
+      const id = await make.transaction(db, user, {
+        source: 'statement_import',
+        merchant: 'KAUF X',
+      });
+      expect(
+        (await update(db, user, id, { note: 'Geschenk für Tom', merchant: ' Laden X ' }))
+          .transaction,
+      ).toMatchObject({
         note: 'Geschenk für Tom',
         merchant: 'Laden X',
       });
@@ -831,7 +1000,10 @@ describe('update_transaction(): texts, amounts, time and deletion', () => {
       const id = await make.transaction(db, user);
       const deleted = await update(db, user, id, { deleted: true });
       expect(deleted.transaction.deleted_at).toEqual(expect.any(String));
-      await db.query(`update public.transactions set deleted_at = '2026-10-01T00:00:00Z' where id = $1`, [id]);
+      await db.query(
+        `update public.transactions set deleted_at = '2026-10-01T00:00:00Z' where id = $1`,
+        [id],
+      );
       expect((await update(db, user, id, { deleted: true })).transaction.deleted_at).toBe(
         '2026-10-01T00:00:00+00:00',
       );
@@ -878,7 +1050,9 @@ describe('update_transaction(): texts, amounts, time and deletion', () => {
         await rejects(db, user, UPDATE, [id, JSON.stringify(changes)], 'transaction_is_split');
       }
       // Everything else is fine.
-      expect((await update(db, user, id, { note: 'Teilen', amount_rappen: -1_000 })).transaction).toMatchObject({
+      expect(
+        (await update(db, user, id, { note: 'Teilen', amount_rappen: -1_000 })).transaction,
+      ).toMatchObject({
         note: 'Teilen',
       });
       await runDeferredChecks(db);
@@ -891,12 +1065,25 @@ describe('update_transaction(): texts, amounts, time and deletion', () => {
       const { user: other } = await onboardedUser(db);
       const theirs = await make.transaction(db, other, { note: 'theirs' });
       const survivor = await make.transaction(db, user);
-      const merged = await make.transaction(db, user, { merged_into_id: survivor, source: 'statement_import' });
+      const merged = await make.transaction(db, user, {
+        merged_into_id: survivor,
+        source: 'statement_import',
+      });
       for (const id of [theirs, merged, randomUUID()]) {
-        await rejects(db, user, UPDATE, [id, JSON.stringify({ note: 'mine now' })], 'transaction_not_found');
+        await rejects(
+          db,
+          user,
+          UPDATE,
+          [id, JSON.stringify({ note: 'mine now' })],
+          'transaction_not_found',
+        );
         await rejects(db, user, SPLITS, [id, '[]'], 'transaction_not_found');
       }
-      const row = await queryOne<{ note: string }>(db, 'select note from public.transactions where id = $1', [theirs]);
+      const row = await queryOne<{ note: string }>(
+        db,
+        'select note from public.transactions where id = $1',
+        [theirs],
+      );
       expect(row.note).toBe('theirs');
     });
   });
@@ -904,7 +1091,10 @@ describe('update_transaction(): texts, amounts, time and deletion', () => {
   it('needs a signed-in user (42501)', async () => {
     await withRollback(async (db) => {
       await asAuthenticatedWithoutUser(db);
-      const error = await expectSqlError(db, SQLSTATE.insufficientPrivilege, UPDATE, [randomUUID(), '{}']);
+      const error = await expectSqlError(db, SQLSTATE.insufficientPrivilege, UPDATE, [
+        randomUUID(),
+        '{}',
+      ]);
       expect(error.message).toBe('not signed in');
     });
   });
@@ -915,7 +1105,11 @@ describe('set_transaction_splits()', () => {
     await withRollback(async (db) => {
       const { user, ids: cat } = await onboardedUser(db);
       const rent = await make.fixedCost(db, user);
-      const id = await make.transaction(db, user, { amount_rappen: -10_000, fixed_cost_id: rent, category_id: cat.groceries });
+      const id = await make.transaction(db, user, {
+        amount_rappen: -10_000,
+        fixed_cost_id: rent,
+        category_id: cat.groceries,
+      });
       const first = await setSplits(db, user, id, [
         { category_id: cat.groceries, amount_rappen: -6_000, note: 'Essen' },
         { category_id: cat.hobbies, amount_rappen: -4_000, note: '' },
@@ -971,18 +1165,57 @@ describe('set_transaction_splits()', () => {
   it.each([
     ['not a list', { a: 1 }],
     ['one part', [{ category_id: null, amount_rappen: -1_000, note: null }]],
-    ['51 parts', Array.from({ length: 51 }, () => ({ category_id: null, amount_rappen: -1, note: null }))],
-    ['a part with the wrong sign', [{ category_id: null, amount_rappen: -1_100, note: null }, { category_id: null, amount_rappen: 100, note: null }]],
-    ['parts that do not add up', [{ category_id: null, amount_rappen: -500, note: null }, { category_id: null, amount_rappen: -400, note: null }]],
-    ['a part with an unknown key', [{ category_id: null, amount_rappen: -500, note: null, x: 1 }, { category_id: null, amount_rappen: -500, note: null }]],
-    ['a part note over 500 characters', [{ category_id: null, amount_rappen: -500, note: 'n'.repeat(501) }, { category_id: null, amount_rappen: -500, note: null }]],
-    ['a part category that is not an id', [{ category_id: 'x', amount_rappen: -500, note: null }, { category_id: null, amount_rappen: -500, note: null }]],
+    [
+      '51 parts',
+      Array.from({ length: 51 }, () => ({ category_id: null, amount_rappen: -1, note: null })),
+    ],
+    [
+      'a part with the wrong sign',
+      [
+        { category_id: null, amount_rappen: -1_100, note: null },
+        { category_id: null, amount_rappen: 100, note: null },
+      ],
+    ],
+    [
+      'parts that do not add up',
+      [
+        { category_id: null, amount_rappen: -500, note: null },
+        { category_id: null, amount_rappen: -400, note: null },
+      ],
+    ],
+    [
+      'a part with an unknown key',
+      [
+        { category_id: null, amount_rappen: -500, note: null, x: 1 },
+        { category_id: null, amount_rappen: -500, note: null },
+      ],
+    ],
+    [
+      'a part note over 500 characters',
+      [
+        { category_id: null, amount_rappen: -500, note: 'n'.repeat(501) },
+        { category_id: null, amount_rappen: -500, note: null },
+      ],
+    ],
+    [
+      'a part category that is not an id',
+      [
+        { category_id: 'x', amount_rappen: -500, note: null },
+        { category_id: null, amount_rappen: -500, note: null },
+      ],
+    ],
   ])('%s → invalid_splits, nothing changes', async (_label, parts) => {
     await withRollback(async (db) => {
       const { user, ids: cat } = await onboardedUser(db);
-      const id = await make.transaction(db, user, { amount_rappen: -1_000, category_id: cat.groceries });
+      const id = await make.transaction(db, user, {
+        amount_rappen: -1_000,
+        category_id: cat.groceries,
+      });
       await rejects(db, user, SPLITS, [id, JSON.stringify(parts)], 'invalid_splits');
-      expect(await getTransaction(db, user, id)).toMatchObject({ category_id: cat.groceries, splits: [] });
+      expect(await getTransaction(db, user, id)).toMatchObject({
+        category_id: cat.groceries,
+        splits: [],
+      });
     });
   });
 
@@ -990,7 +1223,10 @@ describe('set_transaction_splits()', () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       const { ids: otherCats } = await onboardedUser(db);
-      const archived = await make.category(db, user, { name: 'Alt', archived_at: '2026-01-01T00:00:00Z' });
+      const archived = await make.category(db, user, {
+        name: 'Alt',
+        archived_at: '2026-01-01T00:00:00Z',
+      });
       const id = await make.transaction(db, user, { amount_rappen: -1_000 });
       for (const category of [otherCats.groceries, archived]) {
         await rejects(
@@ -1073,9 +1309,27 @@ describe('remove_import()', () => {
       expect(rows).toEqual([
         { source: 'manual', amount: -2_340, external_id: null, merged: false, deleted: false },
         { source: 'manual', amount: -1_500, external_id: null, merged: false, deleted: false },
-        { source: 'statement_import', amount: -2_340, external_id: null, merged: true, deleted: true },
-        { source: 'statement_import', amount: -1_500, external_id: null, merged: false, deleted: true },
-        { source: 'statement_import', amount: -320, external_id: null, merged: false, deleted: true },
+        {
+          source: 'statement_import',
+          amount: -2_340,
+          external_id: null,
+          merged: true,
+          deleted: true,
+        },
+        {
+          source: 'statement_import',
+          amount: -1_500,
+          external_id: null,
+          merged: false,
+          deleted: true,
+        },
+        {
+          source: 'statement_import',
+          amount: -320,
+          external_id: null,
+          merged: false,
+          deleted: true,
+        },
       ]);
       const revoked = await queryOne<Row>(
         db,
@@ -1085,7 +1339,9 @@ describe('remove_import()', () => {
       expect(revoked).toEqual({ status: 'revoked', revoked_now: true });
       // The manual Denner entry is a transaction of its own again, with the person's category.
       const list1 = await list(db, user);
-      expect(list1.items.map((item) => [item.merchant, item.amount_rappen, item.category_id])).toEqual([
+      expect(
+        list1.items.map((item) => [item.merchant, item.amount_rappen, item.category_id]),
+      ).toEqual([
         ['Coop', -2_340, cat.groceries],
         ['Denner', -1_500, cat.groceries],
       ]);
@@ -1097,7 +1353,10 @@ describe('remove_import()', () => {
   it('the same file can be imported again afterwards; a second removal changes nothing', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const rows = [statementRow({ raw_text: 'KAUF DENNER' }), statementRow({ raw_text: 'KAUF VOLG', amount_rappen: -300 })];
+      const rows = [
+        statementRow({ raw_text: 'KAUF DENNER' }),
+        statementRow({ raw_text: 'KAUF VOLG', amount_rappen: -300 }),
+      ];
       const first = await addRows(db, user, { rows, import: CSV });
       expect(await removeImport(db, user, first.data_source_id ?? '')).toBe(2);
       expect(await removeImport(db, user, first.data_source_id ?? '')).toBe(0);
@@ -1227,9 +1486,17 @@ describe('export_my_data()', () => {
     await withRollback(async (db) => {
       const fresh = await createUser(db);
       const data = await exportData(db, fresh);
-      expect(data).toMatchObject({ transactions: [], categories: [], subscription: { status: 'none' } });
+      expect(data).toMatchObject({
+        transactions: [],
+        categories: [],
+        subscription: { status: 'none' },
+      });
       await asAuthenticatedWithoutUser(db);
-      const error = await expectSqlError(db, SQLSTATE.insufficientPrivilege, 'select public.export_my_data()');
+      const error = await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        'select public.export_my_data()',
+      );
       expect(error.message).toBe('not signed in');
     });
   });

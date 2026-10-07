@@ -79,12 +79,6 @@ const FIXED_COST_LABELS: Readonly<Record<string, string>> = {
   'leasing/debts': 'leasing_debts',
 };
 
-/**
- * Patterns in CATEGORIZATION.md that are not merchant keys and can therefore never match: "init7"
- * (its only word contains a digit, so its key is empty). Left out of the seed and reported.
- */
-const UNMATCHABLE_DOCUMENTED_PATTERNS = ['init7'];
-
 type KnownMerchant = {
   pattern: string;
   category_key: string | null;
@@ -193,8 +187,7 @@ function random(seed: number): () => number {
   };
 }
 
-const ACCENTED =
-  'ÀÁÂÃÄÅàáâãäåÇçĆćČčÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿŸŠšŞşŽžŹźŻżßÆæŒœ';
+const ACCENTED = 'ÀÁÂÃÄÅàáâãäåÇçĆćČčÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖØòóôõöøÙÚÛÜùúûüÝýÿŸŠšŞşŽžŹźŻżßÆæŒœ';
 const PIECES: readonly string[] = [
   ...ACCENTED,
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
@@ -274,7 +267,12 @@ describe('internal.merchant_key equals merchantKey() from @budget/core', () => {
   it('on every example in CATEGORIZATION.md, with the documented key', async () => {
     const examples = documentedKeyExamples();
     expect(examples.length).toBeGreaterThanOrEqual(4);
-    const keys = await withRollback((db) => databaseKeys(db, examples.map(([input]) => input)));
+    const keys = await withRollback((db) =>
+      databaseKeys(
+        db,
+        examples.map(([input]) => input),
+      ),
+    );
     expect(keys).toEqual(examples.map(([, key]) => key));
     expect(examples.map(([input]) => merchantKey(input))).toEqual(examples.map(([, key]) => key));
   });
@@ -390,17 +388,12 @@ describe('internal.known_merchants', () => {
            from internal.known_merchants`,
       ),
     );
-    const expected = documented.filter(
-      (entry) => !UNMATCHABLE_DOCUMENTED_PATTERNS.includes(entry.pattern),
-    );
-    expect(documented.length - expected.length).toBe(UNMATCHABLE_DOCUMENTED_PATTERNS.length);
-    expect([...seeded].sort(byPattern)).toEqual([...expected].sort(byPattern));
+    expect([...seeded].sort(byPattern)).toEqual([...documented].sort(byPattern));
   });
 
-  it('the documented patterns left out could never match (their merchant key is empty)', () => {
-    for (const pattern of UNMATCHABLE_DOCUMENTED_PATTERNS) {
-      expect(merchantKey(pattern)).toBe('');
-    }
+  it('every documented pattern is a merchant key, so it can match at all', () => {
+    const documented = documentedKnownMerchants();
+    expect(documented.filter(({ pattern }) => merchantKey(pattern) !== pattern)).toEqual([]);
   });
 
   it('every pattern is its own merchant key, as the core computes it', async () => {
@@ -421,9 +414,15 @@ describe('internal.known_merchants', () => {
   });
 
   it.each([
-    ['a pattern that is not a merchant key', { pattern: 'Coop', category_key: 'groceries', confidence: 90 }],
+    [
+      'a pattern that is not a merchant key',
+      { pattern: 'Coop', category_key: 'groceries', confidence: 90 },
+    ],
     ['an empty pattern', { pattern: '', category_key: 'groceries', confidence: 90 }],
-    ['a pattern of five words', { pattern: 'a b c d e', category_key: 'groceries', confidence: 90 }],
+    [
+      'a pattern of five words',
+      { pattern: 'a b c d e', category_key: 'groceries', confidence: 90 },
+    ],
     ['neither category nor fixed-cost kind', { pattern: 'nowhere', confidence: 90 }],
     ['a category without confidence', { pattern: 'nowhere', category_key: 'groceries' }],
     ['confidence 0', { pattern: 'nowhere', category_key: 'groceries', confidence: 0 }],
@@ -542,7 +541,12 @@ const NONE: Placement = {
 
 function placed(categoryId: string | undefined, by: string, confidence: number): Placement {
   if (categoryId === undefined) throw new Error('category missing in the fixture');
-  return { category_id: categoryId, categorized_by: by, category_confidence: confidence, fixed_cost_id: null };
+  return {
+    category_id: categoryId,
+    categorized_by: by,
+    category_confidence: confidence,
+    fixed_cost_id: null,
+  };
 }
 
 describe('known merchants (step 7)', () => {
@@ -598,11 +602,15 @@ describe('known merchants (step 7)', () => {
       expect(await categorize(db, user, 'Pub KFC')).toEqual(
         placed(ids.eating_out, 'merchant_list', 90),
       );
-      // cafe (eating out, 75) and kino (going out, 80); then bar (70) and pub (70): bar is first.
+      // cafe (eating out, 75) and kino (going out, 80).
       expect(await categorize(db, user, 'Cafe Kino')).toEqual(
         placed(ids.going_out, 'merchant_list', 80),
       );
-      expect(await categorize(db, user, 'Pub Bar')).toEqual(
+      // tcs (transport, 70) and bar (going out, 70): the one earlier in the key.
+      expect(await categorize(db, user, 'TCS Bar')).toEqual(
+        placed(ids.transport, 'merchant_list', 70),
+      );
+      expect(await categorize(db, user, 'Bar TCS')).toEqual(
         placed(ids.going_out, 'merchant_list', 70),
       );
     });
@@ -669,7 +677,9 @@ describe('known merchants (step 7)', () => {
         amount_rappen: 40_000,
       });
       const linked = { ...NONE, fixed_cost_id: insurance };
-      expect(await categorize(db, user, 'Helsana Versicherungen AG', { amount: -40_000 })).toEqual(linked);
+      expect(await categorize(db, user, 'Helsana Versicherungen AG', { amount: -40_000 })).toEqual(
+        linked,
+      );
       expect(await categorize(db, user, 'Helsana', { amount: -48_000 })).toEqual(linked);
       expect(await categorize(db, user, 'Helsana', { amount: -32_000 })).toEqual(linked);
       expect(await categorize(db, user, 'Helsana', { amount: -48_001 })).toEqual(NONE);
@@ -687,7 +697,11 @@ describe('known merchants (step 7)', () => {
         placed(ids.shopping_electronics, 'mcc', 75),
       );
       // Inactive fixed costs and other kinds do not count.
-      await make.fixedCost(db, user, { kind: 'phone_internet', amount_rappen: 6_000, active: false });
+      await make.fixedCost(db, user, {
+        kind: 'phone_internet',
+        amount_rappen: 6_000,
+        active: false,
+      });
       await make.fixedCost(db, user, { kind: 'other', amount_rappen: 6_000 });
       expect(await categorize(db, user, 'Swisscom', { amount: -6_000 })).toEqual(NONE);
     });
@@ -696,7 +710,10 @@ describe('known merchants (step 7)', () => {
   it('a subscription is the subscription fixed cost when it fits, otherwise a hobby', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await userWithCategories(db);
-      const netflix = await make.fixedCost(db, user, { kind: 'subscriptions', amount_rappen: 1_590 });
+      const netflix = await make.fixedCost(db, user, {
+        kind: 'subscriptions',
+        amount_rappen: 1_590,
+      });
       expect(await categorize(db, user, 'NETFLIX.COM', { amount: -1_590 })).toEqual({
         ...NONE,
         fixed_cost_id: netflix,
@@ -867,10 +884,15 @@ describe('the person’s rules (step 6)', () => {
   it('a rule on an archived category is skipped (the next rule or step applies)', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await userWithCategories(db);
-      const gone = await make.category(db, user, { name: 'Weg', archived_at: '2026-09-01T00:00:00Z' });
+      const gone = await make.category(db, user, {
+        name: 'Weg',
+        archived_at: '2026-09-01T00:00:00Z',
+      });
       const fallback = await make.category(db, user, { name: 'Ersatz' });
       await make.rule(db, user, gone, { pattern: 'Migros', priority: 5 });
-      expect(await categorize(db, user, 'Migros')).toEqual(placed(ids.groceries, 'merchant_list', 90));
+      expect(await categorize(db, user, 'Migros')).toEqual(
+        placed(ids.groceries, 'merchant_list', 90),
+      );
       await make.rule(db, user, fallback, { pattern: 'Migros Zürich', priority: 1 });
       expect(await categorize(db, user, 'Migros Zürich')).toEqual(placed(fallback, 'rule', 100));
     });
@@ -928,7 +950,11 @@ describe('internal.needs_review', () => {
     ['a guess below 70', [-100, 'c', 'merchant_list', 69, null, false, false, false], true],
     ['a guess of 70', [-100, 'c', 'mcc', 70, null, false, false, false], false],
     ['placed by the person', [-100, 'c', 'user', 100, null, false, false, false], false],
-    ['"no category" chosen by the person', [-100, null, 'user', 100, null, false, false, false], false],
+    [
+      '"no category" chosen by the person',
+      [-100, null, 'user', 100, null, false, false, false],
+      false,
+    ],
     ['placed by a rule', [-100, 'c', 'rule', 100, null, false, false, false], false],
     ['a fixed-cost payment', [-100, null, 'none', null, 'f', false, false, false], false],
     ['a split', [-100, null, 'user', 100, null, true, false, false], false],

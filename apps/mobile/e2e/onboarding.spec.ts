@@ -16,7 +16,7 @@ test.describe('onboarding to a correct month', () => {
     await signUp(page, email, { onboard: false });
 
     // 1 Income: CHF 6'200 net, payday the 25th, 42 hours a week.
-    await expect(page.getByText('Step 1 of 9')).toBeVisible();
+    await expect(page.getByText('Step 1 of 10')).toBeVisible();
     await page.getByTestId('onboarding-net-income').fill("6'200");
     await page.getByTestId('onboarding-payday-25').click();
     await page.getByTestId('onboarding-hours').fill('42');
@@ -48,11 +48,21 @@ test.describe('onboarding to a correct month', () => {
     await next(page, 'pain');
     await page.getByRole('radio', { name: /Brutal/ }).click();
     await next(page, 'notifications');
-    await skip(page, 'summary');
+    await skip(page, 'sources');
 
-    // Summary "Your month", then Home.
+    // 9 Sources: paying by card and TWINT suggests importing a statement right after setup.
+    await expect(page.getByText('Step 9 of 10')).toBeVisible();
+    await expect(page.getByTestId('onboarding-sources-import')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await next(page, 'summary');
+
+    // Summary "Your month", then the statement import on top of Home; "Not now" leads Home.
     await expect(page.getByTestId('summary-spendable')).toContainText('CHF 3,429.50');
     await page.getByTestId('onboarding-continue').filter({ visible: true }).click();
+    await expect(page.getByTestId('import-choose')).toBeVisible();
+    await page.getByTestId('import-header-back').click();
     await expect(page.getByTestId('home-balance')).toContainText('3,429.50');
     await expect(page.getByTestId('home-no-transactions')).toBeVisible();
     expect(Date.now() - started).toBeLessThan(5 * 60_000);

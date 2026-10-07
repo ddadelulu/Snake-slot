@@ -1,5 +1,6 @@
 import { LANGUAGES, type Language } from '@budget/core';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -77,6 +78,31 @@ export default function SettingsScreen() {
             onPress={() => setDeleteOpen(true)}
             destructive
             testID="settings-delete-account"
+          />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">
+          {t('dataSources.settingsSection')}
+        </AppText>
+        <Card padded={false}>
+          <SettingsRow
+            label={t('dataSources.settingsRow')}
+            onPress={() => router.push('/data-sources')}
+            testID="settings-data-sources"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('rules.settingsRow')}
+            onPress={() => router.push('/rules')}
+            testID="settings-rules"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('dataExport.settingsRow')}
+            onPress={() => router.push('/export')}
+            testID="settings-export"
           />
         </Card>
       </View>

@@ -752,11 +752,31 @@ describe('transactions that need a category', () => {
         make.transaction(db, user, { booked_at: dayOf(month, 1), ...values });
       // Asked about: no category, or a guess below 70.
       await tx({ amount_rappen: -100 });
-      await tx({ amount_rappen: -200, category_id: groceries, categorized_by: 'merchant_list', category_confidence: 69 });
-      await tx({ amount_rappen: 300, category_id: groceries, categorized_by: 'mcc', category_confidence: 50 });
+      await tx({
+        amount_rappen: -200,
+        category_id: groceries,
+        categorized_by: 'merchant_list',
+        category_confidence: 69,
+      });
+      await tx({
+        amount_rappen: 300,
+        category_id: groceries,
+        categorized_by: 'mcc',
+        category_confidence: 50,
+      });
       // Not asked about.
-      await tx({ amount_rappen: -400, category_id: groceries, categorized_by: 'mcc', category_confidence: 70 });
-      await tx({ amount_rappen: -500, category_id: groceries, categorized_by: 'rule', category_confidence: 100 });
+      await tx({
+        amount_rappen: -400,
+        category_id: groceries,
+        categorized_by: 'mcc',
+        category_confidence: 70,
+      });
+      await tx({
+        amount_rappen: -500,
+        category_id: groceries,
+        categorized_by: 'rule',
+        category_confidence: 100,
+      });
       await tx({ amount_rappen: -600, categorized_by: 'user', category_confidence: 100 });
       await tx({ amount_rappen: 520_000 }); // income without category: not spending
       await tx({ amount_rappen: -185_000, fixed_cost_id: rent });
@@ -768,7 +788,10 @@ describe('transactions that need a category', () => {
       await make.split(db, user, split, -450);
       // Outside the period.
       await make.transaction(db, user, { amount_rappen: -1, booked_at: dayOf(month, -3) });
-      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${month.endsOn}T10:00:00Z` });
+      await make.transaction(db, user, {
+        amount_rappen: -1,
+        booked_at: `${month.endsOn}T10:00:00Z`,
+      });
       await runDeferredChecks(db);
       expect((await mustGetOverview(db, user)).needs_review_count).toBe(3);
     });

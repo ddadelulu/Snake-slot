@@ -245,29 +245,37 @@ describe('add_transactions() rejects a malformed request (22023)', () => {
     ['an empty list of rows', { rows: [] }, 'invalid_input'],
     ['an unknown key', { rows: [manualRow()], replace: true }, 'invalid_input'],
     ['dry_run that is not a boolean', { rows: [manualRow()], dry_run: 'yes' }, 'invalid_input'],
-    ['import that is not an object', { rows: [statementRow()], import: 'konto.csv' }, 'invalid_input'],
+    [
+      'import that is not an object',
+      { rows: [statementRow()], import: 'konto.csv' },
+      'invalid_input',
+    ],
     [
       'an unknown import key',
       { rows: [statementRow()], import: { ...CSV, encoding: 'utf-8' } },
       'invalid_input',
     ],
-    ['a blank file name', { rows: [statementRow()], import: { ...CSV, file_name: '  ' } }, 'invalid_input'],
+    [
+      'a blank file name',
+      { rows: [statementRow()], import: { ...CSV, file_name: '  ' } },
+      'invalid_input',
+    ],
     [
       'a file name over 255 characters',
       { rows: [statementRow()], import: { ...CSV, file_name: `${'k'.repeat(252)}.csv` } },
       'invalid_input',
     ],
-    ['an unknown format', { rows: [statementRow()], import: { ...CSV, format: 'xlsx' } }, 'invalid_input'],
+    [
+      'an unknown format',
+      { rows: [statementRow()], import: { ...CSV, format: 'xlsx' } },
+      'invalid_input',
+    ],
     [
       'a bank name over 60 characters',
       { rows: [statementRow()], import: { ...CSV, bank: 'b'.repeat(61) } },
       'invalid_input',
     ],
-    [
-      '2001 rows',
-      { rows: Array.from({ length: 2001 }, () => manualRow()) },
-      'too_many_rows',
-    ],
+    ['2001 rows', { rows: Array.from({ length: 2001 }, () => manualRow()) }, 'too_many_rows'],
   ])('%s → %s', async (_label, input, message) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
@@ -285,8 +293,10 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
     amount_rappen: -1,
   }));
 
+  type CaseOptions = { import?: boolean };
+
   /** [label, the bad row (index 1, after a valid row), detail, call options] */
-  const CASES: ReadonlyArray<readonly [string, unknown, string, { import?: boolean }?]> = [
+  const CASES: ReadonlyArray<readonly [string, unknown, string, CaseOptions?]> = [
     ['not an object', 5, 'row 1: must be an object'],
     ['an unknown key', manualRow({ currency: 'CHF' }), 'row 1: unknown key "currency"'],
     ...[0, 12.5, '-1250', -10_000_000_001, 10_000_000_001, null].map(
@@ -305,8 +315,16 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
       })(),
       'row 1: amount_rappen must be a non-zero integer within ±10000000000',
     ],
-    ['source bank', manualRow({ source: 'bank' }), 'row 1: source must be "manual" or "statement_import"'],
-    ['no source', manualRow({ source: null }), 'row 1: source must be "manual" or "statement_import"'],
+    [
+      'source bank',
+      manualRow({ source: 'bank' }),
+      'row 1: source must be "manual" or "statement_import"',
+    ],
+    [
+      'no source',
+      manualRow({ source: null }),
+      'row 1: source must be "manual" or "statement_import"',
+    ],
     [
       'a statement row without import',
       statementRow(),
@@ -328,7 +346,13 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
       manualRow({ booked_at: null }),
       'row 1: exactly one of booked_at and booked_on is required',
     ],
-    ...['2026-10-03T10:00:00', '2026-02-30T10:00:00Z', '2026-10-03 10:00:00+02:00', '03.10.2026', 1_759_485_600].map(
+    ...[
+      '2026-10-03T10:00:00',
+      '2026-02-30T10:00:00Z',
+      '2026-10-03 10:00:00+02:00',
+      '03.10.2026',
+      1_759_485_600,
+    ].map(
       (bookedAt) =>
         [
           `booked_at ${JSON.stringify(bookedAt)}`,
@@ -433,9 +457,21 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
       manualRow({ items: [{ description: 'Brot', amount_rappen: -150, price: 1 }] }),
       'row 1: items[0] must be { description, amount_rappen, quantity }',
     ],
-    ['items over 20000 bytes', manualRow({ items: longItems }), 'row 1: items must be at most 20000 bytes'],
-    ['a category_id that is not a uuid', manualRow({ category_id: 'groceries' }), 'row 1: category_id must be a uuid'],
-    ['a note over 500 characters', manualRow({ note: 'n'.repeat(501) }), 'row 1: note must be null or at most 500 characters'],
+    [
+      'items over 20000 bytes',
+      manualRow({ items: longItems }),
+      'row 1: items must be at most 20000 bytes',
+    ],
+    [
+      'a category_id that is not a uuid',
+      manualRow({ category_id: 'groceries' }),
+      'row 1: category_id must be a uuid',
+    ],
+    [
+      'a note over 500 characters',
+      manualRow({ note: 'n'.repeat(501) }),
+      'row 1: note must be null or at most 500 characters',
+    ],
     [
       'allow_duplicate that is not a boolean',
       manualRow({ allow_duplicate: 'yes' }),
@@ -444,14 +480,15 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
   ];
 
   it.each(CASES)('%s', async (_label, badRow, detail, options) => {
+    const inImport = (options as CaseOptions | undefined)?.import === true;
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const good = options?.import ? statementRow() : manualRow();
+      const good = inImport ? statementRow() : manualRow();
       const before = await footprint(db, user);
       const error = await addFails(
         db,
         user,
-        { rows: [good, badRow], ...(options?.import ? { import: CSV } : {}) },
+        { rows: [good, badRow], ...(inImport ? { import: CSV } : {}) },
         SQLSTATE.invalidParameterValue,
       );
       expect([error.message, error.detail]).toEqual(['invalid_row', detail]);
@@ -570,9 +607,7 @@ describe('add_transactions() rejects invalid splits and foreign categories (2202
           db,
           user,
           {
-            rows: [
-              manualRow({ splits: [part(-1_000, { category_id: foreign }), part(-250)] }),
-            ],
+            rows: [manualRow({ splits: [part(-1_000, { category_id: foreign }), part(-250)] })],
           },
           SQLSTATE.invalidParameterValue,
         );
@@ -696,7 +731,13 @@ describe('what is stored', () => {
             needs_review: false,
           },
         ],
-        counts: { added: 1, merged: 0, already_imported: 0, possible_duplicate: 0, needs_review: 0 },
+        counts: {
+          added: 1,
+          merged: 0,
+          already_imported: 0,
+          possible_duplicate: 0,
+          needs_review: 0,
+        },
       });
     });
   });
@@ -752,7 +793,13 @@ describe('what is stored', () => {
       const manual = await add(db, user, {
         rows: [
           toIngestRow(
-            { ...source, source: 'manual', sourceId: null, bookedTime: undefined, items: undefined },
+            {
+              ...source,
+              source: 'manual',
+              sourceId: null,
+              bookedTime: undefined,
+              items: undefined,
+            },
             {
               splits: [
                 { categoryId: ids.groceries ?? null, amountRappen: -2_000, note: 'Essen' },
@@ -779,10 +826,12 @@ describe('1. chosen by the person', () => {
           manualRow({ merchant: 'Helsana', category_id: ids.hobbies }),
         ],
       });
-      expect(result.results.map((r) => [r.category_id, r.categorized_by, r.fixed_cost_id])).toEqual([
-        [ids.groceries, 'user', null],
-        [ids.hobbies, 'user', null],
-      ]);
+      expect(result.results.map((r) => [r.category_id, r.categorized_by, r.fixed_cost_id])).toEqual(
+        [
+          [ids.groceries, 'user', null],
+          [ids.hobbies, 'user', null],
+        ],
+      );
     });
   });
 
@@ -921,7 +970,9 @@ describe('3. the same purchase from another source (merged)', () => {
     await withRollback(async (db) => {
       const { user, ids } = await onboardedUser(db);
       const manual = await add(db, user, {
-        rows: [manualRow({ amount_rappen: -2_340, merchant: 'Coop', booked_at: '2026-10-03T12:23:00Z' })],
+        rows: [
+          manualRow({ amount_rappen: -2_340, merchant: 'Coop', booked_at: '2026-10-03T12:23:00Z' }),
+        ],
       });
       const survivorId = only(manual.results).transaction_id;
       const result = await add(db, user, {
@@ -954,7 +1005,13 @@ describe('3. the same purchase from another source (merged)', () => {
             needs_review: false,
           },
         ],
-        counts: { added: 0, merged: 1, already_imported: 0, possible_duplicate: 0, needs_review: 0 },
+        counts: {
+          added: 0,
+          merged: 1,
+          already_imported: 0,
+          possible_duplicate: 0,
+          needs_review: 0,
+        },
       });
       const [survivor, evidence] = await storedRows(db, user);
       expect(survivor).toMatchObject({
@@ -1087,14 +1144,19 @@ describe('3. the same purchase from another source (merged)', () => {
   it('keeps a fixed-cost link of the survivor', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await onboardedUser(db);
-      const insurance = await make.fixedCost(db, user, { kind: 'health_insurance', amount_rappen: 42_000 });
+      const insurance = await make.fixedCost(db, user, {
+        kind: 'health_insurance',
+        amount_rappen: 42_000,
+      });
       const imported = await add(db, user, {
         rows: [statementRow({ amount_rappen: -42_000, raw_text: 'LSV HELSANA' })],
         import: CSV,
       });
       expect(only(imported.results).fixed_cost_id).toBe(insurance);
       const result = await add(db, user, {
-        rows: [manualRow({ amount_rappen: -42_000, merchant: 'Helsana', category_id: ids.hobbies })],
+        rows: [
+          manualRow({ amount_rappen: -42_000, merchant: 'Helsana', category_id: ids.hobbies }),
+        ],
       });
       expect(only(result.results)).toMatchObject({
         outcome: 'merged',
@@ -1133,7 +1195,13 @@ describe('3. the same purchase from another source (merged)', () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       await add(db, user, {
-        rows: [statementRow({ booked_on: undefined, booked_at: '2026-10-03T10:00:00Z', raw_text: 'KAUF COOP' })],
+        rows: [
+          statementRow({
+            booked_on: undefined,
+            booked_at: '2026-10-03T10:00:00Z',
+            raw_text: 'KAUF COOP',
+          }),
+        ],
         import: CSV,
       });
       const result = await add(db, user, {
@@ -1221,7 +1289,9 @@ describe('3. the same purchase from another source (merged)', () => {
         rows: [statementRow({ amount_rappen: -650, raw_text: 'STARBUCKS' })],
         import: CSV,
       });
-      expect([only(manual.results), only(imported.results)].map((r) => [r.outcome, r.transaction_id])).toEqual([
+      expect(
+        [only(manual.results), only(imported.results)].map((r) => [r.outcome, r.transaction_id]),
+      ).toEqual([
         ['merged', bank],
         ['merged', bank],
       ]);
@@ -1268,7 +1338,11 @@ describe('3. the same purchase from another source (merged)', () => {
   it('the closest in time wins, then the oldest', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      await make.transaction(db, user, { amount_rappen: -500, merchant: 'Kiosk', booked_at: '2026-10-01T10:00:00Z' });
+      await make.transaction(db, user, {
+        amount_rappen: -500,
+        merchant: 'Kiosk',
+        booked_at: '2026-10-01T10:00:00Z',
+      });
       const closer = await make.transaction(db, user, {
         amount_rappen: -500,
         merchant: 'Kiosk',
@@ -1382,7 +1456,13 @@ describe('4. possible duplicate from the same source (statement files)', () => {
             duplicate_of: expect.objectContaining({ id: csv.results[1]?.transaction_id }),
           }),
         ],
-        counts: { added: 0, merged: 0, already_imported: 0, possible_duplicate: 2, needs_review: 0 },
+        counts: {
+          added: 0,
+          merged: 0,
+          already_imported: 0,
+          possible_duplicate: 2,
+          needs_review: 0,
+        },
       });
       expect(await footprint(db, user)).toEqual(before);
     });
@@ -1445,7 +1525,10 @@ describe('4. possible duplicate from the same source (statement files)', () => {
   it('deleted rows are no duplicates', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const csv = await add(db, user, { rows: [statementRow({ raw_text: 'KAUF DENNER' })], import: CSV });
+      const csv = await add(db, user, {
+        rows: [statementRow({ raw_text: 'KAUF DENNER' })],
+        import: CSV,
+      });
       await db.query('update public.transactions set deleted_at = now() where id = $1', [
         only(csv.results).transaction_id,
       ]);
@@ -1513,12 +1596,19 @@ describe('5. fixed cost by its merchant hint', () => {
       const { user } = await onboardedUser(db);
       const fixedCost = await rent(db, user);
       const result = await add(db, user, {
-        rows: [statementRow({ amount_rappen: amount, raw_text: 'DAUERAUFTRAG VERWALTUNG MUSTER AG' })],
+        rows: [
+          statementRow({ amount_rappen: amount, raw_text: 'DAUERAUFTRAG VERWALTUNG MUSTER AG' }),
+        ],
         import: CSV,
       });
       expect(only(result.results)).toMatchObject(
         linked
-          ? { fixed_cost_id: fixedCost, category_id: null, categorized_by: 'none', needs_review: false }
+          ? {
+              fixed_cost_id: fixedCost,
+              category_id: null,
+              categorized_by: 'none',
+              needs_review: false,
+            }
           : { fixed_cost_id: null },
       );
     });
@@ -1572,12 +1662,24 @@ describe('9. fixed cost by exact amount', () => {
   it('links a statement row without category to the one fixed cost of that amount and learns the merchant', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      const gym = await make.fixedCost(db, user, { kind: 'other', amount_rappen: 9_900, label: 'Gym' });
+      const gym = await make.fixedCost(db, user, {
+        kind: 'other',
+        amount_rappen: 9_900,
+        label: 'Gym',
+      });
       const result = await add(db, user, {
         rows: [
-          statementRow({ amount_rappen: -9_900, booked_on: '2026-09-01', raw_text: 'LSV KRAFTWERK GYM 0815' }),
+          statementRow({
+            amount_rappen: -9_900,
+            booked_on: '2026-09-01',
+            raw_text: 'LSV KRAFTWERK GYM 0815',
+          }),
           // Next month the learned hint (step 5) recognizes it, also at a new price.
-          statementRow({ amount_rappen: -10_500, booked_on: '2026-10-01', raw_text: 'LSV KRAFTWERK GYM 0916' }),
+          statementRow({
+            amount_rappen: -10_500,
+            booked_on: '2026-10-01',
+            raw_text: 'LSV KRAFTWERK GYM 0916',
+          }),
         ],
         import: CSV,
       });
@@ -1596,7 +1698,9 @@ describe('9. fixed cost by exact amount', () => {
       const { user } = await onboardedUser(db);
       const gym = await make.fixedCost(db, user, { kind: 'other', amount_rappen: 9_900 });
       await add(db, user, {
-        rows: [statementRow({ amount_rappen: -9_900, merchant: 'Kraftwerk Gym AG', raw_text: 'LSV' })],
+        rows: [
+          statementRow({ amount_rappen: -9_900, merchant: 'Kraftwerk Gym AG', raw_text: 'LSV' }),
+        ],
         import: CSV,
       });
       const hint = await queryOne<{ hint: string }>(
@@ -1692,7 +1796,9 @@ describe('9. fixed cost by exact amount', () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       await make.fixedCost(db, user, { kind: 'other', amount_rappen: 9_900 });
-      const manual = await add(db, user, { rows: [manualRow({ amount_rappen: -9_900, merchant: 'Kraftwerk' })] });
+      const manual = await add(db, user, {
+        rows: [manualRow({ amount_rappen: -9_900, merchant: 'Kraftwerk' })],
+      });
       const result = await add(db, user, {
         rows: [statementRow({ amount_rappen: -9_900, raw_text: 'KRAFTWERK' })],
         import: CSV,
@@ -1725,7 +1831,12 @@ describe('categorization results and needs_review', () => {
         ],
       });
       expect(
-        result.results.map((r) => [r.category_id, r.categorized_by, r.category_confidence, r.needs_review]),
+        result.results.map((r) => [
+          r.category_id,
+          r.categorized_by,
+          r.category_confidence,
+          r.needs_review,
+        ]),
       ).toEqual([
         [velo, 'rule', 100, false],
         [ids.groceries, 'merchant_list', 90, false],
@@ -1778,7 +1889,13 @@ describe('statement imports', () => {
         display_name: CSV.file_name,
         status: 'active',
         consent_version: 'statement-import-1',
-        settings: { file_name: CSV.file_name, format: 'csv', bank: 'postfinance', added: 2, merged: 1 },
+        settings: {
+          file_name: CSV.file_name,
+          format: 'csv',
+          bank: 'postfinance',
+          added: 2,
+          merged: 1,
+        },
         synced_now: true,
         consent_revoked_at: null,
       });
@@ -1796,7 +1913,10 @@ describe('statement imports', () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       const fileName = `${'Kontoauszug '.repeat(10)}.xml`;
-      const result = await add(db, user, { rows: [statementRow()], import: { ...CAMT, file_name: fileName } });
+      const result = await add(db, user, {
+        rows: [statementRow()],
+        import: { ...CAMT, file_name: fileName },
+      });
       const source = await queryOne<Row>(
         db,
         'select provider, display_name, settings from public.data_sources where id = $1',
@@ -1819,7 +1939,10 @@ describe('statement imports', () => {
         rows: [row, statementRow({ external_id: 'camt:9' })],
         import: CAMT,
       });
-      expect(again.results.map((r) => r.outcome)).toEqual(['already_imported', 'possible_duplicate']);
+      expect(again.results.map((r) => r.outcome)).toEqual([
+        'already_imported',
+        'possible_duplicate',
+      ]);
       expect(again.data_source_id).toBeNull();
       expect(
         await countRows(db, 'select 1 from public.data_sources where user_id = $1', [user]),
@@ -1837,15 +1960,32 @@ describe('dry runs', () => {
       rows: [manualRow({ merchant: 'Coop', amount_rappen: -2_340 })],
     });
     await add(db, user, {
-      rows: [statementRow({ raw_text: 'KAUF DENNER', amount_rappen: -1_500, external_id: 'csv:A' })],
+      rows: [
+        statementRow({ raw_text: 'KAUF DENNER', amount_rappen: -1_500, external_id: 'csv:A' }),
+      ],
       import: CSV,
     });
     const rows = [
       statementRow({ raw_text: 'KAUF COOP-4567', amount_rappen: -2_340, external_id: 'camt:1' }),
       statementRow({ raw_text: 'DENNER', amount_rappen: -1_500, external_id: 'camt:2' }),
-      statementRow({ raw_text: 'LSV KRAFTWERK GYM', amount_rappen: -9_900, booked_on: '2026-09-01', external_id: 'camt:3' }),
-      statementRow({ raw_text: 'LSV KRAFTWERK GYM', amount_rappen: -10_500, booked_on: '2026-10-01', external_id: 'camt:4' }),
-      statementRow({ raw_text: 'LSV KRAFTWERK GYM', amount_rappen: -10_500, booked_on: '2026-10-01', external_id: 'camt:4' }),
+      statementRow({
+        raw_text: 'LSV KRAFTWERK GYM',
+        amount_rappen: -9_900,
+        booked_on: '2026-09-01',
+        external_id: 'camt:3',
+      }),
+      statementRow({
+        raw_text: 'LSV KRAFTWERK GYM',
+        amount_rappen: -10_500,
+        booked_on: '2026-10-01',
+        external_id: 'camt:4',
+      }),
+      statementRow({
+        raw_text: 'LSV KRAFTWERK GYM',
+        amount_rappen: -10_500,
+        booked_on: '2026-10-01',
+        external_id: 'camt:4',
+      }),
       statementRow({ raw_text: 'LADEN MUSTER', amount_rappen: -800, external_id: 'camt:5' }),
       statementRow({ raw_text: 'KAUF MIGROS', amount_rappen: -4_500, external_id: 'camt:6' }),
     ];
@@ -1940,8 +2080,15 @@ describe('other users', () => {
       const { user: a } = await onboardedUser(db);
       const { user: b } = await onboardedUser(db);
       await add(db, b, { rows: [manualRow({ merchant: 'Coop' })] });
-      await add(db, b, { rows: [statementRow({ raw_text: 'KAUF DENNER', external_id: 'same-id' })], import: CSV });
-      await make.fixedCost(db, b, { kind: 'other', amount_rappen: 9_900, merchant_hint: 'Kraftwerk' });
+      await add(db, b, {
+        rows: [statementRow({ raw_text: 'KAUF DENNER', external_id: 'same-id' })],
+        import: CSV,
+      });
+      await make.fixedCost(db, b, {
+        kind: 'other',
+        amount_rappen: 9_900,
+        merchant_hint: 'Kraftwerk',
+      });
       const bBefore = await footprint(db, b);
       const result = await add(db, a, {
         rows: [
@@ -1967,7 +2114,13 @@ describe('a full year of statement rows', () => {
   it('imports 2000 rows in less than 10 seconds', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await onboardedUser(db);
-      for (const [index, pattern] of ['Veloplus', 'Kiosk', 'Brocki', 'Tierarzt', 'Coiffeur Anna'].entries()) {
+      for (const [index, pattern] of [
+        'Veloplus',
+        'Kiosk',
+        'Brocki',
+        'Tierarzt',
+        'Coiffeur Anna',
+      ].entries()) {
         await make.rule(db, user, ids.hobbies ?? '', { pattern, priority: index });
       }
       for (const [kind, amount, hint] of [
@@ -1991,7 +2144,9 @@ describe('a full year of statement rows', () => {
         'LADEN MUSTER 4711',
         'GUTSCHRIFT ARBEITGEBER AG',
       ];
-      const amounts = [-2_340, -4_500, -1_200, -185_000, -42_000, -6_500, -1_590, -650, -800, 520_000];
+      const amounts = [
+        -2_340, -4_500, -1_200, -185_000, -42_000, -6_500, -1_590, -650, -800, 520_000,
+      ];
       const start = Date.UTC(2025, 9, 1);
       const rows = Array.from({ length: 2000 }, (_, i) =>
         statementRow({
@@ -2036,7 +2191,10 @@ describe('concurrent calls', () => {
         [userId, `${userId}@example.test`],
       );
       await onboard(admin, userId);
-      const connections = [new pg.Client({ connectionString: DATABASE_URL }), new pg.Client({ connectionString: DATABASE_URL })];
+      const connections = [
+        new pg.Client({ connectionString: DATABASE_URL }),
+        new pg.Client({ connectionString: DATABASE_URL }),
+      ];
       for (const client of connections) await client.connect();
       try {
         const [first, second] = connections as [pg.Client, pg.Client];
@@ -2044,9 +2202,13 @@ describe('concurrent calls', () => {
           await client.query('begin');
           await asUser(client, userId);
         }
-        const input = JSON.stringify({ rows: [statementRow({ external_id: 'race-1' })], import: CSV });
+        const input = JSON.stringify({
+          rows: [statementRow({ external_id: 'race-1' })],
+          import: CSV,
+        });
         const firstResult = await first.query<{ result: AddResult }>(ADD, [input]);
-        const pid = (await second.query<{ pid: number }>('select pg_backend_pid() as pid')).rows[0]?.pid;
+        const pid = (await second.query<{ pid: number }>('select pg_backend_pid() as pid')).rows[0]
+          ?.pid;
         const secondPending = second.query<{ result: AddResult }>(ADD, [input]);
         for (let attempt = 0; attempt < 400; attempt += 1) {
           const { rows } = await admin.query<{ wait: string | null }>(

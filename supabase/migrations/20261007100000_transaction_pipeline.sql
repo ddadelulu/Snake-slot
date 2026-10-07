@@ -517,7 +517,8 @@ $$;
 --   3. The same purchase from another source (same amount, booked within 72 h inclusive, same
 --      merchant, neither deleted nor merged, without splits, not yet merged with a row from this
 --      source; the closest in time, then the oldest): the row is stored as evidence with
---      merged_into_id, and the survivor gains merchant, statement text, MCC, items and foreign
+--      merged_into_id (categorized by steps 1 and 5-8, so it is complete if it is ever unmerged),
+--      and the survivor gains merchant, statement text, MCC, items and foreign
 --      amount it lacked, a note when it has none, and the person's category when its own was a
 --      guess (not placed by the person or a rule, not a fixed-cost payment). Rows with splits are
 --      never merged.
@@ -529,7 +530,7 @@ $$;
 --   6-8. internal.categorize: the person's rules, known merchants, MCC.
 --   9. Added (not merged) money-out rows from a source other than manual entry that are still
 --      without category: when exactly one active fixed cost has exactly this amount and no other
---      payment of it is booked within 20 days, this is its payment; the fixed cost learns the
+--      payment of it is booked within 20 days (inclusive), this is its payment; the fixed cost learns the
 --      merchant (merchant_hint) when it has none.
 -- Statement rows are stored acknowledged (D-033), manual rows not. With import, one data_sources
 -- row (kind statement_import) is created when anything is stored and every stored row is linked
@@ -943,9 +944,10 @@ comment on function public.add_transactions(jsonb) is
 -- (merchant, note or statement text contain the term, case-insensitive; % and _ match
 -- themselves), category_ids (a split matches by any part), uncategorized (no category and not a
 -- fixed-cost payment, or a split part without category), sources, from / to (local dates in the
--- user's zone, inclusive), needs_review; limit 1-100 (default 50); cursor from the previous page.
--- Newest first by (booked_at, id); deleted and merged rows are left out. Returns
--- { items: TransactionItem[], next_cursor: text | null }.
+-- user's zone, inclusive), needs_review; limit 1-100 (default 50); cursor = the previous page's
+-- next_cursor. Newest first by (booked_at, id); deleted and merged rows are left out. Returns
+-- { items: TransactionItem[], next_cursor: { booked_at, id } | null } (keyset: the last item's
+-- booking time in UTC with microseconds, and its id).
 create function public.list_transactions(p jsonb)
 returns jsonb
 language plpgsql
@@ -968,13 +970,12 @@ declare
   to_date date;
   review_filter boolean;
   page_size integer := 50;
-  cursor_text text;
   cursor_at timestamptz;
   cursor_id uuid;
   page_ids uuid[];
   page_times timestamptz[];
   items jsonb;
-  next_cursor text;
+  next_cursor jsonb;
 begin
   if me is null then
     raise exception 'not signed in' using errcode = '42501';
@@ -1078,14 +1079,17 @@ begin
 
   value := nullif(input -> 'cursor', 'null');
   if value is not null then
-    cursor_text := internal.json_string(value);
-    if cursor_text is null
-       or cursor_text !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-       or not pg_catalog.pg_input_is_valid(split_part(cursor_text, '|', 1), 'timestamptz') then
-      raise exception 'invalid_input' using errcode = '22023', detail = 'cursor is not a cursor of this list.';
+    if jsonb_typeof(value) <> 'object'
+       or exists (select 1 from jsonb_object_keys(value) as k where k not in ('booked_at', 'id'))
+       or coalesce(internal.json_string(value -> 'booked_at')
+                     !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$', true)
+       or not pg_catalog.pg_input_is_valid(internal.json_string(value -> 'booked_at'), 'timestamptz')
+       or internal.json_uuid(value -> 'id') is null then
+      raise exception 'invalid_input'
+        using errcode = '22023', detail = 'cursor must be the next_cursor of the previous page.';
     end if;
-    cursor_at := split_part(cursor_text, '|', 1)::timestamptz;
-    cursor_id := split_part(cursor_text, '|', 2)::uuid;
+    cursor_at := internal.json_string(value -> 'booked_at')::timestamptz;
+    cursor_id := internal.json_uuid(value -> 'id');
   end if;
 
   select pr.timezone into user_zone from public.profiles pr where pr.id = me;
@@ -1134,8 +1138,7 @@ begin
     ) as page;
 
   if coalesce(cardinality(page_ids), 0) > page_size then
-    next_cursor := to_char(page_times[page_size], 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
-                   || '|' || page_ids[page_size]::text;
+    next_cursor := jsonb_build_object('booked_at', page_times[page_size], 'id', page_ids[page_size]);
     page_ids := page_ids[1:page_size];
   end if;
 

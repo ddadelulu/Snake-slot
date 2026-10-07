@@ -1,6 +1,7 @@
 import {
   IncompleteDraftError,
   ONBOARDING_STEPS,
+  SKIPPABLE_STEPS,
   allocation,
   budgetsForStep,
   categoryId,
@@ -11,12 +12,14 @@ import {
   parseWeeklyMinutes,
   restoreDraft,
   suggestedBudgets,
+  suggestsImport,
   toOnboardingPayload,
   validateCategories,
   validateCustomCategory,
   validateFixedCosts,
   validateIncome,
   validateSavings,
+  wantsImportAfterSetup,
   type OnboardingDraft,
 } from './draft';
 
@@ -58,7 +61,37 @@ describe('createDraft', () => {
       quietEndMinutes: 420,
       maxPerDay: 6,
     });
-    expect(ONBOARDING_STEPS).toHaveLength(9);
+    expect(ONBOARDING_STEPS).toHaveLength(10);
+    expect(draft.importAfterSetup).toBeNull();
+  });
+
+  it('asks about sources (step 9) right before the summary, and it can be skipped', () => {
+    expect(ONBOARDING_STEPS.slice(-3)).toEqual(['notifications', 'sources', 'summary']);
+    expect(SKIPPABLE_STEPS).toContain('sources');
+  });
+});
+
+describe('importing right after setup (step 9)', () => {
+  it('is suggested to everyone who pays by card or phone, not to cash-only payers', () => {
+    expect(suggestsImport(['card'])).toBe(true);
+    expect(suggestsImport(['twint'])).toBe(true);
+    expect(suggestsImport(['apple_pay'])).toBe(true);
+    expect(suggestsImport(['google_pay'])).toBe(true);
+    expect(suggestsImport(['cash', 'twint'])).toBe(true);
+    expect(suggestsImport(['cash'])).toBe(false);
+    expect(suggestsImport([])).toBe(true);
+  });
+
+  it('follows the suggestion until the person decides', () => {
+    const draft = createDraft();
+    expect(wantsImportAfterSetup({ ...draft, paymentMethods: ['cash'] })).toBe(false);
+    expect(wantsImportAfterSetup({ ...draft, paymentMethods: ['card'] })).toBe(true);
+    expect(
+      wantsImportAfterSetup({ ...draft, paymentMethods: ['card'], importAfterSetup: false }),
+    ).toBe(false);
+    expect(
+      wantsImportAfterSetup({ ...draft, paymentMethods: ['cash'], importAfterSetup: true }),
+    ).toBe(true);
   });
 });
 
@@ -319,15 +352,40 @@ describe('restoreDraft', () => {
       budgets: { 'default:groceries': 90000 },
       budgetsAdjusted: true,
       paymentMethods: ['card'],
-      reached: 4,
+      importAfterSetup: false,
+      reached: 9,
     };
     expect(restoreDraft(JSON.parse(JSON.stringify(draft)))).toEqual(draft);
   });
 
-  it('starts fresh for anything that is not a version-1 draft', () => {
+  it('starts fresh for anything that is not a draft of a known version', () => {
     expect(restoreDraft(null)).toEqual(createDraft());
     expect(restoreDraft('draft')).toEqual(createDraft());
-    expect(restoreDraft({ version: 2 })).toEqual(createDraft());
+    expect(restoreDraft({ version: 3, netIncome: '5000' })).toEqual(createDraft());
+  });
+
+  it('restores drafts saved before the sources step existed', () => {
+    const v1 = (reached: number) =>
+      restoreDraft({ version: 1, netIncome: '5000', paymentMethods: ['twint'], reached });
+    expect(v1(3)).toMatchObject({ version: 2, netIncome: '5000', reached: 3 });
+    expect(ONBOARDING_STEPS[v1(7).reached]).toBe('notifications');
+    // A version-1 draft at the summary resumes at the new step, so it is not missed.
+    expect(ONBOARDING_STEPS[v1(8).reached]).toBe('sources');
+    expect(ONBOARDING_STEPS[v1(99).reached]).toBe('sources');
+    expect(v1(8).importAfterSetup).toBeNull();
+    expect(wantsImportAfterSetup(v1(8))).toBe(true);
+  });
+
+  it('restores the step-9 choice of a current draft', () => {
+    expect(restoreDraft({ version: 2, importAfterSetup: true, reached: 9 })).toMatchObject({
+      importAfterSetup: true,
+      reached: 9,
+    });
+    expect(restoreDraft({ version: 2, importAfterSetup: 'yes', reached: -3 })).toMatchObject({
+      importAfterSetup: null,
+      reached: 0,
+    });
+    expect(ONBOARDING_STEPS[restoreDraft({ version: 2, reached: 42 }).reached]).toBe('summary');
   });
 
   it('replaces unexpected fields with defaults', () => {

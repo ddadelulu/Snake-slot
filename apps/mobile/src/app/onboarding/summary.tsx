@@ -5,12 +5,14 @@ import { View } from 'react-native';
 
 import { AlertBanner, AppText, Card, Divider } from '@/components';
 import { useCompleteOnboarding } from '@/data/onboarding';
+import { setAfterOnboarding } from '@/features/onboarding/afterOnboarding';
 import {
   IncompleteDraftError,
   budgetsForStep,
   categoryId,
   monthPlan,
   toOnboardingPayload,
+  wantsImportAfterSetup,
 } from '@/features/onboarding/draft';
 import { OnboardingScreen, stepPath } from '@/features/onboarding/OnboardingScreen';
 import { useOnboarding } from '@/features/onboarding/OnboardingProvider';
@@ -78,11 +80,14 @@ export default function SummaryStep() {
       }
       throw error;
     }
+    // Step 9: the navigator opens the import once it has switched to the tabs.
+    setAfterOnboarding(wantsImportAfterSetup(draft) ? '/import?from=onboarding' : null);
     complete.mutate(payload, {
       onSuccess: () => {
         // The navigator switches to the tabs once the refreshed profile says onboarding is done.
         void clear();
       },
+      onError: () => setAfterOnboarding(null),
     });
   };
 
