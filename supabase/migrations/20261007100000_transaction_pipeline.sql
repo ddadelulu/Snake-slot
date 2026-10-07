@@ -2,22 +2,37 @@
 -- "Transactions (Milestone 3)"; the rules are in docs/CATEGORIZATION.md).
 --
 --   * add_transactions: the one way transactions enter the database (manual entry and statement
---     files today): validation, re-import check, cross-source deduplication, same-source duplicate
---     check, fixed-cost detection, categorization, storage; optionally as a dry run.
---   * list_transactions, get_transaction: the Transactions screen.
+--     files today): validation, re-import check, cross-source deduplication, look-alike checks,
+--     fixed-cost detection, categorization, storage; optionally as a dry run.
+--   * list_transactions, get_transaction: the Transactions screen (TransactionItem, with the
+--     proposed rule).
 --   * update_transaction, set_transaction_splits: corrections, "Always do this for …?" rules,
 --     fixed-cost links, splits, soft delete.
---   * remove_import: undo a statement import. export_my_data: the data export (revDSG/GDPR).
+--   * remove_import: undo a statement import for good (D-041). export_my_data: the data export
+--     (revDSG/GDPR).
 --   * get_overview gains needs_review_count and, per recent transaction, categorized_by and
 --     needs_review.
 --
 -- Every RPC runs with the caller's rights (row-level security applies to every row it reads or
 -- writes), needs a signed-in user (42501 otherwise) and reports invalid input as 22023 with the
--- error code as message and the problem in DETAIL.
+-- error code as message and the problem in DETAIL. Every list in the input is bounded before it
+-- is read element by element.
 
--- Deduplication looks for the same amount around the same time: keep that an index lookup.
-create index transactions_user_amount_booked_at_idx
-  on public.transactions (user_id, amount_rappen, booked_at);
+-- Deduplication looks for the same amount from a given source around the same time: an index
+-- range per (amount, source), ordered by time, so the nearest candidates are read first and a
+-- call's own rows (all of one source) are never read when looking at other sources.
+create index transactions_user_amount_source_booked_at_idx
+  on public.transactions (user_id, amount_rappen, source, booked_at);
+
+-- What a merge copied into the surviving transaction, kept on the evidence row (D-041):
+-- { "<field>": { "from": <survivor's value before>, "to": <value copied> }, … } with the fields
+-- merchant, raw_text, mcc, items, note, original ({ amount_minor, currency }) and category
+-- ({ category_id, categorized_by, category_confidence }). remove_import puts "from" back where
+-- the survivor still holds "to". Null when the merge copied nothing.
+alter table public.transactions
+  add column merge_changes jsonb check (merge_changes is null or jsonb_typeof(merge_changes) = 'object');
+comment on column public.transactions.merge_changes is
+  'On a merged (evidence) row: what its merge copied into the surviving transaction, { field: { from, to } }, so removing the import can undo it (D-041).';
 
 -- ---------------------------------------------------------------------------------------------
 -- JSON input helpers
@@ -278,9 +293,10 @@ begin
 
   value := nullif(p_row -> 'items', 'null');
   if value is not null then
-    if jsonb_typeof(value) <> 'array' then
+    if jsonb_typeof(value) <> 'array' or jsonb_array_length(value) > 500 then
       raise exception 'invalid_row'
-        using errcode = '22023', detail = format('row %s: items must be a list', p_index);
+        using errcode = '22023',
+              detail = format('row %s: items must be a list of at most 500 items', p_index);
     end if;
     for item, item_index in
       select element, (ordinal - 1)::integer
@@ -443,7 +459,8 @@ $$;
 -- TransactionItem (API.md, "Reading")
 -- ---------------------------------------------------------------------------------------------
 
--- One of the caller's transactions as the app reads it: the row, its data source's name, its
+-- One of the caller's transactions as the app reads it: the row, its data source's name, the
+-- rule "Always do this for …?" proposes (internal.suggest_rule, from the merchant only), its
 -- split parts, the sources of the rows merged into it, and needs_review. Null when the id is not
 -- the caller's. Timestamps in UTC.
 create function internal.transaction_item(p_id uuid)
@@ -472,6 +489,7 @@ as $$
            'original_amount_minor', t.original_amount_minor,
            'original_currency', t.original_currency,
            'items', t.items,
+           'suggested_rule', internal.suggest_rule(t.merchant),
            'splits', coalesce(parts.list, '[]'::jsonb),
            'merged_sources', coalesce(merged.list, '[]'::jsonb),
            'needs_review', internal.needs_review(
@@ -509,29 +527,44 @@ $$;
 -- ---------------------------------------------------------------------------------------------
 
 -- Input { rows: [IngestRow, …] (1-2000), import: { file_name, format, bank } | null,
--- dry_run: boolean }. Rows are processed in order; for each:
+-- dry_run: boolean }. All rows of a call have one source (manual, or statement_import with
+-- import). "Days" are local dates in the person's time zone, compared by date (D-040: no hour
+-- arithmetic, so daylight-saving changes do not matter). Rows are processed in order; for each:
 --   1. A row with the person's category or splits is stored as categorized_by 'user'
 --      (confidence 100); steps 5-9 do not run for it.
 --   2. Same source and external_id as a stored row (also one stored earlier in this call):
 --      already_imported, nothing stored.
---   3. The same purchase from another source (same amount, booked within 72 h inclusive, same
---      merchant, neither deleted nor merged, without splits, not yet merged with a row from this
---      source; the closest in time, then the oldest): the row is stored as evidence with
---      merged_into_id (categorized by steps 1 and 5-8, so it is complete if it is ever unmerged),
---      and the survivor gains merchant, statement text, MCC, items and foreign
---      amount it lacked, a note when it has none, and the person's category when its own was a
---      guess (not placed by the person or a rule, not a fixed-cost payment). Rows with splits are
---      never merged.
---   4. Statement rows only: the same source, amount, local day and merchant (or both without a
---      key) with a different external_id, stored before this call and not deleted:
---      possible_duplicate, not stored unless the row says allow_duplicate.
---   5. Money out whose key contains the key of an active fixed cost's merchant_hint, within ±20 %
---      of its amount: that fixed cost's payment (no category).
---   6-8. internal.categorize: the person's rules, known merchants, MCC.
+--   3. The same purchase from another source: a stored transaction of another source with the
+--      same amount, booked at most 4 days before or after (by local date, inclusive), neither
+--      deleted nor merged, without splits, not yet merged with a row from this source, with the
+--      same merchant (internal.same_merchant: one key contains the other, or the same first word
+--      that is neither generic nor a payment word). The closest in time wins, then the oldest.
+--      Rows with splits or without a merchant key are never merged. The row is stored as
+--      evidence with merged_into_id (categorized by steps 1 and 5-8, so it is complete if it is
+--      ever unmerged); the survivor gains merchant, statement text, MCC, items and foreign amount
+--      it lacked, a note when it has none, and the person's category when its own was a guess
+--      (not placed by the person or a rule, not a fixed-cost payment). What it gained is kept on
+--      the evidence row (merge_changes) for remove_import. duplicate_of describes the survivor.
+--   4. Unless the row says allow_duplicate, possible_duplicate (nothing stored; duplicate_of
+--      describes the stored transaction, the survivor when the match was merged):
+--      a. statement rows: a row of the same source stored before this call (not deleted; merged
+--         evidence counts) with the same amount, the same local day, a different external_id
+--         and the same merchant (or both without a key);
+--      b. any row: a visible transaction of another source with the same amount within 4 days
+--         (as in 3, not yet merged with a row from this source) when the merchants cannot be
+--         compared: either has no merchant key, or either is a split (D-040).
+--   5. Money out whose hint words (internal.hint_words) contain an active fixed cost's
+--      merchant_hint_key, within ±20 % of its amount, when no other payment of that fixed cost is
+--      booked within 20 days: that fixed cost's payment (no category). The longest hint wins.
+--   6-8. internal.categorize: for money out the person's rules, known merchants, MCC; for money
+--      in only refund recognition (D-039).
 --   9. Added (not merged) money-out rows from a source other than manual entry that are still
 --      without category: when exactly one active fixed cost has exactly this amount and no other
---      payment of it is booked within 20 days (inclusive), this is its payment; the fixed cost learns the
---      merchant (merchant_hint) when it has none.
+--      payment of it is booked within 20 days (inclusive), this is its payment; the fixed cost
+--      learns a merchant hint (internal.fixed_cost_hint) when it has none.
+-- Steps 3 and 4 read at most the 50 nearest candidates before and after the row per source, so
+-- a file of thousands of identical amounts stays fast; a call's own rows are skipped by the
+-- index (step 3, 4b: another source) or by their data source (4a) before any key is compared.
 -- Statement rows are stored acknowledged (D-033), manual rows not. With import, one data_sources
 -- row (kind statement_import) is created when anything is stored and every stored row is linked
 -- to it. A dry run computes the same result and stores nothing (ids of new rows are null).
@@ -556,27 +589,45 @@ declare
   import_bank text;
   is_dry_run boolean := false;
   row_source text;
+  other_sources text[];
+  check_same_source boolean;
+  fixed_costs_have_hints boolean;
+  not_distinctive text[] := internal.generic_words() || internal.payment_words();
   row_index integer;
   row_input jsonb;
   tx public.transactions;
   tx_key text;
+  tx_padded text;
+  tx_first text;
+  tx_first_distinctive boolean;
+  tx_hint_padded text;
+  local_day date;
+  window_start timestamptz;
+  window_end timestamptz;
+  day_start timestamptz;
+  day_end timestamptz;
   has_splits boolean;
   allow_duplicate boolean;
   existing public.transactions;
+  candidate_id uuid;
   survivor public.transactions;
   shown public.transactions;
   shown_is_split boolean;
   placed record;
   take_category boolean;
-  candidate_id uuid;
-  candidate_count integer;
+  changes jsonb;
+  fixed_candidate_id uuid;
+  fixed_candidate_count integer;
+  learned_hint text;
   new_id uuid;
   new_data_source_id uuid;
   outcome text;
   result_id uuid;
+  result_is_new boolean;
   duplicate_of jsonb;
   review boolean;
   inserted_ids uuid[] := '{}';
+  result_is_new_flags boolean[] := '{}';
   results jsonb[] := '{}';
   added_count integer := 0;
   merged_count integer := 0;
@@ -664,6 +715,23 @@ begin
     pg_catalog.hashtextextended('public.add_transactions:' || me::text, 0)
   );
 
+  -- What the person has stored before this call, read once: the other sources a row can merge
+  -- with or look like (this call's rows all have row_source), whether there are earlier rows of
+  -- this source to compare with (step 4a), and whether any fixed cost has a hint (step 5).
+  select coalesce(array_agg(distinct t.source), '{}') into other_sources
+    from public.transactions t
+   where t.user_id = me
+     and t.source <> row_source
+     and t.deleted_at is null
+     and t.merged_into_id is null;
+  check_same_source := row_source = 'statement_import'
+    and exists (select 1 from public.transactions t
+                 where t.user_id = me and t.source = row_source and t.external_id is not null
+                   and t.deleted_at is null);
+  fixed_costs_have_hints := exists (
+    select 1 from public.fixed_costs f
+     where f.user_id = me and f.active and f.merchant_hint_key <> '');
+
   -- A dry run does all the work, then rolls this block back (BZ001 is raised and caught below);
   -- the results computed inside stay in the variables.
   begin
@@ -673,9 +741,20 @@ begin
       has_splits := coalesce(jsonb_array_length(nullif(row_input -> 'splits', 'null')), 0) > 0;
       allow_duplicate := coalesce((nullif(row_input -> 'allow_duplicate', 'null'))::boolean, false);
       tx_key := internal.transaction_key(tx.merchant, tx.raw_text);
+      tx_padded := ' ' || tx_key || ' ';
+      tx_first := split_part(tx_key, ' ', 1);
+      tx_first_distinctive := tx_first <> '' and tx_first <> all (not_distinctive);
+      local_day := (tx.booked_at at time zone user_zone)::date;
+      day_start := local_day::timestamp at time zone user_zone;
+      day_end := (local_day + 1)::timestamp at time zone user_zone;
+      window_start := (local_day - 4)::timestamp at time zone user_zone;
+      window_end := (local_day + 5)::timestamp at time zone user_zone;
       outcome := null;
       result_id := null;
+      result_is_new := false;
       duplicate_of := null;
+      candidate_id := null;
+      changes := null;
 
       -- 2. Already imported.
       if tx.external_id is not null then
@@ -685,64 +764,164 @@ begin
         if found then
           outcome := 'already_imported';
           result_id := coalesce(existing.merged_into_id, existing.id);
+          result_is_new := result_id = any (inserted_ids);
         end if;
       end if;
 
-      -- 3. The same purchase from another source.
-      if outcome is null and not has_splits and tx_key <> '' then
-        select t.* into survivor
-          from public.transactions t
-         where t.user_id = me
-           and t.amount_rappen = tx.amount_rappen
-           and t.booked_at between tx.booked_at - interval '72 hours'
-                               and tx.booked_at + interval '72 hours'
-           and t.source <> tx.source
-           and t.deleted_at is null
-           and t.merged_into_id is null
-           and not exists (select 1 from public.transaction_splits s where s.transaction_id = t.id)
+      -- 3. The same purchase from another source. Per other source, the 50 nearest rows on each
+      -- side; then the merchant (internal.same_merchant written out on the stored keys).
+      if outcome is null and not has_splits and tx_key <> ''
+         and cardinality(other_sources) > 0 then
+        select c.id into candidate_id
+          from unnest(other_sources) as s(source)
+          cross join lateral (
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = s.source
+                and t.booked_at >= window_start
+                and t.booked_at <= tx.booked_at
+                and t.deleted_at is null
+                and t.merged_into_id is null
+              order by t.booked_at desc
+              limit 50)
+            union all
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = s.source
+                and t.booked_at > tx.booked_at
+                and t.booked_at < window_end
+                and t.deleted_at is null
+                and t.merged_into_id is null
+              order by t.booked_at
+              limit 50)
+          ) as c
+         where c.merchant_key <> ''
+           and (strpos(' ' || c.merchant_key || ' ', tx_padded) > 0
+                or strpos(tx_padded, ' ' || c.merchant_key || ' ') > 0
+                or (tx_first_distinctive and split_part(c.merchant_key, ' ', 1) = tx_first))
+           and not exists (select 1 from public.transaction_splits sp
+                            where sp.transaction_id = c.id)
            and not exists (select 1 from public.transactions e
-                            where e.merged_into_id = t.id and e.source = tx.source
-                              and e.deleted_at is null)
-           and internal.same_merchant(tx_key, internal.transaction_key(t.merchant, t.raw_text))
-         order by abs(extract(epoch from t.booked_at - tx.booked_at)), t.created_at, t.id
-         limit 1
-           for update of t;
-        if found then
-          outcome := 'merged';
+                            where e.merged_into_id = c.id and e.user_id = me
+                              and e.source = tx.source and e.deleted_at is null)
+         order by abs(extract(epoch from c.booked_at - tx.booked_at)), c.created_at, c.id
+         limit 1;
+        if candidate_id is not null then
+          select t.* into survivor
+            from public.transactions t
+           where t.id = candidate_id and t.deleted_at is null and t.merged_into_id is null
+             for update;
+          if found then
+            outcome := 'merged';
+          end if;
         end if;
       end if;
 
-      -- 4. Possible duplicate from the same source (statement files only).
-      if outcome is null and tx.source = 'statement_import' and not allow_duplicate then
-        select t.* into existing
-          from public.transactions t
-         where t.user_id = me
-           and t.source = tx.source
-           and t.amount_rappen = tx.amount_rappen
-           and t.booked_at between tx.booked_at - interval '2 days' and tx.booked_at + interval '2 days'
-           and (t.booked_at at time zone user_zone)::date = (tx.booked_at at time zone user_zone)::date
-           and t.deleted_at is null
-           and t.external_id is distinct from tx.external_id
-           and t.id <> all (inserted_ids)
-           and case when tx_key = '' then internal.transaction_key(t.merchant, t.raw_text) = ''
-                    else internal.same_merchant(tx_key, internal.transaction_key(t.merchant, t.raw_text))
+      -- 4a. Possible duplicate from the same source (statement files): rows stored before this
+      -- call, on the same local day.
+      if outcome is null and check_same_source and not allow_duplicate then
+        select c.id into candidate_id
+          from (
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = tx.source
+                and t.booked_at >= day_start
+                and t.booked_at <= tx.booked_at
+                and (new_data_source_id is null or t.data_source_id is distinct from new_data_source_id)
+                and t.deleted_at is null
+                and t.external_id is distinct from tx.external_id
+              order by t.booked_at desc
+              limit 50)
+            union all
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = tx.source
+                and t.booked_at > tx.booked_at
+                and t.booked_at < day_end
+                and (new_data_source_id is null or t.data_source_id is distinct from new_data_source_id)
+                and t.deleted_at is null
+                and t.external_id is distinct from tx.external_id
+              order by t.booked_at
+              limit 50)
+          ) as c
+         where case
+                 when tx_key = '' then c.merchant_key = ''
+                 else c.merchant_key <> ''
+                      and (strpos(' ' || c.merchant_key || ' ', tx_padded) > 0
+                           or strpos(tx_padded, ' ' || c.merchant_key || ' ') > 0
+                           or (tx_first_distinctive
+                               and split_part(c.merchant_key, ' ', 1) = tx_first))
                end
-         order by abs(extract(epoch from t.booked_at - tx.booked_at)), t.created_at, t.id
+         order by abs(extract(epoch from c.booked_at - tx.booked_at)), c.created_at, c.id
          limit 1;
-        if found then
+        if candidate_id is not null then
           outcome := 'possible_duplicate';
-          -- Point at the transaction the person sees (the survivor when the match was merged).
-          if existing.merged_into_id is not null then
-            select t.* into existing from public.transactions t where t.id = existing.merged_into_id;
-          end if;
-          duplicate_of := jsonb_build_object(
-            'id', existing.id,
-            'booked_at', existing.booked_at,
-            'merchant', existing.merchant,
-            'amount_rappen', existing.amount_rappen,
-            'source', existing.source
-          );
         end if;
+      end if;
+
+      -- 4b. A look-alike from another source whose merchant cannot be compared (D-040).
+      if outcome is null and not allow_duplicate and cardinality(other_sources) > 0 then
+        select c.id into candidate_id
+          from unnest(other_sources) as s(source)
+          cross join lateral (
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = s.source
+                and t.booked_at >= window_start
+                and t.booked_at <= tx.booked_at
+                and t.deleted_at is null
+                and t.merged_into_id is null
+              order by t.booked_at desc
+              limit 50)
+            union all
+            (select t.id, t.booked_at, t.created_at, t.merchant_key
+               from public.transactions t
+              where t.user_id = me
+                and t.amount_rappen = tx.amount_rappen
+                and t.source = s.source
+                and t.booked_at > tx.booked_at
+                and t.booked_at < window_end
+                and t.deleted_at is null
+                and t.merged_into_id is null
+              order by t.booked_at
+              limit 50)
+          ) as c
+         where (tx_key = '' or has_splits or c.merchant_key = ''
+                or exists (select 1 from public.transaction_splits sp
+                            where sp.transaction_id = c.id))
+           and not exists (select 1 from public.transactions e
+                            where e.merged_into_id = c.id and e.user_id = me
+                              and e.source = tx.source and e.deleted_at is null)
+         order by abs(extract(epoch from c.booked_at - tx.booked_at)), c.created_at, c.id
+         limit 1;
+        if candidate_id is not null then
+          outcome := 'possible_duplicate';
+        end if;
+      end if;
+
+      if outcome = 'possible_duplicate' then
+        -- Point at the transaction the person sees (the survivor when the match was merged).
+        select t.* into existing from public.transactions t where t.id = candidate_id;
+        if existing.merged_into_id is not null then
+          select t.* into existing from public.transactions t where t.id = existing.merged_into_id;
+        end if;
+        duplicate_of := jsonb_build_object(
+          'id', existing.id,
+          'booked_at', existing.booked_at,
+          'merchant', existing.merchant,
+          'amount_rappen', existing.amount_rappen,
+          'source', existing.source
+        );
       end if;
 
       if outcome is null or outcome = 'merged' then
@@ -755,22 +934,32 @@ begin
           tx.category_confidence := null;
           tx.fixed_cost_id := null;
           -- 5. Fixed cost by its merchant hint.
-          if tx.amount_rappen < 0 and tx_key <> '' then
+          if tx.amount_rappen < 0 and tx_key <> '' and fixed_costs_have_hints then
+            tx_hint_padded := ' ' || internal.hint_words(tx.merchant, tx.raw_text) || ' ';
             select f.id into tx.fixed_cost_id
               from public.fixed_costs f
              where f.user_id = me
                and f.active
-               and f.merchant_hint is not null
-               and internal.key_contains(tx_key, internal.merchant_key(f.merchant_hint))
+               and f.merchant_hint_key <> ''
+               and strpos(tx_hint_padded, ' ' || f.merchant_hint_key || ' ') > 0
                and 5 * abs(-tx.amount_rappen - f.amount_rappen) <= f.amount_rappen
-             order by char_length(internal.merchant_key(f.merchant_hint)) desc,
+               and not exists (
+                     select 1 from public.transactions t
+                      where t.user_id = me
+                        and t.fixed_cost_id = f.id
+                        and t.deleted_at is null
+                        and t.merged_into_id is null
+                        and t.booked_at between tx.booked_at - interval '20 days'
+                                            and tx.booked_at + interval '20 days')
+             order by char_length(f.merchant_hint_key) desc,
                       abs(-tx.amount_rappen - f.amount_rappen), f.created_at, f.id
              limit 1;
           end if;
-          -- 6-8. Rules, known merchants, MCC.
+          -- 6-8. Rules, known merchants, MCC (money out); refunds (money in).
           if tx.fixed_cost_id is null then
             select c.* into placed
-              from internal.categorize(tx.merchant, tx.raw_text, tx.mcc::integer, tx.amount_rappen) as c;
+              from internal.categorize(tx.merchant, tx.raw_text, tx.mcc::integer, tx.amount_rappen,
+                                       tx.booked_at) as c;
             tx.category_id := placed.category_id;
             tx.categorized_by := placed.categorized_by;
             tx.category_confidence := placed.category_confidence;
@@ -782,23 +971,72 @@ begin
              and tx.amount_rappen < 0
              and tx.category_id is null
              and tx.fixed_cost_id is null then
-            select (array_agg(f.id))[1], count(*) into candidate_id, candidate_count
+            select (array_agg(f.id))[1], count(*) into fixed_candidate_id, fixed_candidate_count
               from public.fixed_costs f
              where f.user_id = me and f.active and f.amount_rappen = -tx.amount_rappen;
-            if candidate_count = 1 and not exists (
+            if fixed_candidate_count = 1 and not exists (
                  select 1 from public.transactions t
                   where t.user_id = me
-                    and t.fixed_cost_id = candidate_id
+                    and t.fixed_cost_id = fixed_candidate_id
                     and t.deleted_at is null
                     and t.merged_into_id is null
                     and t.booked_at between tx.booked_at - interval '20 days'
                                         and tx.booked_at + interval '20 days') then
-              tx.fixed_cost_id := candidate_id;
+              tx.fixed_cost_id := fixed_candidate_id;
+              learned_hint := internal.fixed_cost_hint(tx.merchant, tx.raw_text);
               update public.fixed_costs f
-                 set merchant_hint = internal.fixed_cost_hint(tx.merchant, tx.raw_text)
-               where f.id = candidate_id and f.user_id = me and f.merchant_hint is null;
+                 set merchant_hint = learned_hint
+               where f.id = fixed_candidate_id and f.user_id = me and f.merchant_hint is null;
+              if found and learned_hint is not null then
+                fixed_costs_have_hints := true;
+              end if;
             end if;
           end if;
+        end if;
+
+        if outcome = 'merged' then
+          -- What the survivor gains, recorded on the evidence row for remove_import.
+          take_category := tx.categorized_by = 'user'
+                           and tx.category_id is not null
+                           and survivor.categorized_by not in ('user', 'rule')
+                           and survivor.fixed_cost_id is null;
+          changes := '{}'::jsonb;
+          if survivor.merchant is null and tx.merchant is not null then
+            changes := changes || jsonb_build_object('merchant',
+              jsonb_build_object('from', null, 'to', tx.merchant));
+          end if;
+          if survivor.raw_text is null and tx.raw_text is not null then
+            changes := changes || jsonb_build_object('raw_text',
+              jsonb_build_object('from', null, 'to', tx.raw_text));
+          end if;
+          if survivor.mcc is null and tx.mcc is not null then
+            changes := changes || jsonb_build_object('mcc',
+              jsonb_build_object('from', null, 'to', tx.mcc));
+          end if;
+          if survivor.items is null and tx.items is not null then
+            changes := changes || jsonb_build_object('items',
+              jsonb_build_object('from', null, 'to', tx.items));
+          end if;
+          if survivor.original_amount_minor is null and tx.original_amount_minor is not null then
+            changes := changes || jsonb_build_object('original', jsonb_build_object(
+              'from', jsonb_build_object('amount_minor', null, 'currency', null),
+              'to', jsonb_build_object('amount_minor', tx.original_amount_minor,
+                                       'currency', tx.original_currency)));
+          end if;
+          if survivor.note is null and tx.note is not null then
+            changes := changes || jsonb_build_object('note',
+              jsonb_build_object('from', null, 'to', tx.note));
+          end if;
+          if take_category then
+            changes := changes || jsonb_build_object('category', jsonb_build_object(
+              'from', jsonb_build_object('category_id', survivor.category_id,
+                                         'categorized_by', survivor.categorized_by,
+                                         'category_confidence', survivor.category_confidence),
+              'to', jsonb_build_object('category_id', tx.category_id,
+                                       'categorized_by', 'user',
+                                       'category_confidence', 100)));
+          end if;
+          changes := nullif(changes, '{}'::jsonb);
         end if;
 
         if import_input is not null and new_data_source_id is null then
@@ -818,13 +1056,14 @@ begin
         insert into public.transactions (
           user_id, amount_rappen, original_amount_minor, original_currency, booked_at, merchant,
           raw_text, mcc, source, external_id, data_source_id, category_id, categorized_by,
-          category_confidence, note, items, fixed_cost_id, merged_into_id, acknowledged_at
+          category_confidence, note, items, fixed_cost_id, merged_into_id, merge_changes,
+          acknowledged_at
         )
         values (
           me, tx.amount_rappen, tx.original_amount_minor, tx.original_currency, tx.booked_at,
           tx.merchant, tx.raw_text, tx.mcc, tx.source, tx.external_id, new_data_source_id,
           tx.category_id, tx.categorized_by, tx.category_confidence, tx.note, tx.items,
-          tx.fixed_cost_id, case when outcome = 'merged' then survivor.id end,
+          tx.fixed_cost_id, case when outcome = 'merged' then survivor.id end, changes,
           case when tx.source = 'statement_import' then now() end
         )
         returning id into new_id;
@@ -839,10 +1078,6 @@ begin
         end if;
 
         if outcome = 'merged' then
-          take_category := tx.categorized_by = 'user'
-                           and tx.category_id is not null
-                           and survivor.categorized_by not in ('user', 'rule')
-                           and survivor.fixed_cost_id is null;
           update public.transactions s
              set merchant = coalesce(s.merchant, tx.merchant),
                  raw_text = coalesce(s.raw_text, tx.raw_text),
@@ -860,10 +1095,18 @@ begin
           returning s.* into shown;
           shown_is_split := false;
           result_id := survivor.id;
+          duplicate_of := jsonb_build_object(
+            'id', shown.id,
+            'booked_at', shown.booked_at,
+            'merchant', shown.merchant,
+            'amount_rappen', shown.amount_rappen,
+            'source', shown.source
+          );
           merged_count := merged_count + 1;
         else
           outcome := 'added';
           result_id := new_id;
+          result_is_new := true;
           shown := tx;
           shown_is_split := has_splits;
           added_count := added_count + 1;
@@ -897,6 +1140,7 @@ begin
         'fixed_cost_id', shown.fixed_cost_id,
         'needs_review', review
       ));
+      result_is_new_flags := array_append(result_is_new_flags, result_is_new);
     end loop;
 
     if new_data_source_id is not null then
@@ -913,7 +1157,7 @@ begin
       -- Everything this call wrote is rolled back. Rows it would have created have no id.
       new_data_source_id := null;
       for row_index in 1 .. cardinality(results) loop
-        if (results[row_index] ->> 'transaction_id')::uuid = any (inserted_ids) then
+        if result_is_new_flags[row_index] then
           results[row_index] := jsonb_set(results[row_index], '{transaction_id}', 'null'::jsonb);
         end if;
       end loop;
@@ -934,17 +1178,19 @@ end;
 $$;
 
 comment on function public.add_transactions(jsonb) is
-  'The transaction pipeline (API.md): validates, recognizes re-imports, merges duplicates across sources, flags same-source duplicates, detects fixed-cost payments, categorizes and stores; dry_run computes the same without storing.';
+  'The transaction pipeline (API.md): validates, recognizes re-imports, merges duplicates across sources, reports look-alikes, detects fixed-cost payments, categorizes and stores; dry_run computes the same without storing.';
 
 -- ---------------------------------------------------------------------------------------------
 -- Reading
 -- ---------------------------------------------------------------------------------------------
 
 -- Filters (all optional, combined with AND; category_ids and uncategorized with OR): search
--- (merchant, note or statement text contain the term, case-insensitive; % and _ match
--- themselves), category_ids (a split matches by any part), uncategorized (no category and not a
--- fixed-cost payment, or a split part without category), sources, from / to (local dates in the
--- user's zone, inclusive), needs_review; limit 1-100 (default 50); cursor = the previous page's
+-- (merchant, note or statement text contain the term case-insensitively, % and _ matching
+-- themselves; or the merchant key of the merchant, note or statement text contains the key of
+-- the term, so "zurich" finds "Zürich" and "baeckerei" finds "Bäckerei"), category_ids (at most
+-- 100; a split matches by any part), uncategorized (no category and not a fixed-cost payment, or
+-- a split part without category), sources (at most 8), from / to (local dates in the user's
+-- zone, inclusive), needs_review; limit 1-100 (default 50); cursor = the previous page's
 -- next_cursor. Newest first by (booked_at, id); deleted and merged rows are left out. Returns
 -- { items: TransactionItem[], next_cursor: { booked_at, id } | null } (keyset: the last item's
 -- booking time in UTC with microseconds, and its id).
@@ -963,6 +1209,7 @@ declare
   value jsonb;
   user_zone text;
   search_pattern text;
+  search_key text;
   category_filter uuid[];
   only_uncategorized boolean := false;
   source_filter text[];
@@ -1003,13 +1250,17 @@ begin
     if btrim(internal.json_string(value)) <> '' then
       search_pattern := '%' || replace(replace(replace(btrim(internal.json_string(value)),
                                  '\', '\\'), '%', '\%'), '_', '\_') || '%';
+      search_key := internal.merchant_key(internal.json_string(value));
     end if;
   end if;
 
   value := nullif(input -> 'category_ids', 'null');
   if value is not null then
-    if jsonb_typeof(value) <> 'array' or jsonb_array_length(value) > 100
-       or exists (select 1 from jsonb_array_elements(value) as e where internal.json_uuid(e) is null) then
+    if jsonb_typeof(value) <> 'array' or jsonb_array_length(value) > 100 then
+      raise exception 'invalid_input'
+        using errcode = '22023', detail = 'category_ids must be a list of at most 100 ids.';
+    end if;
+    if exists (select 1 from jsonb_array_elements(value) as e where internal.json_uuid(e) is null) then
       raise exception 'invalid_input'
         using errcode = '22023', detail = 'category_ids must be a list of at most 100 ids.';
     end if;
@@ -1029,13 +1280,16 @@ begin
 
   value := nullif(input -> 'sources', 'null');
   if value is not null then
-    if jsonb_typeof(value) <> 'array'
-       or exists (select 1 from jsonb_array_elements(value) as e
-                   where coalesce(internal.json_string(e) not in (
-                     'bank', 'android_notification', 'ios_shortcut', 'email', 'receipt',
-                     'statement_import', 'manual', 'assistant'), true)) then
+    if jsonb_typeof(value) <> 'array' or jsonb_array_length(value) > 8 then
       raise exception 'invalid_input'
-        using errcode = '22023', detail = 'sources must be a list of transaction sources.';
+        using errcode = '22023', detail = 'sources must be a list of at most 8 transaction sources.';
+    end if;
+    if exists (select 1 from jsonb_array_elements(value) as e
+                where coalesce(internal.json_string(e) not in (
+                  'bank', 'android_notification', 'ios_shortcut', 'email', 'receipt',
+                  'statement_import', 'manual', 'assistant'), true)) then
+      raise exception 'invalid_input'
+        using errcode = '22023', detail = 'sources must be a list of at most 8 transaction sources.';
     end if;
     if jsonb_array_length(value) > 0 then
       select array_agg(e #>> '{}') into source_filter from jsonb_array_elements(value) as e;
@@ -1104,10 +1358,18 @@ begin
          and t.deleted_at is null
          and t.merged_into_id is null
          and (cursor_at is null or (t.booked_at, t.id) < (cursor_at, cursor_id))
+         -- Cheapest first: the stored key holds the merchant's key (else the statement text's);
+         -- the keys of a note, and of a statement text next to a merchant, are computed last.
          and (search_pattern is null
               or t.merchant ilike search_pattern escape '\'
               or t.note ilike search_pattern escape '\'
-              or t.raw_text ilike search_pattern escape '\')
+              or t.raw_text ilike search_pattern escape '\'
+              or (search_key <> ''
+                  and (strpos(t.merchant_key, search_key) > 0
+                       or (t.note is not null
+                           and strpos(internal.merchant_key(t.note), search_key) > 0)
+                       or (t.raw_text is not null and t.merchant is not null
+                           and strpos(internal.merchant_key(t.raw_text), search_key) > 0))))
          and ((category_filter is null and not only_uncategorized)
               or (category_filter is not null
                   and (t.category_id = any (category_filter)
@@ -1188,11 +1450,13 @@ comment on function public.get_transaction(uuid) is
 --                  match_type: contains | equals, pattern }. Creates the rule, or re-targets the
 --                  existing one with the same field, type and pattern (case and outer spaces
 --                  ignored), with priority = the caller's highest + 1, then applies it to every
---                  other transaction it matches that is not deleted, merged, split, a fixed-cost
---                  payment or placed by the person (recategorized_count).
+--                  other money-out transaction it matches that is not deleted, merged, split, a
+--                  fixed-cost payment or placed by the person (recategorized_count). Rules never
+--                  place money in (D-039).
 --   fixed_cost_id  marks the payment of one of the caller's fixed costs (category cleared; the
---                  fixed cost learns the merchant when it has no merchant_hint); null removes the
---                  link (the transaction is then asked about unless categorized)
+--                  fixed cost learns a merchant hint, internal.fixed_cost_hint, when it has
+--                  none); null removes the link (the transaction is then asked about unless
+--                  categorized)
 --   note, merchant text; an empty string clears
 --   amount_rappen, booked_at   manual entries only
 --   deleted        true: soft delete (deleted_at), false: restore
@@ -1218,6 +1482,7 @@ declare
   rule_field text;
   rule_type text;
   rule_pattern text;
+  rule_key text;
   new_amount bigint;
   new_booked_at timestamptz;
   new_rule_id uuid;
@@ -1277,8 +1542,9 @@ begin
       raise exception 'invalid_input'
         using errcode = '22023', detail = 'rule.match_type must be "contains" or "equals".';
     end if;
+    rule_key := internal.merchant_key(rule_pattern);
     if rule_pattern is null or char_length(rule_pattern) not between 1 and 200
-       or internal.merchant_key(rule_pattern) = '' then
+       or rule_key = '' then
       raise exception 'invalid_input'
         using errcode = '22023',
               detail = 'rule.pattern must be 1-200 characters with at least one word without digits.';
@@ -1414,20 +1680,28 @@ begin
                   pattern = excluded.pattern
     returning id into new_rule_id;
 
+    -- The same matching as step 6 in internal.categorize: a merchant rule on the stored
+    -- transaction key, a raw_text rule on the statement text's key.
     update public.transactions t
        set category_id = new_category, categorized_by = 'rule', category_confidence = 100
      where t.user_id = me
        and t.id <> tx.id
+       and t.amount_rappen < 0
        and t.deleted_at is null
        and t.merged_into_id is null
        and t.fixed_cost_id is null
        and t.categorized_by <> 'user'
        and not exists (select 1 from public.transaction_splits s where s.transaction_id = t.id)
-       and internal.rule_matches(
-             rule_field, rule_type, rule_pattern,
-             case when rule_field = 'merchant' then internal.transaction_key(t.merchant, t.raw_text) end,
-             case when rule_field = 'raw_text' then internal.merchant_key(t.raw_text) end,
-             t.mcc)
+       and case
+             when rule_field = 'merchant' and rule_type = 'equals' then t.merchant_key = rule_key
+             when rule_field = 'merchant' then
+               strpos(' ' || t.merchant_key || ' ', ' ' || rule_key || ' ') > 0
+             when rule_type = 'equals' then
+               t.raw_text is not null and internal.merchant_key(t.raw_text) = rule_key
+             else
+               t.raw_text is not null
+               and strpos(' ' || internal.merchant_key(t.raw_text) || ' ', ' ' || rule_key || ' ') > 0
+           end
        and (t.category_id, t.categorized_by, t.category_confidence)
            is distinct from (new_category, 'rule', 100::smallint);
     get diagnostics recategorized = row_count;
@@ -1563,14 +1837,23 @@ comment on function public.set_transaction_splits(uuid, jsonb) is
 -- Imports and export
 -- ---------------------------------------------------------------------------------------------
 
--- Undoes a statement import: soft-deletes every transaction stored from it (also evidence rows it
--- merged into other transactions) and clears their external_id, so the same file can be imported
--- again; rows that had been merged into its transactions come back as transactions of their
--- own; the data source is marked revoked. Returns how many visible transactions were removed (0
--- when the import was already removed). 22023 import_not_found for anything but one of the
--- caller's statement imports.
+-- Undoes a statement import for good (D-041):
+--   1. For every row of the import that was merged into an earlier transaction, each field group
+--      its merge copied (merge_changes: merchant, raw_text, mcc, items, note, original amount,
+--      category) is put back to its previous value where the earlier transaction still holds
+--      exactly the copied value (what the person changed since stays). A previous category that
+--      no longer exists comes back as "no category" (categorized_by 'none').
+--   2. Rows of other sources that had been merged into the import's rows come back as
+--      transactions of their own.
+--   3. Every transaction stored from the import is deleted (not soft-deleted: its statement
+--      texts leave the account), so the same file can be imported again.
+--   4. The data source is marked revoked.
+-- Returns { removed, restored }: how many of the import's transactions the person still saw
+-- (not deleted or merged), and how many earlier transactions got values back. Both 0 when the
+-- import was already removed. 22023 import_not_found for anything but one of the caller's
+-- statement imports.
 create function public.remove_import(p_data_source_id uuid)
-returns integer
+returns jsonb
 language plpgsql
 security invoker
 set search_path = ''
@@ -1578,8 +1861,12 @@ as $$
 declare
   me uuid := auth.uid();
   source_row public.data_sources;
-  removed_ids uuid[];
+  evidence record;
+  survivor public.transactions;
+  previous jsonb;
+  restored_any boolean;
   removed_count integer;
+  restored_count integer := 0;
 begin
   if me is null then
     raise exception 'not signed in' using errcode = '42501';
@@ -1596,35 +1883,124 @@ begin
       using errcode = '22023', detail = 'No such statement import of yours.';
   end if;
   if source_row.status = 'revoked' then
-    return 0;
+    return jsonb_build_object('removed', 0, 'restored', 0);
   end if;
 
-  select coalesce(array_agg(t.id), '{}'),
-         count(*) filter (where t.deleted_at is null and t.merged_into_id is null)
-    into removed_ids, removed_count
+  -- 1. Put back what the import's merges copied, where it is still the copied value.
+  for evidence in
+    select e.merged_into_id, e.merge_changes
+      from public.transactions e
+     where e.user_id = me
+       and e.data_source_id = source_row.id
+       and e.merged_into_id is not null
+       and e.merge_changes is not null
+     order by e.created_at, e.id
+  loop
+    select t.* into survivor
+      from public.transactions t
+     where t.id = evidence.merged_into_id and t.user_id = me
+       for update;
+    if not found then
+      continue;
+    end if;
+    restored_any := false;
+    if evidence.merge_changes ? 'merchant'
+       and to_jsonb(survivor.merchant) is not distinct from evidence.merge_changes #> '{merchant,to}' then
+      survivor.merchant := evidence.merge_changes #>> '{merchant,from}';
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'raw_text'
+       and to_jsonb(survivor.raw_text) is not distinct from evidence.merge_changes #> '{raw_text,to}' then
+      survivor.raw_text := evidence.merge_changes #>> '{raw_text,from}';
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'mcc'
+       and to_jsonb(survivor.mcc) is not distinct from evidence.merge_changes #> '{mcc,to}' then
+      survivor.mcc := (evidence.merge_changes #>> '{mcc,from}')::smallint;
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'items'
+       and survivor.items is not distinct from evidence.merge_changes #> '{items,to}' then
+      survivor.items := nullif(evidence.merge_changes #> '{items,from}', 'null'::jsonb);
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'note'
+       and to_jsonb(survivor.note) is not distinct from evidence.merge_changes #> '{note,to}' then
+      survivor.note := evidence.merge_changes #>> '{note,from}';
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'original'
+       and jsonb_build_object('amount_minor', survivor.original_amount_minor,
+                              'currency', survivor.original_currency)
+           = evidence.merge_changes #> '{original,to}' then
+      previous := evidence.merge_changes #> '{original,from}';
+      survivor.original_amount_minor := (previous ->> 'amount_minor')::bigint;
+      survivor.original_currency := previous ->> 'currency';
+      restored_any := true;
+    end if;
+    if evidence.merge_changes ? 'category'
+       and jsonb_build_object('category_id', survivor.category_id,
+                              'categorized_by', survivor.categorized_by,
+                              'category_confidence', survivor.category_confidence)
+           = evidence.merge_changes #> '{category,to}' then
+      previous := evidence.merge_changes #> '{category,from}';
+      if previous ->> 'category_id' is null
+         or exists (select 1 from public.categories c
+                     where c.id = (previous ->> 'category_id')::uuid and c.user_id = me) then
+        survivor.category_id := (previous ->> 'category_id')::uuid;
+        survivor.categorized_by := previous ->> 'categorized_by';
+        survivor.category_confidence := (previous ->> 'category_confidence')::smallint;
+      else
+        survivor.category_id := null;
+        survivor.categorized_by := 'none';
+        survivor.category_confidence := null;
+      end if;
+      restored_any := true;
+    end if;
+    if restored_any then
+      update public.transactions t
+         set merchant = survivor.merchant,
+             raw_text = survivor.raw_text,
+             mcc = survivor.mcc,
+             items = survivor.items,
+             note = survivor.note,
+             original_amount_minor = survivor.original_amount_minor,
+             original_currency = survivor.original_currency,
+             category_id = survivor.category_id,
+             categorized_by = survivor.categorized_by,
+             category_confidence = survivor.category_confidence
+       where t.id = survivor.id;
+      restored_count := restored_count + 1;
+    end if;
+  end loop;
+
+  -- 2. Rows of other sources merged into the import's rows come back on their own.
+  update public.transactions t
+     set merged_into_id = null, merge_changes = null
+   where t.user_id = me
+     and t.data_source_id is distinct from source_row.id
+     and t.merged_into_id in (select r.id from public.transactions r
+                               where r.user_id = me and r.data_source_id = source_row.id);
+
+  -- 3. The import's transactions, for good.
+  select count(*) filter (where t.deleted_at is null and t.merged_into_id is null)
+    into removed_count
     from public.transactions t
    where t.user_id = me and t.data_source_id = source_row.id;
+  delete from public.transactions t
+   where t.user_id = me and t.data_source_id = source_row.id;
 
-  update public.transactions t
-     set deleted_at = coalesce(t.deleted_at, now()), external_id = null
-   where t.id = any (removed_ids);
-
-  update public.transactions t
-     set merged_into_id = null
-   where t.user_id = me
-     and t.merged_into_id = any (removed_ids)
-     and t.data_source_id is distinct from source_row.id;
-
+  -- 4. The source.
   update public.data_sources d
      set status = 'revoked', consent_revoked_at = now()
    where d.id = source_row.id;
 
-  return removed_count;
+  return jsonb_build_object('removed', removed_count, 'restored', restored_count);
 end;
 $$;
 
 comment on function public.remove_import(uuid) is
-  'Undoes a statement import: its transactions are soft-deleted, rows merged into them come back, the source is revoked.';
+  'Undoes a statement import for good (D-041): restores what its merges copied (unless changed since), unmerges rows merged into it, deletes its transactions, revokes the source. Returns { removed, restored }.';
 
 -- Everything stored about the signed-in user (revDSG art. 28, GDPR art. 20), one key per table:
 -- profile, notification_settings and subscription as objects, every other table as a list (all

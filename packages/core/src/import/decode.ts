@@ -147,7 +147,7 @@ function decodeUtf8(bytes: Uint8Array, start: number, maxStray: number): Utf8Res
   return { text: unitsToString(units), strayBytes, multiByte };
 }
 
-/** UTF-16 from byte `start` (after a BOM: 2); broken surrogates and an odd last byte become U+FFFD. */
+/** UTF-16 from byte `start` (2 after a BOM); broken surrogates and an odd last byte give U+FFFD. */
 function decodeUtf16(bytes: Uint8Array, littleEndian: boolean, start: number): string {
   const units: number[] = [];
   const unitAt = (index: number): number | undefined => {

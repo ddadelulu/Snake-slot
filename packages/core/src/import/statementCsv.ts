@@ -265,7 +265,7 @@ for (const [role, keys] of Object.entries(SYNONYMS) as [Role, readonly string[]]
 }
 /** UBS splits its text into Beschreibung1-3 / Description1-3 / Descrizione1-3. */
 const NUMBERED_TEXT = /^(?:beschreibung|description|descrizione|libelle|text|texte|testo)\d$/;
-/** Columns that hold a debit/credit marker only when their values say so (Revolut's "Type" does not). */
+/** Columns that are debit/credit markers only when their values are (Revolut's "Type" is not). */
 const MARKER_KEYS = new Set(['typ', 'type']);
 
 const HEADER_SEARCH = 30;
@@ -788,9 +788,13 @@ function rowWhen(
   return time ? { ...when, time } : when;
 }
 
-/** A line whose texts are only a balance or total label ("Saldo", "Total", "Closing balance"). */
+/**
+ * A line whose texts are only a balance or total label ("Saldo", "Total", "Closing balance"), or
+ * that has no text and a label elsewhere ("Total;;-3.00"). The texts are checked first: most lines
+ * fail there.
+ */
 function isBalanceLine(cells: readonly string[], texts: readonly string[]): boolean {
-  return cells.some(isBalanceLabel) && texts.every((text) => text === '' || isBalanceLabel(text));
+  return texts.every((text) => text === '' || isBalanceLabel(text)) && cells.some(isBalanceLabel);
 }
 
 /**

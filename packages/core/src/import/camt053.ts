@@ -60,7 +60,9 @@ const MAX_RAW_TEXT = 4000;
  * creditor of a debit or the debtor of a credit, else taken from the texts. The original amount
  * comes from `AmtDtls/InstdAmt` when it is not CHF.
  *
- * Ids: the entry's `AcctSvcrRef` (else `NtryRef`); batch parts use their own reference when no
+ * Ids: the entry's `AcctSvcrRef` (the bank's unique booking reference; `NtryRef` is only unique
+ * within one statement, so it is never used: without `AcctSvcrRef` the id comes from the
+ * content); batch parts use their own reference when no
  * other part shares it, else the entry's with their position (`REF/1`, `REF/2`). The same entry
  * listed twice (e.g. in two `Stmt` blocks of one file) gets the same id both times, so the second
  * is reported as already imported (see `createSourceIds`).
@@ -162,7 +164,7 @@ function readEntry(entry: XmlObject, context: EntryContext): void {
 
   const details = list(entry.NtryDtls).flatMap((group) => list(group.TxDtls));
   const parts = splitBatch(details, sign, total);
-  const entryReference = text(entry.AcctSvcrRef) ?? text(entry.NtryRef);
+  const entryReference = text(entry.AcctSvcrRef);
   if (parts !== null) {
     const own = parts.map((part) => text(path(part.detail, 'Refs', 'AcctSvcrRef')));
     parts.forEach((part, index) => {
@@ -172,8 +174,7 @@ function readEntry(entry: XmlObject, context: EntryContext): void {
     return;
   }
   const detail = details.length === 1 ? details[0] : undefined;
-  const reference =
-    text(entry.AcctSvcrRef) ?? text(path(detail, 'Refs', 'AcctSvcrRef')) ?? text(entry.NtryRef);
+  const reference = text(entry.AcctSvcrRef) ?? text(path(detail, 'Refs', 'AcctSvcrRef'));
   addRow(entry, detail, total, reference ?? null, context, display);
 }
 
@@ -199,7 +200,10 @@ function partReference(
   return base === undefined ? null : `${base}/${index + 1}`;
 }
 
-/** The parts of a batch entry, when every part has a positive CHF amount and together they make the entry. */
+/**
+ * The parts of a batch entry, when every part has a positive CHF amount and together they make
+ * the entry.
+ */
 function splitBatch(
   details: readonly XmlObject[],
   entrySign: number,

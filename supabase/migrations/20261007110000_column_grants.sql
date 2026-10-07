@@ -9,6 +9,10 @@
 --     statement by statement below).
 --   * move_budget waited for a concurrent payday reset with SELECT … FOR SHARE on budget_periods,
 --     which needs UPDATE on that table. It now takes the reset's per-user lock instead.
+--   * Clients can no longer delete fixed costs (QA L1): deleting one clears fixed_cost_id on its
+--     payments, which would then count as spending although the plan already deducted them.
+--     Fixed costs are deactivated instead (active = false), which keeps their payments linked.
+--   * complete_onboarding takes at most 50 fixed costs and 50 categories (bounded input).
 
 -- ---------------------------------------------------------------------------------------------
 -- complete_onboarding with the owner's rights
@@ -23,6 +27,8 @@
 --   * search_path is empty and every name is qualified, so no object of the caller's choosing is
 --     resolved with the owner's rights.
 --   * The profile row is locked first: a second call waits and then fails with already_onboarded.
+--   * The fixed-cost and category lists are bounded (at most 50 each, 22023 too_many_items) before
+--     they are read.
 create or replace function public.complete_onboarding(p jsonb)
 returns uuid
 language plpgsql
@@ -59,6 +65,11 @@ begin
   if jsonb_typeof(category_input) is distinct from 'array'
      or jsonb_array_length(category_input) = 0 then
     raise exception 'no_categories' using errcode = '22023';
+  end if;
+  if jsonb_array_length(category_input) > 50
+     or (jsonb_typeof(fixed_cost_input) = 'array' and jsonb_array_length(fixed_cost_input) > 50) then
+    raise exception 'too_many_items'
+      using errcode = '22023', detail = 'Onboarding takes at most 50 fixed costs and 50 categories.';
   end if;
 
   -- Profile: only the onboarding fields; id, display name and timestamps are not the input's.
@@ -253,6 +264,9 @@ grant update (
 ) on public.profiles to authenticated;
 
 revoke insert, update, delete on public.budget_periods from authenticated;
+
+-- Fixed costs are deactivated, never deleted by clients (their payments stay linked, QA L1).
+revoke delete on public.fixed_costs from authenticated;
 
 -- create or replace keeps the function's privileges; restated for the reader.
 revoke all on function public.complete_onboarding(jsonb) from public, anon, authenticated;

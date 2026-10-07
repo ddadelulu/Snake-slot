@@ -136,6 +136,9 @@ $$;
 -- Word lists (CATEGORIZATION.md, "Word lists")
 -- ---------------------------------------------------------------------------------------------
 
+-- Every word is written as a merchant key, so ae/oe/ue appear folded ("daurauftrag" for
+-- Dauerauftrag, "mastro" for Maestro); a test checks that each word is its own key.
+
 -- Kinds of places and articles ("Restaurant Krone", "Bäckerei Hug", "The Kitchen"): a shared
 -- first word of this list does not make two merchants the same, and none of these words is
 -- proposed as a rule on its own.
@@ -149,7 +152,7 @@ as $$
   select '{restaurant,ristorante,pizzeria,trattoria,osteria,brasserie,bistro,cafe,caffe,bar,pub,
            club,lounge,hotel,gasthaus,gasthof,backerei,boulangerie,panetteria,metzgerei,boucherie,
            macelleria,confiserie,apotheke,pharmacie,farmacia,drogerie,drogurie,kiosk,garage,
-           tankstelle,coiffeur,coiffure,salon,shop,store,laden,markt,boutique,online,take,imbiss,
+           tankstelle,coiffeur,coiffure,salon,shop,store,laden,markt,boutiqu,online,take,imbiss,
            kebab,pizza,sushi,burger,parking,parkhaus,taxi,kino,cinema,fitness,florist,blumen,
            praxis,optik,studio,the,le,la,les,der,die,das,il,lo,el,zum,zur,chez}'::text[]
 $$;
@@ -166,8 +169,8 @@ parallel safe
 set search_path = ''
 as $$
   select '{twint,sumup,payrexx,paypal,stripe,kauf,einkauf,dienstleistung,zahlung,karte,karten,
-           kartennummer,card,purchase,debit,debitkarte,kreditkarte,pos,maestro,visa,mastercard,
-           pay,achat,paiement,carte,acquisto,pagamento,lastschrift,lsv,dauerauftrag,auftrag,
+           kartennummer,card,purchase,debit,debitkarte,kreditkarte,pos,mastro,visa,mastercard,
+           pay,achat,paiement,carte,acquisto,pagamento,lastschrift,lsv,daurauftrag,auftrag,
            uberweisung,gutschrift,belastung,e,banking,ebanking,ebill,rechnung,facture,fattura,
            invoice,an,von,vom,zugunsten,nr,ref,referenz,mitteilung,de,du,des,et,und,per,zkb,ubs,
            raiffeisen,postfinance,valiant,cler,bcv,bcge,bkb,bekb,lukb,sgkb,akb,glkb,tkb,szkb,gkb,

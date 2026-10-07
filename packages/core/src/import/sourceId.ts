@@ -11,7 +11,8 @@ const SUFFIX_ROOM = 6;
 export type SourceIds = {
   /**
    * Id from the bank's own reference (id column, camt AcctSvcrRef / NtryRef); `content` (the
-   * row's date and amount) tells a camt entry listed twice from another booking with that reference.
+   * row's date and amount) tells a camt entry listed twice from another booking with that
+   * reference.
    */
   forReference(iban: string | null, reference: string, content: string): string;
   /** Id from the row's content when the file has no reference. */
