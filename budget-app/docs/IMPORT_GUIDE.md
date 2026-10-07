@@ -27,7 +27,7 @@ camt.053 / ISO 20022 / XML if offered, otherwise CSV. Save the file where your p
 ## Importing
 
 1. Settings → Data sources → **Import a statement** (or during setup, step 9).
-2. Choose the file. It is read on your phone; nothing is uploaded until you confirm.
+2. Choose the file. It is read on your phone; nothing is saved until you confirm.
 3. Check the preview:
    - the period the file covers and how many transactions it contains;
    - **skipped rows** with the reason: not booked yet, not in CHF (accounts in other currencies
@@ -49,6 +49,8 @@ transactions that came from that file (transactions you typed in yourself stay).
 
 ## Privacy
 
-The file never leaves your phone. Only the transactions you import are stored, in your account,
+The file never leaves your phone. To show the preview, the transactions read from it are
+checked against your account (already imported? already there from another source?) without
+being stored. Only the transactions you import are stored, in your account,
 in the region described in the privacy policy, and you can export or delete them at any time
 (Settings → Export my data, Delete account).

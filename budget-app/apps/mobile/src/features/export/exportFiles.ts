@@ -112,7 +112,10 @@ function transactionsOf(data: MyDataExport): ExportTransaction[] {
       source: read.text(row.source, at('source')),
       categoryId: read.optionalText(row.category_id, at('category_id')),
       fixedCostId: read.optionalText(row.fixed_cost_id, at('fixed_cost_id')),
-      originalAmountMinor: read.optionalInteger(row.original_amount_minor, at('original_amount_minor')),
+      originalAmountMinor: read.optionalInteger(
+        row.original_amount_minor,
+        at('original_amount_minor'),
+      ),
       originalCurrency: read.optionalText(row.original_currency, at('original_currency')),
       hidden:
         read.optionalText(row.deleted_at, at('deleted_at')) !== null ||
@@ -133,7 +136,10 @@ function splitsOf(data: MyDataExport): Map<string, ExportSplit[]> {
       note: read.optionalText(row.note, at('note')),
       createdAt: read.text(row.created_at, at('created_at')),
     };
-    byTransaction.set(split.transactionId, [...(byTransaction.get(split.transactionId) ?? []), split]);
+    byTransaction.set(split.transactionId, [
+      ...(byTransaction.get(split.transactionId) ?? []),
+      split,
+    ]);
   });
   for (const parts of byTransaction.values()) {
     parts.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
@@ -241,10 +247,7 @@ export function transactionsCsv(
 
   const visible = transactionsOf(data)
     .filter((transaction) => !transaction.hidden)
-    .sort(
-      (a, b) =>
-        Date.parse(b.bookedAt) - Date.parse(a.bookedAt) || b.id.localeCompare(a.id),
-    );
+    .sort((a, b) => Date.parse(b.bookedAt) - Date.parse(a.bookedAt) || b.id.localeCompare(a.id));
 
   const rows: CsvCell[][] = visible.flatMap((transaction) => {
     const { date, time } = localDateTimeIn(transaction.bookedAt, timeZone);

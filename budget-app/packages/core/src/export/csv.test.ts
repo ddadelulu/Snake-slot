@@ -53,6 +53,23 @@ describe('toCsv', () => {
     ]);
   });
 
+  it('defuses formulas after a comma, tab or line break (Excel with a comma list separator)', () => {
+    const rows = [
+      ['x,=HYPERLINK(CHAR(104)&CHAR(116)&D2),'],
+      ["Zahlung,=cmd|' /C calc'!A0,"],
+      ['Exempla,+41,-5,@x'],
+      ['Zeile 1\n=SUM(A1)'],
+      ['Coop, Zürich'],
+    ];
+    expect(toCsv(['Text'], rows).split('\r\n').slice(1, 6)).toEqual([
+      "x,'=HYPERLINK(CHAR(104)&CHAR(116)&D2),",
+      "Zahlung,'=cmd|' /C calc'!A0,",
+      "Exempla,'+41,'-5,'@x",
+      `"Zeile 1\n'=SUM(A1)"`,
+      'Coop, Zürich',
+    ]);
+  });
+
   it('keeps plain decimal amounts numeric', () => {
     expect(toCsv(['Betrag'], [['-23.40'], ['-1234'], ['-1e5']])).toBe(
       "\uFEFFBetrag\r\n-23.40\r\n-1234\r\n'-1e5\r\n",

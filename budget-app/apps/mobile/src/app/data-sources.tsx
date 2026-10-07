@@ -55,22 +55,25 @@ export default function DataSourcesScreen() {
   const timeZone = profile.data?.timezone ?? deviceTimeZone();
   const imports = useImports();
   const remove = useRemoveImport();
-  const [confirming, setConfirming] = useState<StatementImport | null>(null);
+  // What the sheet is about; kept while the sheet slides out so its text stays complete.
+  const [target, setTarget] = useState<StatementImport | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [removed, setRemoved] = useState<Removed | null>(null);
 
   const source = (item: StatementImport) => t(sourceKey(item.bank, item.format));
 
   const openSheet = (item: StatementImport) => {
     remove.reset();
-    setConfirming(item);
+    setSheetOpen(true);
+    setTarget(item);
   };
 
   const confirmRemove = () => {
-    if (!confirming) return;
-    const item = confirming;
+    if (!target) return;
+    const item = target;
     remove.mutate(item.id, {
       onSuccess: (count) => {
-        setConfirming(null);
+        setSheetOpen(false);
         setRemoved({ name: item.fileName, count });
       },
     });
@@ -109,7 +112,7 @@ export default function DataSourcesScreen() {
         <PrimaryButton
           label={t('dataSources.importButton')}
           onPress={() => router.push('/import')}
-          testID="data-sources-import"
+          testID="data-sources-new-import"
         />
         {imports.isPending ? (
           <View
@@ -177,16 +180,14 @@ export default function DataSourcesScreen() {
       </AppText>
 
       <BottomSheet
-        visible={confirming !== null}
-        onClose={() => setConfirming(null)}
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
         title={t('dataSources.sheet.title')}
         closeLabel={t('common.close')}
         testID="data-sources-remove-sheet"
       >
         <View style={styles.sheet}>
-          <AppText>
-            {t('dataSources.sheet.message', { name: confirming?.fileName ?? '' })}
-          </AppText>
+          <AppText>{t('dataSources.sheet.message', { name: target?.fileName ?? '' })}</AppText>
           {remove.isError ? (
             <AlertBanner tone="danger" message={removeFailed} testID="data-sources-remove-error" />
           ) : null}
@@ -199,7 +200,7 @@ export default function DataSourcesScreen() {
           />
           <PrimaryButton
             label={t('dataSources.sheet.cancel')}
-            onPress={() => setConfirming(null)}
+            onPress={() => setSheetOpen(false)}
             variant="secondary"
             testID="data-sources-remove-cancel"
           />

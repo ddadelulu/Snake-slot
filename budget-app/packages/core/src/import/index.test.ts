@@ -144,3 +144,14 @@ describe('parseStatementText', () => {
     ]);
   });
 });
+
+describe('crafted files', () => {
+  it('reads a file whose only text cell is a megabyte long in well under a second', () => {
+    const cell = 'x'.repeat(1_000_000) + 'a';
+    const csv = `Datum;Buchungstext;Betrag\n01.10.2026;${cell};-12.50\n`;
+    const started = performance.now();
+    const result = readStatement(new TextEncoder().encode(csv));
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(result.ok).toBe(true);
+  });
+});

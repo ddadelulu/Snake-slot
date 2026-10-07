@@ -183,7 +183,13 @@ describe('onboarding', () => {
   it('resumes a draft saved before step 9 existed at step 9 instead of the summary', async () => {
     await AsyncStorage.setItem(
       draftStorageKey(fakeSession().user.id),
-      JSON.stringify({ version: 1, netIncome: '5000', payday: 1, paymentMethods: ['cash'], reached: 8 }),
+      JSON.stringify({
+        version: 1,
+        netIncome: '5000',
+        payday: 1,
+        paymentMethods: ['cash'],
+        reached: 8,
+      }),
     );
     start();
     expect(await screen.findByTestId('onboarding-sources')).toBeOnTheScreen();
@@ -198,7 +204,13 @@ describe('onboarding', () => {
   it('skipping step 9 means no import after setup', async () => {
     await AsyncStorage.setItem(
       draftStorageKey(fakeSession().user.id),
-      JSON.stringify({ version: 2, netIncome: '5000', payday: 1, paymentMethods: ['card'], reached: 8 }),
+      JSON.stringify({
+        version: 2,
+        netIncome: '5000',
+        payday: 1,
+        paymentMethods: ['card'],
+        reached: 8,
+      }),
     );
     start();
     expect(await screen.findByTestId('onboarding-sources')).toBeOnTheScreen();
@@ -213,7 +225,13 @@ describe('onboarding', () => {
   it('turns the import on for someone who pays cash only', async () => {
     await AsyncStorage.setItem(
       draftStorageKey(fakeSession().user.id),
-      JSON.stringify({ version: 2, netIncome: '5000', payday: 1, paymentMethods: ['cash'], reached: 8 }),
+      JSON.stringify({
+        version: 2,
+        netIncome: '5000',
+        payday: 1,
+        paymentMethods: ['cash'],
+        reached: 8,
+      }),
     );
     start();
     expect(await screen.findByTestId('onboarding-sources-import')).toHaveAccessibleName(
