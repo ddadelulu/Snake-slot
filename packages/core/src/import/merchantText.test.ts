@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { merchantFromText } from './merchantText';
+import { MERCHANT_TEXT_MAX_LENGTH, merchantFromText } from './merchantText';
 
 // Synthetic statement texts in the styles Swiss banks print; every merchant and person is made up.
 describe('merchantFromText', () => {
@@ -105,5 +105,24 @@ describe('merchantFromText', () => {
     const merchant = merchantFromText(`Exempla ${'Langername '.repeat(30)}`);
     expect(merchant?.length).toBeLessThanOrEqual(200);
     expect(merchant?.startsWith('Exempla Langername')).toBe(true);
+  });
+});
+
+describe('merchantFromText on crafted input', () => {
+  it.each([
+    ['letters', 'x'.repeat(40_000) + 'a'],
+    ['brackets', ')'.repeat(40_000) + 'a'],
+    ['digits and dots', '1.'.repeat(20_000) + 'a'],
+    ['masks', 'X'.repeat(30_000) + '1'],
+  ])('stays fast on %s', (_name, text) => {
+    const started = performance.now();
+    merchantFromText(text);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('only reads the first 1000 characters', () => {
+    expect(merchantFromText(`Coop Zürich ${'x'.repeat(MERCHANT_TEXT_MAX_LENGTH)} Migros`)).toBe(
+      'Coop Zürich',
+    );
   });
 });

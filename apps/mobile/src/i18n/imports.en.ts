@@ -10,6 +10,8 @@ export const importsEn = {
     intro: {
       message:
         'Bring in your card, TWINT and e-banking payments with the file your e-banking exports: camt.053 (also called ISO 20022 or XML) or CSV.',
+      howTo:
+        'In your e-banking, open the account, choose the period and export it as camt.053 (ISO 20022, XML) if offered, otherwise as CSV.',
       privacy: 'The file is read on your phone; only the transactions you keep are saved.',
       limits: 'Up to 5 MB and 2,000 transactions per file.',
       choose: 'Choose file',
@@ -22,8 +24,7 @@ export const importsEn = {
       too_large: 'This file is larger than {{size}}. Export a shorter period and try again.',
       unsupported_format:
         'This is not a statement the app can read. Choose the camt.053 (XML) or CSV export of your e-banking; PDF and Excel files do not work.',
-      invalid_xml:
-        'This XML file is damaged or incomplete. Download it again from your e-banking.',
+      invalid_xml: 'This XML file is damaged or incomplete. Download it again from your e-banking.',
       not_chf: 'This account is not in Swiss francs. The app tracks CHF accounts only.',
       no_transactions: 'This file contains no transactions to import.',
       too_many_rows:
@@ -78,6 +79,7 @@ export const importsEn = {
       import_one: 'Import {{count}} transaction',
       import_other: 'Import {{count}} transactions',
       importFailed: 'The transactions could not be saved. Nothing was imported.',
+      nothingNew: 'Every transaction in this file was imported before. There is nothing to add.',
     },
     status: {
       merge: 'Merges with one you have: {{match}}',

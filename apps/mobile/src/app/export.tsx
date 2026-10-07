@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import {
-  AlertBanner,
-  AppText,
-  Card,
-  PrimaryButton,
-  Screen,
-  ScreenHeader,
-} from '@/components';
+import { AlertBanner, AppText, Card, PrimaryButton, Screen, ScreenHeader } from '@/components';
 import { fetchMyData, type MyDataExport } from '@/data/exportData';
 import { useProfile } from '@/data/profile';
 import { SharingUnavailableError, deliverFile, type Delivery } from '@/features/export/deliverFile';

@@ -25,7 +25,8 @@ import type { AddResult, AddRowResult, StatementImportInfo } from '@/data/transa
 // ---------------------------------------------------------------------------------------------
 
 /** Why a picked file leads to no preview: a parser error, or the file could not be read at all. */
-export type FileProblem = Exclude<StatementError, { code: 'unknown_columns' }> | { code: 'unreadable' };
+export type FileProblem =
+  Exclude<StatementError, { code: 'unknown_columns' }> | { code: 'unreadable' };
 
 export type UnknownColumns = Extract<StatementError, { code: 'unknown_columns' }>;
 

@@ -90,7 +90,11 @@ export function ColumnMappingForm({
   return (
     <>
       {rejected ? (
-        <AlertBanner tone="danger" message={t('imports.mapping.rejected')} testID="import-map-rejected" />
+        <AlertBanner
+          tone="danger"
+          message={t('imports.mapping.rejected')}
+          testID="import-map-rejected"
+        />
       ) : null}
       <View style={styles.section}>
         <AppText variant="heading" accessibilityRole="header">

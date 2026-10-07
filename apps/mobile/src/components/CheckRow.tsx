@@ -49,7 +49,10 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   boxChecked: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accent },
-  boxDisabled: { borderColor: theme.colors.surfaceMuted, backgroundColor: theme.colors.surfaceMuted },
+  boxDisabled: {
+    borderColor: theme.colors.surfaceMuted,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
   text: { flex: 1, gap: theme.spacing.xxs },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
   label: { flex: 1 },

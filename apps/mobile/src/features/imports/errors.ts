@@ -15,7 +15,12 @@ export const IMPORT_REQUEST_ERRORS = [
 
 export type ImportRequestError = (typeof IMPORT_REQUEST_ERRORS)[number];
 
-const REASONS: ReadonlySet<string> = new Set(['too_many_rows', 'invalid_row', 'invalid_input', 'not_onboarded']);
+const REASONS: ReadonlySet<string> = new Set([
+  'too_many_rows',
+  'invalid_row',
+  'invalid_input',
+  'not_onboarded',
+]);
 
 export function importRequestError(error: unknown): ImportRequestError {
   if (!(error instanceof RequestError)) return 'unknown';

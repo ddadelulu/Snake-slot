@@ -188,12 +188,15 @@ export function ImportPreview({
   file,
   statement,
   onDone,
+  onLeave,
 }: {
   /** The screen's back row, kept above the list. */
   header: ReactNode;
   file: PickedFile;
   statement: ParsedStatement;
   onDone: (summary: ImportSummary) => void;
+  /** Leaves the import, when the file holds nothing that can still be imported. */
+  onLeave: () => void;
 }) {
   const { t } = useTranslation();
   const styles = useStyles();
@@ -211,8 +214,8 @@ export function ImportPreview({
   const [selection, setSelection] = useState<ReadonlySet<number>>(() => new Set());
   const info = useMemo(() => importInfo(file.name, statement), [file.name, statement]);
 
+  // Rows appear only once the dry run answered; until then (or after a failure) the list is empty.
   const runCheck = useCallback(() => {
-    setRows(null);
     runCheckRequest(
       { rows: dryRunRows(statement), import: info, dryRun: true },
       {
@@ -254,6 +257,7 @@ export function ImportPreview({
   const counts = useMemo(() => countByStatus(rows ?? []), [rows]);
   const selectable = useMemo(() => (rows ?? []).filter(isSelectable).length, [rows]);
   const selectedCount = selection.size;
+  const nothingNew = rows !== null && selectable === 0;
 
   const confirm = () => {
     if (!rows || selectedCount === 0) return;
@@ -329,6 +333,17 @@ export function ImportPreview({
               </AppText>
             ) : null}
           </Card>
+          {nothingNew ? (
+            <AlertBanner
+              tone="info"
+              message={t('imports.preview.nothingNew')}
+              testID="import-nothing-new"
+            />
+          ) : null}
+        </>
+      ) : null}
+      {rows && !nothingNew ? (
+        <>
           <AppText tone="secondary" testID="import-hint">
             {t('imports.preview.hint')}
           </AppText>
@@ -382,13 +397,21 @@ export function ImportPreview({
               testID="import-save-error"
             />
           ) : null}
-          <PrimaryButton
-            label={t('imports.preview.import', { count: selectedCount })}
-            onPress={confirm}
-            disabled={rows === null || selectedCount === 0}
-            loading={save.isPending}
-            testID="import-confirm"
-          />
+          {nothingNew ? (
+            <PrimaryButton
+              label={t('imports.result.done')}
+              onPress={onLeave}
+              testID="import-nothing-done"
+            />
+          ) : (
+            <PrimaryButton
+              label={t('imports.preview.import', { count: selectedCount })}
+              onPress={confirm}
+              disabled={rows === null || selectedCount === 0}
+              loading={save.isPending}
+              testID="import-confirm"
+            />
+          )}
         </>
       }
     >

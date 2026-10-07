@@ -52,7 +52,9 @@ export default function RulesScreen() {
   const rules = useRules();
   const categories = useCategories();
   const remove = useDeleteRule();
-  const [confirming, setConfirming] = useState<CategorizationRule | null>(null);
+  // What the sheet is about; kept while the sheet slides out so its text stays complete.
+  const [target, setTarget] = useState<CategorizationRule | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const describe = (rule: CategorizationRule) => {
     const category = categories.data?.find((candidate) => candidate.id === rule.categoryId);
@@ -66,12 +68,13 @@ export default function RulesScreen() {
 
   const openSheet = (rule: CategorizationRule) => {
     remove.reset();
-    setConfirming(rule);
+    setSheetOpen(true);
+    setTarget(rule);
   };
 
   const confirmDelete = () => {
-    if (!confirming) return;
-    remove.mutate(confirming.id, { onSuccess: () => setConfirming(null) });
+    if (!target) return;
+    remove.mutate(target.id, { onSuccess: () => setSheetOpen(false) });
   };
 
   const loading = rules.isPending || (categories.isPending && !categories.isError);
@@ -142,14 +145,14 @@ export default function RulesScreen() {
       )}
 
       <BottomSheet
-        visible={confirming !== null}
-        onClose={() => setConfirming(null)}
+        visible={sheetOpen}
+        onClose={() => setSheetOpen(false)}
         title={t('rules.sheet.title')}
         closeLabel={t('common.close')}
         testID="rules-delete-sheet"
       >
         <View style={styles.sheet}>
-          {confirming ? <AppText variant="bodyStrong">{describe(confirming)}</AppText> : null}
+          {target ? <AppText variant="bodyStrong">{describe(target)}</AppText> : null}
           <AppText>{t('rules.sheet.message')}</AppText>
           {remove.isError ? (
             <AlertBanner
@@ -167,7 +170,7 @@ export default function RulesScreen() {
           />
           <PrimaryButton
             label={t('rules.sheet.cancel')}
-            onPress={() => setConfirming(null)}
+            onPress={() => setSheetOpen(false)}
             variant="secondary"
             testID="rules-delete-cancel"
           />

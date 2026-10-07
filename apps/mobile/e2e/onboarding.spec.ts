@@ -52,10 +52,9 @@ test.describe('onboarding to a correct month', () => {
 
     // 9 Sources: paying by card and TWINT suggests importing a statement right after setup.
     await expect(page.getByText('Step 9 of 10')).toBeVisible();
-    await expect(page.getByTestId('onboarding-sources-import')).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    await expect(
+      page.getByTestId('onboarding-sources-import-switch').locator('input'),
+    ).toBeChecked();
     await next(page, 'summary');
 
     // Summary "Your month", then the statement import on top of Home; "Not now" leads Home.

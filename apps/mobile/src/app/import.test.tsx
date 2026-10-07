@@ -1,10 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MAX_IMPORT_FILE_BYTES, type IngestRow } from '@budget/core';
-import {
-  POSTFINANCE_OLD,
-  REVOLUT,
-  UBS_DE,
-} from '@budget/core/src/import/__fixtures__/statements';
+import { POSTFINANCE_OLD, REVOLUT, UBS_DE } from '@budget/core/src/import/__fixtures__/statements';
 import * as DocumentPicker from 'expo-document-picker';
 import { act, fireEvent, screen, waitFor, within } from 'expo-router/testing-library';
 
@@ -72,7 +68,13 @@ function pipeline(plans: Plan[]): RpcHandler {
   return (args) => {
     const { p } = args as AddArgs;
     if (p.dry_run) ids = p.rows.map((row) => row.external_id);
-    const counts = { added: 0, merged: 0, already_imported: 0, possible_duplicate: 0, needs_review: 0 };
+    const counts = {
+      added: 0,
+      merged: 0,
+      already_imported: 0,
+      possible_duplicate: 0,
+      needs_review: 0,
+    };
     const results = p.rows.map((row, index) => {
       const plan = plans[ids.indexOf(row.external_id)] ?? { outcome: 'added' };
       const outcome =
@@ -244,7 +246,9 @@ describe('statement import', () => {
       /Looks like one you have: Exempla Café Bern, CHF 8\.50, 24 Sept?/,
     );
     expect(screen.getByTestId('import-count-new')).toHaveTextContent('New: 1');
-    expect(screen.getByTestId('import-count-merge')).toHaveTextContent('Merge with ones you have: 1');
+    expect(screen.getByTestId('import-count-merge')).toHaveTextContent(
+      'Merge with ones you have: 1',
+    );
     expect(screen.getByTestId('import-count-imported_before')).toHaveTextContent(
       'Imported before: 1',
     );
@@ -270,7 +274,9 @@ describe('statement import', () => {
       [-850, true],
     ]);
     expect(screen.getByTestId('import-result-added')).toHaveTextContent('Added2');
-    expect(screen.getByTestId('import-result-merged')).toHaveTextContent('Merged with ones you had1');
+    expect(screen.getByTestId('import-result-merged')).toHaveTextContent(
+      'Merged with ones you had1',
+    );
     expect(screen.getByTestId('import-result-already')).toHaveTextContent('Already there0');
     expect(screen.getByTestId('import-result-review')).toHaveTextContent('Need a category1');
 
@@ -291,6 +297,24 @@ describe('statement import', () => {
     expect(screen.getByTestId('import-row-2')).not.toBeChecked();
     fireEvent.press(screen.getByTestId('import-row-1'));
     expect(screen.getByTestId('import-confirm')).toHaveTextContent('Import 2 transactions');
+    expect(rpcCalls(fake, 'add_transactions')).toHaveLength(1);
+  });
+
+  it('says so when everything in the file was imported before', async () => {
+    const fake = start({
+      add_transactions: pipeline(
+        UBS_PLANS.map(() => ({ outcome: 'already_imported', transactionId: 't-old' })),
+      ),
+    });
+    pick('ubs.csv', UBS_DE);
+    await choose();
+    expect(await screen.findByTestId('import-nothing-new')).toHaveTextContent(
+      'Every transaction in this file was imported before. There is nothing to add.',
+    );
+    expect(screen.queryByTestId('import-confirm')).toBeNull();
+    expect(screen.queryByTestId('import-select-all')).toBeNull();
+    fireEvent.press(screen.getByTestId('import-nothing-done'));
+    expect(await screen.findByTestId('data-sources-screen')).toBeOnTheScreen();
     expect(rpcCalls(fake, 'add_transactions')).toHaveLength(1);
   });
 
@@ -384,7 +408,9 @@ describe('statement import', () => {
     await choose();
 
     expect(await screen.findByText('Which column is which?')).toBeOnTheScreen();
-    expect(screen.getByTestId('import-map-column-0')).toHaveTextContent('Tag30.09.2026 · 29.09.2026');
+    expect(screen.getByTestId('import-map-column-0')).toHaveTextContent(
+      'Tag30.09.2026 · 29.09.2026',
+    );
     expect(screen.getByTestId('import-map-column-3')).toHaveTextContent(
       'WoExempla Kiosk · Exempla Bistro',
     );
@@ -416,6 +442,16 @@ describe('statement import', () => {
       'Znüni; Exempla Kiosk',
       'Zmittag; Exempla Bistro',
     ]);
+  });
+
+  it('offers another file instead of mapping the columns', async () => {
+    start();
+    pick('export.csv', 'Tag;Was;Wieviel\n30.09.2026;Znüni;-4.50\n');
+    await choose();
+    expect(await screen.findByTestId('import-map-continue')).toBeOnTheScreen();
+    pick('ubs.csv', UBS_DE);
+    await choose('import-map-choose-another');
+    expect(await screen.findByTestId('import-source')).toHaveTextContent('UBS');
   });
 
   it('maps separate debit and credit columns', async () => {
@@ -542,7 +578,12 @@ describe('statement import', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce({
       canceled: false,
       assets: [
-        { name: 'ubs.csv', uri: 'file:///cache/DocumentPicker/ubs.csv', size: 900, lastModified: 0 },
+        {
+          name: 'ubs.csv',
+          uri: 'file:///cache/DocumentPicker/ubs.csv',
+          size: 900,
+          lastModified: 0,
+        },
       ],
     });
     await choose();

@@ -30,6 +30,7 @@ export function ImportIntro({ onChoose, reading }: { onChoose: () => void; readi
   return (
     <>
       <AppText tone="secondary">{t('imports.intro.message')}</AppText>
+      <AppText tone="secondary">{t('imports.intro.howTo')}</AppText>
       <Card style={styles.card}>
         <AppText variant="bodyStrong" testID="import-privacy">
           {t('imports.intro.privacy')}
@@ -42,7 +43,6 @@ export function ImportIntro({ onChoose, reading }: { onChoose: () => void; readi
         label={t('imports.intro.choose')}
         onPress={onChoose}
         loading={reading}
-        accessibilityHint={reading ? t('imports.intro.reading') : undefined}
         testID="import-choose"
       />
       {reading ? (
@@ -121,7 +121,11 @@ export function ImportResultView({ summary }: { summary: ImportSummary }) {
   const { t } = useTranslation();
   return (
     <Card testID="import-result">
-      <ResultRow label={t('imports.result.added')} count={summary.added} testID="import-result-added" />
+      <ResultRow
+        label={t('imports.result.added')}
+        count={summary.added}
+        testID="import-result-added"
+      />
       <Divider />
       <ResultRow
         label={t('imports.result.merged')}

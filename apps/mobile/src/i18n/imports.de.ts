@@ -10,6 +10,8 @@ export const importsDe: Widen<typeof importsEn> = {
     intro: {
       message:
         'Hol deine Karten-, TWINT- und E-Banking-Zahlungen mit der Datei, die dein E-Banking exportiert: camt.053 (auch ISO 20022 oder XML genannt) oder CSV.',
+      howTo:
+        'Öffne im E-Banking das Konto, wähle den Zeitraum und exportiere ihn als camt.053 (ISO 20022, XML), wenn möglich, sonst als CSV.',
       privacy:
         'Die Datei wird auf deinem Handy gelesen; gespeichert werden nur die Buchungen, die du behältst.',
       limits: 'Bis 5 MB und 2000 Buchungen pro Datei.',
@@ -81,6 +83,8 @@ export const importsDe: Widen<typeof importsEn> = {
       import_one: '{{count}} Buchung importieren',
       import_other: '{{count}} Buchungen importieren',
       importFailed: 'Die Buchungen konnten nicht gespeichert werden. Es wurde nichts importiert.',
+      nothingNew:
+        'Alle Buchungen dieser Datei wurden schon importiert. Es gibt nichts hinzuzufügen.',
     },
     status: {
       merge: 'Wird mit einer bestehenden zusammengeführt: {{match}}',

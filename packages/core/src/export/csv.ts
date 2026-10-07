@@ -9,6 +9,11 @@ const LINE_END = '\r\n';
 /** A plain decimal number ("-23.40", "1234"): Excel reads it as a number, never as a formula. */
 const PLAIN_NUMBER = /^-?\d+(?:\.\d+)?$/;
 const FORMULA_START = /^[=+\-@\t\r]/;
+/**
+ * A formula character right after a comma, tab or line break inside a text: Excel with a comma
+ * list separator (English regional settings) would start a new cell there.
+ */
+const FORMULA_AFTER_SEPARATOR = /([,\t\r\n])([=+\-@])/g;
 const NEEDS_QUOTES = /[;"\r\n]|^\s|\s$/;
 
 /**
@@ -17,8 +22,10 @@ const NEEDS_QUOTES = /[;"\r\n]|^\s|\s$/;
  * separator in de-CH), CRLF line ends. Fields with `;`, quotes, line breaks or leading/trailing
  * spaces are quoted, quotes doubled. Against CSV formula injection (a merchant named
  * `=HYPERLINK(…)`), text cells starting with `=`, `+`, `-`, `@`, tab or CR get a leading
- * apostrophe, which Excel shows as text; numbers, and strings that are plain decimal numbers such
- * as `formatCsvAmount` returns, are written as they are. `null` is an empty cell.
+ * apostrophe, which Excel shows as text, and so does such a character after a comma, tab or line
+ * break inside a text (where Excel with a comma list separator would start a new cell); numbers,
+ * and strings that are plain decimal numbers such as `formatCsvAmount` returns, are written as
+ * they are. `null` is an empty cell.
  */
 export function toCsv(headers: readonly string[], rows: readonly (readonly CsvCell[])[]): string {
   return (
@@ -32,7 +39,9 @@ function csvField(cell: CsvCell): string {
     if (!Number.isFinite(cell)) throw new RangeError('CSV numbers must be finite');
     return String(cell);
   }
-  const text = FORMULA_START.test(cell) && !PLAIN_NUMBER.test(cell) ? `'${cell}` : cell;
+  if (PLAIN_NUMBER.test(cell)) return cell;
+  const inner = cell.replace(FORMULA_AFTER_SEPARATOR, "$1'$2");
+  const text = FORMULA_START.test(inner) ? `'${inner}` : inner;
   return NEEDS_QUOTES.test(text) ? `"${text.split('"').join('""')}"` : text;
 }
 

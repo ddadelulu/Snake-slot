@@ -40,9 +40,12 @@ const TIMES = new RegExp(
 const CURRENCIES =
   'CHF|EUR|USD|GBP|JPY|SEK|NOK|DKK|PLN|CZK|HUF|CAD|AUD|NZD|TRY|THB|CNY|HKD|SGD|AED|ZAR|SFr\\.?|Fr\\.';
 
-/** Amounts with a currency: "CHF 23.40", "23.40 CHF", "EUR -25,00", "Fr. 12.–". */
+/**
+ * Amounts with a currency: "CHF 23.40", "23.40 CHF", "EUR -25,00", "Fr. 12.–". The digit run is
+ * bounded so a crafted run of digits and dots cannot make the match quadratic.
+ */
 const AMOUNTS = new RegExp(
-  `${BEFORE}(?:(?:${CURRENCIES})\\s?[-+−]?\\d[\\d'’.,]*(?:[.,][-–])?|[-+−]?\\d[\\d'’.,]*\\s?(?:${CURRENCIES}))${AFTER}`,
+  `${BEFORE}(?:(?:${CURRENCIES})\\s?[-+−]?\\d[\\d'’.,]{0,30}(?:[.,][-–])?|[-+−]?\\d[\\d'’.,]{0,30}\\s?(?:${CURRENCIES}))${AFTER}`,
   'gi',
 );
 
@@ -215,10 +218,19 @@ const CONNECTORS = new Set([
   'with',
 ]);
 
-const MASK = /^\d*[xX*•]{2,}[\dxX*•]*$/;
+/** A masked card number: digits, then two mask characters, then digits or mask characters. */
+const MASK_START = /^\d*[xX*•]{2}/;
+const MASK_CHARACTERS = /^[\dxX*•]+$/;
 const AMOUNT_TOKEN = /^[-+−]?\d[\d'’]*[.,]\d{2}$/;
-const TOKEN_EDGES = /^[([{"']+|[)\]}"',;:.]+$/g;
+const LEADING_PUNCTUATION = /^[([{"']+/;
+const TRAILING_PUNCTUATION = new Set([')', ']', '}', '"', "'", ',', ';', ':', '.']);
 const LETTER = new RegExp(`[${LETTERS}]`, 'g');
+
+/**
+ * Statement texts are short (camt.053 remittance lines have at most 140 characters); anything
+ * past this is cut before cleaning, so a crafted file cannot make the regular expressions slow.
+ */
+export const MERCHANT_TEXT_MAX_LENGTH = 1000;
 
 /**
  * Turns a bank statement text into a merchant name: "KAUF/DIENSTLEISTUNG VOM 30.09.2026 KARTEN
@@ -236,7 +248,7 @@ const LETTER = new RegExp(`[${LETTERS}]`, 'g');
  */
 export function merchantFromText(text: string | null | undefined): string | null {
   if (text === null || text === undefined) return null;
-  let out = ` ${text.replace(/\s+/g, ' ')} `;
+  let out = ` ${text.slice(0, MERCHANT_TEXT_MAX_LENGTH).replace(/\s+/g, ' ')} `;
   out = out.replace(PROVIDER_PREFIX, '$1 ');
   out = out.replace(IBAN, ' ');
   out = out.replace(QR_REFERENCE, ' ').replace(CREDITOR_REFERENCE, ' ');
@@ -258,8 +270,11 @@ export function merchantFromText(text: string | null | undefined): string | null
 function dropNumberTokens(text: string): string {
   const tokens = text.split(' ');
   // Padded with an empty core at both ends, so every token has a neighbour on each side.
-  const cores = ['', ...tokens.map((token) => token.replace(TOKEN_EDGES, '')), ''];
-  const isMask = (core: string) => MASK.test(core) && (/\d/.test(core) || /[xX*•]{4}/.test(core));
+  const cores = ['', ...tokens.map(tokenCore), ''];
+  const isMask = (core: string) =>
+    MASK_START.test(core) &&
+    MASK_CHARACTERS.test(core) &&
+    (/\d/.test(core) || /[xX*•]{4}/.test(core));
   return tokens
     .filter((_, index) => {
       const [before, core, after] = cores.slice(index, index + 3) as [string, string, string];
@@ -271,6 +286,13 @@ function dropNumberTokens(text: string): string {
       return !(isMask(before) && /[xX*•]$/.test(before)) && !(isMask(after) && /^\d/.test(after));
     })
     .join(' ');
+}
+
+/** A token without the brackets, quotes and punctuation around it: "(XXXX1234)," → "XXXX1234". */
+function tokenCore(token: string): string {
+  let end = token.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(token.charAt(end - 1))) end -= 1;
+  return token.slice(0, end).replace(LEADING_PUNCTUATION, '');
 }
 
 /** Drops dangling prepositions; at the end only longer ones ("Exempla A" keeps its "A"). */

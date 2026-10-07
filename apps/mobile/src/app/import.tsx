@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AppText, PrimaryButton, Screen, ScreenHeader } from '@/components';
+import { AppText, PrimaryButton, Screen, ScreenHeader, TextLink } from '@/components';
 import { ColumnMappingForm } from '@/features/imports/ColumnMappingForm';
 import { applyMapping, readPickedFile, type ImportStep } from '@/features/imports/flow';
 import { ImportPreview } from '@/features/imports/ImportPreview';
@@ -66,6 +66,7 @@ export default function ImportScreen() {
           file={step.file}
           statement={step.statement}
           onDone={(summary) => setStep({ kind: 'done', summary })}
+          onLeave={leave}
         />
       );
 
@@ -82,11 +83,18 @@ export default function ImportScreen() {
           scroll
           testID="import-screen"
           footer={
-            <PrimaryButton
-              label={t('imports.mapping.continue')}
-              onPress={continueMapping}
-              testID="import-map-continue"
-            />
+            <>
+              <PrimaryButton
+                label={t('imports.mapping.continue')}
+                onPress={continueMapping}
+                testID="import-map-continue"
+              />
+              <TextLink
+                label={t('imports.problems.chooseAnother')}
+                onPress={() => void choose()}
+                testID="import-map-choose-another"
+              />
+            </>
           }
         >
           {header}
