@@ -1,6 +1,7 @@
 /**
  * Domain constraints: money bounds, currency, value ranges, category naming, rule shape, budget
- * periods and data-source consent. Writes run as the signed-in owner, like the app's would.
+ * periods and data-source consent. Writes run as the signed-in owner, like the app's would
+ * (budget periods as the owner role: clients cannot write them, D-036).
  */
 import { MAX_ABS_RAPPEN } from '@budget/core';
 import { describe, expect, it } from 'vitest';
@@ -447,6 +448,17 @@ describe('categorization rules', () => {
 });
 
 describe('budget periods', () => {
+  /**
+   * Runs `fn` with a fresh user while acting as the owner role: clients cannot write periods
+   * (D-036), onboarding and the payday reset write them with owner rights.
+   */
+  function asOwnerForNewUser(fn: (db: Db, user: string) => Promise<void>): Promise<void> {
+    return withRollback(async (db) => {
+      const user = await createUser(db);
+      await fn(db, user);
+    });
+  }
+
   function period(user: string, startsOn: string, endsOn: string, values: Row = {}): Row {
     return {
       user_id: user,
@@ -460,7 +472,7 @@ describe('budget periods', () => {
   }
 
   it('an overlapping period for the same user is rejected (23P01)', async () => {
-    await asNewUser(async (db, user) => {
+    await asOwnerForNewUser(async (db, user) => {
       expect(
         await tryInsert(db, 'public.budget_periods', period(user, '2026-09-25', '2026-10-25')),
       ).toBe(OK);
@@ -471,7 +483,7 @@ describe('budget periods', () => {
   });
 
   it('the next period may start on the day the previous one ends (ends_on is exclusive)', async () => {
-    await asNewUser(async (db, user) => {
+    await asOwnerForNewUser(async (db, user) => {
       expect(
         await tryInsert(db, 'public.budget_periods', period(user, '2026-09-25', '2026-10-25')),
       ).toBe(OK);
@@ -486,7 +498,6 @@ describe('budget periods', () => {
       const a = await createUser(db);
       const b = await createUser(db);
       await make.period(db, a, { starts_on: '2026-09-25', ends_on: '2026-10-25' });
-      await asUser(db, b);
       expect(
         await tryInsert(db, 'public.budget_periods', period(b, '2026-09-25', '2026-10-25')),
       ).toBe(OK);
@@ -497,7 +508,7 @@ describe('budget periods', () => {
     ['equal to', '2026-09-25'],
     ['before', '2026-09-24'],
   ])('ends_on %s starts_on is rejected (23514)', async (_label, endsOn) => {
-    await asNewUser(async (db, user) => {
+    await asOwnerForNewUser(async (db, user) => {
       expect(await tryInsert(db, 'public.budget_periods', period(user, '2026-09-25', endsOn))).toBe(
         SQLSTATE.checkViolation,
       );
@@ -505,7 +516,7 @@ describe('budget periods', () => {
   });
 
   it('a closed period with closed_at, leftover_action and leftover_rappen is accepted', async () => {
-    await asNewUser(async (db, user) => {
+    await asOwnerForNewUser(async (db, user) => {
       expect(
         await tryInsert(
           db,
@@ -529,7 +540,7 @@ describe('budget periods', () => {
       { closed_at: '2026-09-25T00:00:00Z', leftover_action: 'reset' },
     ],
   ])('a period with %s is rejected (23514)', async (_label, closing) => {
-    await asNewUser(async (db, user) => {
+    await asOwnerForNewUser(async (db, user) => {
       expect(
         await tryInsert(
           db,

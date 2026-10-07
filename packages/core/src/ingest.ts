@@ -32,7 +32,11 @@ export type IngestRow = {
 
 export type IngestItem = { description: string; amount_rappen: Rappen; quantity?: number };
 
-export type IngestSplit = { category_id: string | null; amount_rappen: Rappen; note: string | null };
+export type IngestSplit = {
+  category_id: string | null;
+  amount_rappen: Rappen;
+  note: string | null;
+};
 
 /** What the person decided about a transaction before it is stored. */
 export type IngestChoices = {
@@ -43,7 +47,10 @@ export type IngestChoices = {
 };
 
 /** Turns an adapter's (already validated) output plus the person's choices into an RPC row. */
-export function toIngestRow(transaction: SourceTransaction, choices: IngestChoices = {}): IngestRow {
+export function toIngestRow(
+  transaction: SourceTransaction,
+  choices: IngestChoices = {},
+): IngestRow {
   const row: IngestRow = {
     amount_rappen: transaction.amountRappen,
     merchant: transaction.merchant,

@@ -6,5 +6,7 @@ export * from './sources';
 export * from './ingest';
 export * from './merchant';
 export * from './engine';
+export * from './import';
+export * from './export';
 export type * from './model';
 export type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types';

@@ -74,4 +74,20 @@ describe('TransactionRow', () => {
     fireEvent.press(screen.getByRole('button', { name: 'SBB, CHF 4.40' }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('says what pressing it does', async () => {
+    await renderWithTheme(
+      <TransactionRow
+        merchant="SBB"
+        amount={-chf(4, 40)}
+        language="en"
+        onPress={jest.fn()}
+        accessibilityHint="Shows the details"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'SBB, CHF 4.40' })).toHaveProp(
+      'accessibilityHint',
+      'Shows the details',
+    );
+  });
 });

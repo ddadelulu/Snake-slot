@@ -81,4 +81,22 @@ describe('ChoiceList', () => {
       minHeight: lightTheme.sizes.rowHeight,
     });
   });
+
+  it('names an option by its own testID when it has one', async () => {
+    await renderWithTheme(
+      <ChoiceList
+        options={[
+          { value: 'c-1', label: 'Groceries', testID: 'category-groceries' },
+          { value: 'c-2', label: 'Dog' },
+        ]}
+        selected={null}
+        onSelect={jest.fn()}
+        accessibilityLabel="Category"
+        testID="category"
+      />,
+    );
+    expect(screen.getByTestId('category-groceries')).toBeOnTheScreen();
+    expect(screen.queryByTestId('category-c-1')).toBeNull();
+    expect(screen.getByTestId('category-c-2')).toBeOnTheScreen();
+  });
 });

@@ -131,7 +131,6 @@ const CLIENT_UPDATES: ReadonlyArray<readonly [string, string]> = [
   ['notification_settings', 'pace = false'],
   ['fixed_costs', 'amount_rappen = 1'],
   ['categories', `icon = 'cart'`],
-  ['budget_periods', 'savings_rappen = 1'],
   ['budgets', 'amount_rappen = 1'],
   ['data_sources', `display_name = 'UBS'`],
   ['transactions', `note = 'Zmittag'`],
@@ -177,6 +176,25 @@ describe('updated_at (set_updated_at)', () => {
         `update public.categories set updated_at = $1 where id = $2
          returning updated_at = now() as bumped`,
         [OLD, category],
+      );
+      expect(row.bumped).toBe(true);
+    });
+  });
+
+  // Clients cannot write budget periods (D-036); onboarding and the payday reset do, as owner.
+  it('is bumped when the owner updates public.budget_periods', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const period = await seedRow(db, 'budget_periods', a);
+      await db.query('update public.budget_periods set updated_at = $1 where id = $2', [
+        OLD,
+        period,
+      ]);
+      const row = await queryOne<{ bumped: boolean }>(
+        db,
+        `update public.budget_periods set savings_rappen = 1 where id = $1
+         returning updated_at = now() and updated_at > $2::timestamptz as bumped`,
+        [period, OLD],
       );
       expect(row.bumped).toBe(true);
     });

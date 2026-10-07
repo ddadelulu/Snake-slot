@@ -549,6 +549,69 @@ describe('complete_onboarding() and other users', () => {
   });
 });
 
+describe('complete_onboarding() with owner rights (D-036)', () => {
+  it('runs as SECURITY DEFINER with an empty search_path', async () => {
+    const row = await withRollback((db) =>
+      queryOne<Row>(
+        db,
+        `select prosecdef as definer, proconfig as config from pg_proc
+          where oid = 'public.complete_onboarding(jsonb)'::regprocedure`,
+      ),
+    );
+    expect(row).toEqual({ definer: true, config: ['search_path=""'] });
+  });
+
+  it('cannot be steered at another user’s rows through the payload', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const b = await createUser(db);
+      const before = await footprint(db, b);
+      await completeOnboarding(db, a, {
+        ...payload(),
+        user_id: b,
+        id: b,
+        fixed_costs: FIXED_COSTS.map((cost) => ({ ...cost, user_id: b, id: b })),
+        categories: CATEGORIES.map((category) => ({ ...category, user_id: b, id: b })),
+        notification_settings: { ...NOTIFICATIONS, user_id: b },
+      });
+      expect(await footprint(db, b)).toEqual(before);
+      await asPostgres(db);
+      const owners = await queryRows<{ owner: string }>(
+        db,
+        `select distinct user_id::text as owner from (
+           select user_id from public.fixed_costs where created_at = now()
+           union all select user_id from public.categories where created_at = now()
+           union all select user_id from public.budget_periods where created_at = now()
+           union all select user_id from public.budgets where created_at = now()
+         ) as created`,
+      );
+      expect(owners).toEqual([{ owner: a }]);
+    });
+  });
+
+  it('opens the first period although clients cannot write budget_periods themselves', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        `insert into public.budget_periods
+           (user_id, starts_on, ends_on, income_rappen, fixed_costs_rappen, savings_rappen)
+         values ($1, '2026-09-25', '2026-10-25', 1, 0, 0)`,
+        [a],
+      );
+      const periodId = await completeOnboarding(db, a, payload());
+      const row = await queryOne<{ n: number }>(
+        db,
+        'select count(*)::int as n from public.budget_periods where id = $1',
+        [periodId],
+      );
+      expect(row.n).toBe(1);
+    });
+  });
+});
+
 describe('an onboarded profile keeps its income and payday', () => {
   it.each(['net_income_rappen', 'payday'])('clearing %s is refused (23514)', async (column) => {
     await withRollback(async (db) => {

@@ -218,6 +218,12 @@ const sizes = {
   sliderHeight: 44,
   /** Readable line length on tablets and the web build. */
   maxContentWidth: 640,
+  /** The round "+" button floating over Home (Material's 56 dp). */
+  fab: 56,
+  /** The glyph inside the floating button. */
+  fabIcon: 28,
+  /** Icons inside fields and chips, e.g. the magnifier of the search field. */
+  inlineIcon: 20,
 };
 
 const opacity = {

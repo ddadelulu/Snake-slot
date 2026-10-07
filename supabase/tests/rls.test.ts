@@ -73,16 +73,50 @@ describe('RLS applies inside the client RPCs', () => {
         db,
         `select oid::regprocedure::text as fn, prosecdef as definer from pg_proc
           where oid in ('public.get_overview()'::regprocedure,
-                        'public.complete_onboarding(jsonb)'::regprocedure,
-                        'public.move_budget(uuid, uuid, bigint)'::regprocedure)
+                        'public.move_budget(uuid, uuid, bigint)'::regprocedure,
+                        'public.add_transactions(jsonb)'::regprocedure,
+                        'public.list_transactions(jsonb)'::regprocedure,
+                        'public.get_transaction(uuid)'::regprocedure,
+                        'public.update_transaction(uuid, jsonb)'::regprocedure,
+                        'public.set_transaction_splits(uuid, jsonb)'::regprocedure,
+                        'public.remove_import(uuid)'::regprocedure,
+                        'public.export_my_data()'::regprocedure,
+                        'internal.categorize(text, text, integer, bigint)'::regprocedure,
+                        'internal.ingest_row(jsonb, integer, text, text)'::regprocedure,
+                        'internal.transaction_item(uuid)'::regprocedure)
           order by 1`,
       ),
     );
-    expect(rows).toEqual([
-      { fn: 'complete_onboarding(jsonb)', definer: false },
-      { fn: 'get_overview()', definer: false },
-      { fn: 'move_budget(uuid,uuid,bigint)', definer: false },
-    ]);
+    expect([...rows].sort((x, y) => (x.fn < y.fn ? -1 : 1))).toEqual(
+      [
+        'add_transactions(jsonb)',
+        'export_my_data()',
+        'get_overview()',
+        'get_transaction(uuid)',
+        'internal.categorize(text,text,integer,bigint)',
+        'internal.ingest_row(jsonb,integer,text,text)',
+        'internal.transaction_item(uuid)',
+        'list_transactions(jsonb)',
+        'move_budget(uuid,uuid,bigint)',
+        'remove_import(uuid)',
+        'set_transaction_splits(uuid,jsonb)',
+        'update_transaction(uuid,jsonb)',
+      ]
+        .sort()
+        .map((fn) => ({ fn, definer: false })),
+    );
+  });
+
+  // D-036: clients cannot write periods, so onboarding opens the first one with owner rights.
+  it('complete_onboarding runs with the owner’s rights (SECURITY DEFINER, reviewed)', async () => {
+    const row = await withRollback((db) =>
+      queryOne<{ definer: boolean }>(
+        db,
+        `select prosecdef as definer from pg_proc
+          where oid = 'public.complete_onboarding(jsonb)'::regprocedure`,
+      ),
+    );
+    expect(row.definer).toBe(true);
   });
 
   it('a user cannot move budget out of or into another user’s budget (it is invisible)', async () => {
@@ -170,13 +204,14 @@ const CASES: readonly TableCase[] = [
     update: `icon = 'bike'`,
     delete: true,
   },
+  // Written by onboarding and the payday reset with owner rights only (D-036).
   {
     table: 'budget_periods',
     owner: 'user_id',
     key: 'id',
-    insert: true,
-    update: 'income_rappen = 610000',
-    delete: true,
+    insert: false,
+    update: null,
+    delete: false,
   },
   {
     table: 'budgets',

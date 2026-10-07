@@ -46,6 +46,8 @@ type RecentTransaction = {
   is_split: boolean;
   source: string;
   note: string | null;
+  categorized_by: string;
+  needs_review: boolean;
 };
 
 type Overview = {
@@ -61,6 +63,7 @@ type Overview = {
   };
   categories: OverviewCategory[];
   uncategorized_spent_rappen: number;
+  needs_review_count: number;
   recent_transactions: RecentTransaction[];
 };
 
@@ -182,6 +185,7 @@ describe('get_overview() shape', () => {
         },
         categories: [],
         uncategorized_spent_rappen: 0,
+        needs_review_count: 0,
         recent_transactions: [],
       });
     });
@@ -713,6 +717,8 @@ describe('recent transactions in the overview', () => {
         booked_at: dayOf(month, 1, '08:15:30'),
         merchant: 'Migros',
         category_id: groceries,
+        categorized_by: 'mcc',
+        category_confidence: 80,
         source: 'ios_shortcut',
         note: 'Znüni',
       });
@@ -728,7 +734,85 @@ describe('recent transactions in the overview', () => {
           is_split: false,
           source: 'ios_shortcut',
           note: 'Znüni',
+          categorized_by: 'mcc',
+          needs_review: false,
         },
+      ]);
+    });
+  });
+});
+
+describe('transactions that need a category', () => {
+  it('needs_review_count counts the current period’s transactions the app asks about', async () => {
+    await withRollback(async (db) => {
+      const { user, month } = await userWithCurrentPeriod(db);
+      const groceries = await make.category(db, user, { name: 'Lebensmittel' });
+      const rent = await make.fixedCost(db, user);
+      const tx = (values: Record<string, unknown>) =>
+        make.transaction(db, user, { booked_at: dayOf(month, 1), ...values });
+      // Asked about: no category, or a guess below 70.
+      await tx({ amount_rappen: -100 });
+      await tx({ amount_rappen: -200, category_id: groceries, categorized_by: 'merchant_list', category_confidence: 69 });
+      await tx({ amount_rappen: 300, category_id: groceries, categorized_by: 'mcc', category_confidence: 50 });
+      // Not asked about.
+      await tx({ amount_rappen: -400, category_id: groceries, categorized_by: 'mcc', category_confidence: 70 });
+      await tx({ amount_rappen: -500, category_id: groceries, categorized_by: 'rule', category_confidence: 100 });
+      await tx({ amount_rappen: -600, categorized_by: 'user', category_confidence: 100 });
+      await tx({ amount_rappen: 520_000 }); // income without category: not spending
+      await tx({ amount_rappen: -185_000, fixed_cost_id: rent });
+      await tx({ amount_rappen: -700, deleted_at: dayOf(month, 2) });
+      const original = await tx({ amount_rappen: -800, categorized_by: 'user' });
+      await tx({ amount_rappen: -800, source: 'statement_import', merged_into_id: original });
+      const split = await tx({ amount_rappen: -900, categorized_by: 'user' });
+      await make.split(db, user, split, -450);
+      await make.split(db, user, split, -450);
+      // Outside the period.
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: dayOf(month, -3) });
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${month.endsOn}T10:00:00Z` });
+      await runDeferredChecks(db);
+      expect((await mustGetOverview(db, user)).needs_review_count).toBe(3);
+    });
+  });
+
+  it('counts by the local booking day like the spending rules (Europe/Zurich)', async () => {
+    await withRollback(async (db) => {
+      const { user, month } = await userWithCurrentPeriod(db);
+      const dayBefore = addDays(month.startsOn, -1);
+      const lastDay = addDays(month.endsOn, -1);
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${dayBefore}T23:30:00Z` });
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${dayBefore}T21:30:00Z` });
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${lastDay}T21:30:00Z` });
+      await make.transaction(db, user, { amount_rappen: -1, booked_at: `${lastDay}T23:30:00Z` });
+      expect((await mustGetOverview(db, user)).needs_review_count).toBe(2);
+    });
+  });
+
+  it('recent transactions say how they were categorized and whether they need review', async () => {
+    await withRollback(async (db) => {
+      const { user, month } = await userWithCurrentPeriod(db);
+      const groceries = await make.category(db, user);
+      const asked = await make.transaction(db, user, { booked_at: dayOf(month, 3) });
+      const guessed = await make.transaction(db, user, {
+        booked_at: dayOf(month, 2),
+        category_id: groceries,
+        categorized_by: 'merchant_list',
+        category_confidence: 90,
+      });
+      const split = await make.transaction(db, user, {
+        amount_rappen: -1_000,
+        booked_at: dayOf(month, 1),
+        categorized_by: 'user',
+      });
+      await make.split(db, user, split, -600);
+      await make.split(db, user, split, -400);
+      await runDeferredChecks(db);
+      const overview = await mustGetOverview(db, user);
+      expect(
+        overview.recent_transactions.map((t) => [t.id, t.categorized_by, t.needs_review]),
+      ).toEqual([
+        [asked, 'none', true],
+        [guessed, 'merchant_list', false],
+        [split, 'user', false],
       ]);
     });
   });

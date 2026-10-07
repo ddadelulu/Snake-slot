@@ -1,4 +1,5 @@
 import { formatChf } from '@budget/core';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -9,6 +10,8 @@ import {
   CategoryCard,
   Divider,
   EmptyState,
+  FloatingActionButton,
+  LinkBanner,
   Screen,
   TransactionRow,
 } from '@/components';
@@ -20,7 +23,10 @@ import { formatDayMonth, formatShortDate } from '@/i18n/format';
 import { makeStyles, useTheme } from '@/theme';
 
 const useStyles = makeStyles((theme) => ({
+  root: { flex: 1 },
   section: { gap: theme.spacing.md },
+  // Keeps the last row of the list clear of the floating "+" button.
+  fabSpace: { height: theme.sizes.fab },
   loading: {
     flex: 1,
     alignItems: 'center',
@@ -38,26 +44,35 @@ export default function HomeScreen() {
   const overview = useOverview();
 
   return (
-    <Screen scroll edges={['top', 'left', 'right']} testID="home-screen">
-      <NoticeBanner />
-      {overview.isPending ? (
-        <View style={styles.loading} testID="home-loading">
-          <ActivityIndicator color={theme.colors.accent} />
-        </View>
-      ) : overview.isError ? (
-        <EmptyState
-          title={t('home.loadError')}
-          message={t('home.emptyMessage')}
-          actionLabel={t('home.retry')}
-          onAction={() => void overview.refetch()}
-          testID="home-error"
-        />
-      ) : overview.data ? (
-        <Month model={overview.data} />
-      ) : (
-        <EmptyState title={t('home.emptyTitle')} message={t('home.emptyMessage')} />
-      )}
-    </Screen>
+    <View style={styles.root}>
+      <Screen scroll edges={['top', 'left', 'right']} testID="home-screen">
+        <NoticeBanner />
+        {overview.isPending ? (
+          <View style={styles.loading} testID="home-loading">
+            <ActivityIndicator color={theme.colors.accent} />
+          </View>
+        ) : overview.isError ? (
+          <EmptyState
+            title={t('home.loadError')}
+            message={t('home.emptyMessage')}
+            actionLabel={t('home.retry')}
+            onAction={() => void overview.refetch()}
+            testID="home-error"
+          />
+        ) : overview.data ? (
+          <Month model={overview.data} />
+        ) : (
+          <EmptyState title={t('home.emptyTitle')} message={t('home.emptyMessage')} />
+        )}
+        <View style={styles.fabSpace} />
+      </Screen>
+      <FloatingActionButton
+        accessibilityLabel={t('quickAdd.open')}
+        accessibilityHint={t('quickAdd.openHint')}
+        onPress={() => router.push('/add')}
+        testID="home-add"
+      />
+    </View>
   );
 }
 
@@ -99,6 +114,15 @@ function Month({ model }: { model: HomeModel }) {
         daysUntilPaydayLabel={t('home.daysUntilPayday', { count: overview.daysUntilPayday })}
         testID="home-balance"
       />
+      {data.needsReviewCount > 0 ? (
+        <LinkBanner
+          tone="warning"
+          message={t('review.homeBanner', { count: data.needsReviewCount })}
+          accessibilityHint={t('review.homeBannerHint')}
+          onPress={() => router.push('/review')}
+          testID="home-review"
+        />
+      ) : null}
       {paceText || carried !== 0 ? (
         <View style={styles.facts}>
           {paceText ? (
@@ -172,6 +196,10 @@ function Month({ model }: { model: HomeModel }) {
                     amount={transaction.amountRappen}
                     language={language}
                     subtitle={`${label} · ${formatShortDate(transaction.bookedAt, language, timezone)}`}
+                    onPress={() =>
+                      router.push({ pathname: '/transaction/[id]', params: { id: transaction.id } })
+                    }
+                    accessibilityHint={t('transactions.openHint')}
                     testID={`home-transaction-${index}`}
                   />
                 </View>

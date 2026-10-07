@@ -13,6 +13,8 @@ export type TransactionRowProps = {
   /** Already translated and formatted, e.g. "Groceries · 3 Oct". */
   subtitle?: string;
   onPress?: () => void;
+  /** What pressing the row does, e.g. "Shows the details" (pressable rows only). */
+  accessibilityHint?: string;
   testID?: string;
 };
 
@@ -47,6 +49,7 @@ export function TransactionRow({
   language,
   subtitle,
   onPress,
+  accessibilityHint,
   testID,
 }: TransactionRowProps) {
   const styles = useStyles();
@@ -93,6 +96,7 @@ export function TransactionRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
