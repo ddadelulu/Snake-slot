@@ -121,6 +121,13 @@ function AppNavigator() {
       >
         <Stack.Protected guard={signedIn && !isPasswordRecovery && onboarded}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="add" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="transaction/[id]" />
+          <Stack.Screen name="review" />
+          <Stack.Screen name="import" />
+          <Stack.Screen name="data-sources" />
+          <Stack.Screen name="rules" />
+          <Stack.Screen name="export" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn && !isPasswordRecovery && !onboarded}>
           <Stack.Screen name="onboarding" />

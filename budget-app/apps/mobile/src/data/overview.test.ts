@@ -57,6 +57,16 @@ describe('parseOverview', () => {
         (json) => Object.assign(json.recent_transactions[1]!, { is_split: 1 }),
         'recent_transactions[1].is_split',
       ],
+      [
+        (json) => Object.assign(json.recent_transactions[0]!, { categorized_by: 'magic' }),
+        'recent_transactions[0].categorized_by',
+      ],
+      [
+        (json) => Object.assign(json.recent_transactions[0]!, { needs_review: 'yes' }),
+        'recent_transactions[0].needs_review',
+      ],
+      [(json) => Object.assign(json, { needs_review_count: -1 }), 'needs_review_count'],
+      [(json) => Object.assign(json, { needs_review_count: 1.5 }), 'needs_review_count'],
       [(json) => Object.assign(json, { categories: {} }), 'categories'],
     ];
     for (const [mutate, field] of cases) {

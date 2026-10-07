@@ -1,4 +1,6 @@
 import type { Translations } from './en';
+import { importsDe } from './imports.de';
+import { transactionsDe } from './transactions.de';
 
 /** Deutsche Texte (Schweizer Rechtschreibung: ss statt ß). */
 export const de: Translations = {
@@ -132,10 +134,8 @@ export const de: Translations = {
     loadError: 'Dein Monat konnte nicht geladen werden.',
     retry: 'Nochmals versuchen',
   },
-  transactions: {
-    emptyTitle: 'Noch keine Ausgaben',
-    emptyMessage: 'Einkäufe erscheinen hier, sobald sie erfasst sind.',
-  },
+  ...transactionsDe,
+  ...importsDe,
   assistant: {
     emptyTitle: 'Frag nach deinem Geld',
     emptyMessage:

@@ -79,6 +79,18 @@ export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 export const CATEGORIZED_BY = ['none', 'user', 'rule', 'merchant_list', 'mcc', 'ai'] as const;
 export type CategorizedBy = (typeof CATEGORIZED_BY)[number];
 
+/**
+ * A category guess below this confidence (0-100) is shown as a question ("CHF 84 at Manor: what
+ * was it?"); the database uses the same number for `needs_review`.
+ */
+export const REVIEW_CONFIDENCE = 70;
+
+/** Most rows one `add_transactions` call (one statement file) may carry. */
+export const MAX_ROWS_PER_IMPORT = 2000;
+
+/** Largest statement file the app reads (bytes). */
+export const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+
 export const RULE_MATCH_FIELDS = ['merchant', 'raw_text', 'mcc'] as const;
 export type RuleMatchField = (typeof RULE_MATCH_FIELDS)[number];
 

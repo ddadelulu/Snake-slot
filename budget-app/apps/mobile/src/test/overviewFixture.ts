@@ -52,6 +52,7 @@ export const OVERVIEW_JSON = {
     },
   ],
   uncategorized_spent_rappen: 1500,
+  needs_review_count: 1,
   recent_transactions: [
     {
       id: 't-1',
@@ -62,6 +63,8 @@ export const OVERVIEW_JSON = {
       is_split: false,
       source: 'manual',
       note: null,
+      categorized_by: 'user',
+      needs_review: false,
     },
     {
       id: 't-2',
@@ -72,6 +75,8 @@ export const OVERVIEW_JSON = {
       is_split: false,
       source: 'manual',
       note: null,
+      categorized_by: 'user',
+      needs_review: false,
     },
   ],
 };

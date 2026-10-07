@@ -148,3 +148,66 @@ _Tests:_ `overview.test.ts` (engine and database), `home.test.tsx`, E2E.
 - Missing several paydays (app not opened) rolls each month in turn; nothing is skipped.
 
 _Tests:_ `rollover.test.ts` (database), `leftover.test.ts`, `period.test.ts`.
+
+## Milestone 3 · Manual add, statement import, categorization
+
+Written by Tom Hanks (product), reviewed by Samuel L. Jackson.
+
+### US-3.1 Add a cash purchase in under five seconds
+
+As someone who just paid cash, I want to record it before I forget, so my balance stays true.
+
+- The "+" button on Home (and the link `batzen://add`) opens Add with the amount field focused
+  and my categories as one-tap buttons; Save is always visible. Amount, category, Save: done.
+- Optional: money in (a refund), where, a note, another day (today, yesterday or one of the last
+  two weeks), and splitting the amount across categories (the parts must add up exactly).
+- Home updates at once. If the same purchase already came from my statement, the app says so
+  and keeps one transaction.
+
+### US-3.2 Import my bank statement
+
+As a user whose bank is not connected yet, I want to import the statement my e-banking exports,
+so my card and Twint payments are tracked without typing them.
+
+- I pick a file: camt.053 (XML) or the CSV export of my bank. PostFinance, UBS, Zürcher
+  Kantonalbank, Raiffeisen, Neon and Revolut are recognized by their columns; for any other CSV I
+  choose which column holds the date, the amount (or debit and credit) and the text.
+- The file is read on my phone; only the transactions I keep are saved.
+- Before saving I see the period, how many transactions there are, which rows were skipped and
+  why (not booked yet, not in CHF, …), which ones I imported before, and look-alikes of
+  transactions I already have (unchecked). I can uncheck anything, e.g. transfers to my own
+  savings account or credit-card bill payments.
+- Importing the same file again adds nothing. Purchases I typed in by hand are merged with
+  their statement line instead of counting twice; payments of my fixed costs (rent, health
+  insurance, phone) are recognized and do not reduce my budget a second time.
+- I can undo an import in Settings → Data sources.
+
+### US-3.3 The right category without effort
+
+- Each transaction is placed by my own rules first, then by a list of known Swiss merchants,
+  then by the card's merchant category code. Anything the app is not sure about is asked:
+  "CHF 84.00 at Manor: what was it?" with my categories as buttons (Home shows how many are
+  waiting; the Transactions tab lists them).
+- After I correct a category I am asked "Always do this for Manor?"; yes creates a rule and
+  re-sorts my earlier Manor purchases that I did not place myself. Rules are listed in
+  Settings, where I can delete them.
+
+### US-3.4 Find and fix any transaction
+
+- The Transactions tab lists everything newest first, with search (merchant, note, statement
+  text) and filters for category (including "not categorized"), source and month.
+- A transaction shows amount, date and time, where it came from (by hand, which statement file),
+  the statement text, a foreign amount if any, and lets me change the category, split it across
+  categories, write a note, rename the merchant, mark it as the payment of one of my fixed costs,
+  or delete it (with undo). Amount and date can be changed on entries I typed in.
+
+### US-3.5 Take my data with me
+
+- Settings → Export my data: my transactions as a CSV file that opens in Excel (date, time,
+  amount, category, merchant, note, source, statement text; split parts on their own lines), or
+  everything stored about me as a JSON file.
+
+### US-3.6 Connect sources during onboarding
+
+- The questionnaire's ninth step shows the ways to get transactions in today: import a statement
+  right after setup, or add purchases with "+". The suggestion follows how I said I pay.
