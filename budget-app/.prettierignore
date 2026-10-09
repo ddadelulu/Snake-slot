@@ -1,9 +1,0 @@
-node_modules
-dist
-.expo
-coverage
-playwright-report
-test-results
-supabase/.temp
-*.sql
-.vitest
