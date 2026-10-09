@@ -100,7 +100,9 @@ describe('alerts inbox', () => {
     // Nothing waits when the app opens; the purchase is pending by the time the alert is tapped.
     let calls = 0;
     const fake = start({
-      rpc: { pending_moments: () => ok(calls++ === 0 ? [] : [momentJson({ id: 't-manor' })]) },
+      rpc: {
+        pending_moments: () => ok(calls++ === 0 ? [] : [momentJson({ transaction_id: 't-manor' })]),
+      },
     });
     fireEvent.press(await screen.findByTestId('alerts-item-1'));
     expect(await screen.findByTestId('moment-merchant')).toHaveTextContent('Manor');

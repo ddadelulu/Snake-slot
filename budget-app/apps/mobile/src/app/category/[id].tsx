@@ -19,7 +19,6 @@ import {
   TextLink,
   TransactionRow,
 } from '@/components';
-import { useCategories } from '@/data/categories';
 import { useCategoryDetail, useSetBudget, type CategoryDetail } from '@/data/categoryDetail';
 import { useProfile } from '@/data/profile';
 import { useTransactions } from '@/data/transactions';
@@ -75,13 +74,10 @@ export default function CategoryDetailScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const detail = useCategoryDetail(id);
-  const categories = useCategories();
-  const category = categories.data?.find((entry) => entry.id === id);
-  const name = category ? categoryName(category, t) : '';
 
   const header = <ScreenHeader backLabel={t('categoryDetail.back')} onBack={() => goBackOr('/')} />;
 
-  if (detail.isPending || categories.isPending) {
+  if (detail.isPending) {
     return (
       <Screen testID="category-screen">
         {header}
@@ -92,7 +88,7 @@ export default function CategoryDetailScreen() {
     );
   }
 
-  if (detail.isError || categories.isError) {
+  if (detail.isError) {
     return (
       <Screen testID="category-screen">
         {header}
@@ -100,17 +96,14 @@ export default function CategoryDetailScreen() {
           title={t('categoryDetail.loadError')}
           message={t('transactions.loadErrorMessage')}
           actionLabel={t('transactions.retry')}
-          onAction={() => {
-            void detail.refetch();
-            void categories.refetch();
-          }}
+          onAction={() => void detail.refetch()}
           testID="category-load-error"
         />
       </Screen>
     );
   }
 
-  if (!detail.data || !category) {
+  if (!detail.data) {
     return (
       <Screen testID="category-screen">
         {header}
@@ -123,6 +116,8 @@ export default function CategoryDetailScreen() {
     );
   }
 
+  const name = categoryName(detail.data.category, t);
+
   return (
     <Screen scroll testID="category-screen">
       {header}
@@ -131,7 +126,7 @@ export default function CategoryDetailScreen() {
       </AppText>
       <Month detail={detail.data} name={name} />
       <History detail={detail.data} />
-      <Purchases categoryId={category.id} />
+      <Purchases categoryId={detail.data.category.id} />
     </Screen>
   );
 }
@@ -174,7 +169,7 @@ function Month({ detail, name }: { detail: CategoryDetail; name: string }) {
     }
     setFailed(false);
     try {
-      await setBudget.mutateAsync({ categoryId: detail.categoryId, amountRappen: amount });
+      await setBudget.mutateAsync({ categoryId: detail.category.id, amountRappen: amount });
       setEditing(false);
     } catch {
       setFailed(true);

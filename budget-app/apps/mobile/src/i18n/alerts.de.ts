@@ -73,7 +73,7 @@ export const alertsDe: Widen<typeof alertsEn> = {
     remindersTitle: 'Erinnerungen',
     reminders: {
       reminder_payday: 'Zahltag: plane deinen neuen Monat',
-      weekly_review: 'Jede Woche: Bargeld erfassen und Kontoauszug importieren',
+      reminder_weekly: 'Jede Woche: Bargeld erfassen und Kontoauszug importieren',
       reminder_stale: 'Wenn die Budgets 30 Tage nicht angepasst wurden',
     },
     weeklyDay: 'Tag',

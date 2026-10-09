@@ -66,7 +66,7 @@ describe('category detail', () => {
     expect(screen.getByTestId('category-pace')).toHaveTextContent(
       'At this pace, the budget lasts until payday.',
     );
-    expect(screen.getByTestId('category-history-1')).toHaveProp(
+    expect(screen.getByTestId('category-history-2')).toHaveProp(
       'accessibilityLabel',
       'May: spent CHF 950.00 of CHF 900.00',
     );
@@ -80,7 +80,7 @@ describe('category detail', () => {
   it('warns when the budget runs out before payday', async () => {
     start('/category/c-groceries', {
       get_category_detail: () =>
-        ok(categoryDetailJson({ spent_rappen: 80000, rollover_rappen: 0, budget_rappen: 90000 })),
+        ok(categoryDetailJson({ spent_rappen: 80000, rollover_rappen: 0 })),
     });
     expect(await screen.findByTestId('category-pace')).toHaveTextContent(
       'At this pace, the budget runs out on 3 October.',
@@ -115,7 +115,7 @@ describe('category detail', () => {
   });
 
   it('says when the category does not exist', async () => {
-    start('/category/c-nope', { get_category_detail: () => ok(null) });
+    start('/category/c-nope', { get_category_detail: () => refused('category_not_found') });
     expect(await screen.findByTestId('category-not-found')).toBeOnTheScreen();
   });
 

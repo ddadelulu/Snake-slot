@@ -1,4 +1,4 @@
-import { momentJson, settingsRow } from '@/test/m4Fixture';
+import { categoryDetailJson, momentJson, settingsRow } from '@/test/m4Fixture';
 import { OVERVIEW_JSON } from '@/test/overviewFixture';
 
 import { parseAlertPage } from './alerts';
@@ -16,7 +16,7 @@ import { parseOverview } from './overview';
 describe('Milestone 4 responses', () => {
   it('reads payment moments and refuses a malformed one', () => {
     expect(
-      parseMoments([momentJson({ id: 't-1', category_id: null, budget_rappen: null })]),
+      parseMoments([momentJson({ transaction_id: 't-1', category_id: null, budget_rappen: null })]),
     ).toEqual([
       expect.objectContaining({
         id: 't-1',
@@ -26,7 +26,7 @@ describe('Milestone 4 responses', () => {
       }),
     ]);
     expect(parseMoments(null)).toEqual([]);
-    expect(() => parseMoments([momentJson({ id: 't-1', over_budget: 'yes' })])).toThrow(
+    expect(() => parseMoments([momentJson({ transaction_id: 't-1', over_budget: 'yes' })])).toThrow(
       ResponseFormatError,
     );
   });
@@ -64,20 +64,16 @@ describe('Milestone 4 responses', () => {
     });
   });
 
-  it('reads notification settings, with reminder defaults until the columns exist', () => {
-    const row = settingsRow();
-    delete row.reminder_payday;
-    delete row.weekly_review_day;
-    delete row.weekly_review_time;
-    expect(parseNotificationSettings(row)).toMatchObject({
-      reminder_payday: true,
-      weeklyReviewDay: 7,
-      weeklyReviewMinutes: 18 * 60,
+  it('reads notification settings with the weekly reminder', () => {
+    expect(parseNotificationSettings(settingsRow())).toMatchObject({
+      reminder_weekly: true,
+      weeklyDay: 7,
+      weeklyMinutes: 18 * 60,
       quietStartMinutes: 22 * 60,
       quietEndMinutes: 7 * 60,
       maxPerDay: 6,
     });
-    expect(() => parseNotificationSettings(settingsRow({ weekly_review_day: 9 }))).toThrow(
+    expect(() => parseNotificationSettings(settingsRow({ reminder_weekly_day: 9 }))).toThrow(
       ResponseFormatError,
     );
   });
@@ -89,8 +85,8 @@ describe('Milestone 4 responses', () => {
     expect(
       toSettingsColumns({
         pace: false,
-        weeklyReviewDay: 1,
-        weeklyReviewMinutes: 570,
+        weeklyDay: 1,
+        weeklyMinutes: 570,
         quietHoursEnabled: true,
         quietStartMinutes: 1290,
         quietEndMinutes: 420,
@@ -98,8 +94,8 @@ describe('Milestone 4 responses', () => {
       }),
     ).toEqual({
       pace: false,
-      weekly_review_day: 1,
-      weekly_review_time: '09:30',
+      reminder_weekly_day: 1,
+      reminder_weekly_time: '09:30',
       quiet_hours_enabled: true,
       quiet_hours_start: '21:30',
       quiet_hours_end: '07:00',
@@ -112,8 +108,23 @@ describe('Milestone 4 responses', () => {
     expect(parseOverview({ ...OVERVIEW_JSON, unread_alert_count: 4 })?.unreadAlertCount).toBe(4);
   });
 
-  it('reads a category detail (null when it does not exist)', () => {
-    expect(parseCategoryDetail(null)).toBeNull();
-    expect(() => parseCategoryDetail({ category_id: 'c' })).toThrow(ResponseFormatError);
+  it('reads a category detail with its history oldest first', () => {
+    const detail = parseCategoryDetail(categoryDetailJson());
+    expect(detail.category).toEqual({
+      id: 'c-groceries',
+      defaultKey: 'groceries',
+      name: null,
+      archived: false,
+    });
+    expect(detail.today).toBe('2026-10-02');
+    expect(detail.history.map((month) => month.startsOn)).toEqual([
+      '2026-03-25',
+      '2026-04-25',
+      '2026-05-25',
+      '2026-06-25',
+      '2026-07-25',
+      '2026-08-25',
+    ]);
+    expect(() => parseCategoryDetail({ category: {} })).toThrow(ResponseFormatError);
   });
 });

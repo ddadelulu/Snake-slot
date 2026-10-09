@@ -88,18 +88,25 @@ export function parseNotificationSettings(json: unknown): NotificationSettings {
 }
 
 /** The columns a change writes. */
-export function toSettingsColumns(change: Partial<NotificationSettings>): Record<string, unknown> {
-  const columns: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(change)) {
-    if (value === undefined) continue;
-    if (key === 'weeklyDay') columns.reminder_weekly_day = value;
-    else if (key === 'weeklyMinutes') columns.reminder_weekly_time = clockText(value as number);
-    else if (key === 'quietHoursEnabled') columns.quiet_hours_enabled = value;
-    else if (key === 'quietStartMinutes') columns.quiet_hours_start = clockText(value as number);
-    else if (key === 'quietEndMinutes') columns.quiet_hours_end = clockText(value as number);
-    else if (key === 'maxPerDay') columns.max_per_day = value;
-    else columns[key] = value;
-  }
+export function toSettingsColumns(
+  change: Partial<NotificationSettings>,
+): TablesUpdate<'notification_settings'> {
+  const {
+    weeklyDay,
+    weeklyMinutes,
+    quietHoursEnabled,
+    quietStartMinutes,
+    quietEndMinutes,
+    maxPerDay,
+    ...switches
+  } = change;
+  const columns: TablesUpdate<'notification_settings'> = { ...switches };
+  if (weeklyDay !== undefined) columns.reminder_weekly_day = weeklyDay;
+  if (weeklyMinutes !== undefined) columns.reminder_weekly_time = clockText(weeklyMinutes);
+  if (quietHoursEnabled !== undefined) columns.quiet_hours_enabled = quietHoursEnabled;
+  if (quietStartMinutes !== undefined) columns.quiet_hours_start = clockText(quietStartMinutes);
+  if (quietEndMinutes !== undefined) columns.quiet_hours_end = clockText(quietEndMinutes);
+  if (maxPerDay !== undefined) columns.max_per_day = maxPerDay;
   return columns;
 }
 
@@ -139,10 +146,9 @@ export function useUpdateNotificationSettings() {
   return useMutation<void, Error, Partial<NotificationSettings>, Context>({
     mutationFn: async (change) => {
       if (!userId) throw new RequestError('Not signed in', 401, 'not_signed_in');
-      const columns: TablesUpdate<'notification_settings'> = toSettingsColumns(change);
       const { error, status } = await getSupabase()
         .from('notification_settings')
-        .update(columns)
+        .update(toSettingsColumns(change))
         .eq('user_id', userId);
       if (error) throw toRequestError({ error, status });
     },

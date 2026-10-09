@@ -68,9 +68,9 @@ describe('notification settings', () => {
   it('sets the weekly reminder day and time, quiet hours and the daily cap', async () => {
     const fake = start();
     fireEvent.press(await screen.findByTestId('notifications-weekly-day-1'));
-    await waitFor(() => expect(stored(fake)?.weekly_review_day).toBe(1));
+    await waitFor(() => expect(stored(fake)?.reminder_weekly_day).toBe(1));
     fireEvent.press(screen.getByTestId('notifications-weekly-time-increment'));
-    await waitFor(() => expect(stored(fake)?.weekly_review_time).toBe('18:30'));
+    await waitFor(() => expect(stored(fake)?.reminder_weekly_time).toBe('18:30'));
     fireEvent.press(screen.getByTestId('notifications-quiet-start-decrement'));
     await waitFor(() => expect(stored(fake)?.quiet_hours_start).toBe('21:30'));
     fireEvent.press(screen.getByTestId('notifications-quiet-end-increment'));

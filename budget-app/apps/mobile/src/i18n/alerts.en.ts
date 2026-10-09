@@ -71,7 +71,7 @@ export const alertsEn = {
     remindersTitle: 'Reminders',
     reminders: {
       reminder_payday: 'Payday: plan your new month',
-      weekly_review: 'Every week: log cash and import your statement',
+      reminder_weekly: 'Every week: log cash and import your statement',
       reminder_stale: 'When budgets have not been touched for 30 days',
     },
     weeklyDay: 'Day',
