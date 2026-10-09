@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -54,7 +55,7 @@ export function ImportIntro({ onChoose, reading }: { onChoose: () => void; readi
   );
 }
 
-function problemMessage(problem: FileProblem, t: ReturnType<typeof useTranslation>['t']): string {
+function problemMessage(problem: FileProblem, t: TFunction): string {
   switch (problem.code) {
     case 'too_large':
       return t('imports.problems.too_large', { size: formatMegabytes(problem.maxBytes) });

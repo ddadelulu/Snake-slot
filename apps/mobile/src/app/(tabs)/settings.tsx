@@ -1,11 +1,21 @@
-import { LANGUAGES, type Language } from '@budget/core';
+import { LANGUAGES, PAIN_LEVELS, type Language, type PainLevel } from '@budget/core';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { AlertBanner, AppText, Card, ChoiceList, Divider, Screen, SettingsRow } from '@/components';
+import {
+  AlertBanner,
+  AppText,
+  Card,
+  ChoiceList,
+  Divider,
+  Screen,
+  SettingsRow,
+  SwitchRow,
+} from '@/components';
+import { useProfile, useUpdateProfile } from '@/data/profile';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { signOut } from '@/features/auth/authApi';
 import { DeleteAccountSheet } from '@/features/settings/DeleteAccountSheet';
@@ -30,6 +40,9 @@ export default function SettingsScreen() {
   const { preference, setPreference } = useAppearance();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const [momentFailed, setMomentFailed] = useState(false);
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
   const env = readEnv();
   const version = Constants.expoConfig?.version ?? '';
 
@@ -38,6 +51,11 @@ export default function SettingsScreen() {
     value,
     label: t(`settings.appearanceOptions.${value}`),
   }));
+
+  const saveMoment = (patch: { pain_level?: PainLevel; sound_enabled?: boolean }) => {
+    setMomentFailed(false);
+    updateProfile.mutate(patch, { onError: () => setMomentFailed(true) });
+  };
 
   const handleSignOut = async () => {
     setSignOutFailed(false);
@@ -78,6 +96,79 @@ export default function SettingsScreen() {
             onPress={() => setDeleteOpen(true)}
             destructive
             testID="settings-delete-account"
+          />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">
+          {t('editors.section')}
+        </AppText>
+        <Card padded={false}>
+          <SettingsRow
+            label={t('editors.profileRow')}
+            onPress={() => router.push('/profile')}
+            testID="settings-profile"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('editors.fixedCostsRow')}
+            onPress={() => router.push('/fixed-costs')}
+            testID="settings-fixed-costs"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('editors.categoriesRow')}
+            onPress={() => router.push('/categories')}
+            testID="settings-categories"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('editors.alertsRow')}
+            onPress={() => router.push('/alerts')}
+            testID="settings-alerts"
+          />
+          <Divider inset />
+          <SettingsRow
+            label={t('editors.notificationsRow')}
+            onPress={() => router.push('/notifications')}
+            testID="settings-notifications"
+          />
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">
+          {t('momentSettings.title')}
+        </AppText>
+        {momentFailed ? (
+          <AlertBanner
+            tone="danger"
+            message={t('momentSettings.saveError')}
+            testID="settings-moment-error"
+          />
+        ) : null}
+        <AppText variant="label" tone="secondary">
+          {t('momentSettings.painLevel')}
+        </AppText>
+        <ChoiceList<PainLevel>
+          options={PAIN_LEVELS.map((value) => ({
+            value,
+            label: t(`onboarding.pain.${value}`),
+            description: t(`onboarding.pain.${value}Hint`),
+          }))}
+          selected={profile?.pain_level ?? null}
+          onSelect={(pain_level) => saveMoment({ pain_level })}
+          accessibilityLabel={t('momentSettings.painLevel')}
+          testID="settings-pain"
+        />
+        <Card padded={false}>
+          <SwitchRow
+            label={t('momentSettings.sound')}
+            hint={t('momentSettings.soundHint')}
+            value={profile?.sound_enabled ?? true}
+            onValueChange={(sound_enabled) => saveMoment({ sound_enabled })}
+            testID="settings-sound"
           />
         </Card>
       </View>

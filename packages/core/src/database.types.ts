@@ -80,6 +80,7 @@ export type Database = {
           period_id: string | null;
           pushed_at: string | null;
           read_at: string | null;
+          silent: boolean;
           title: string;
           transaction_id: string | null;
           type: string;
@@ -96,6 +97,7 @@ export type Database = {
           period_id?: string | null;
           pushed_at?: string | null;
           read_at?: string | null;
+          silent?: boolean;
           title: string;
           transaction_id?: string | null;
           type: string;
@@ -112,6 +114,7 @@ export type Database = {
           period_id?: string | null;
           pushed_at?: string | null;
           read_at?: string | null;
+          silent?: boolean;
           title?: string;
           transaction_id?: string | null;
           type?: string;
@@ -455,6 +458,11 @@ export type Database = {
           quiet_hours_enabled: boolean;
           quiet_hours_end: string;
           quiet_hours_start: string;
+          reminder_payday: boolean;
+          reminder_stale: boolean;
+          reminder_weekly: boolean;
+          reminder_weekly_day: number;
+          reminder_weekly_time: string;
           total_low: boolean;
           transaction_moments: boolean;
           unusual_purchase: boolean;
@@ -473,6 +481,11 @@ export type Database = {
           quiet_hours_enabled?: boolean;
           quiet_hours_end?: string;
           quiet_hours_start?: string;
+          reminder_payday?: boolean;
+          reminder_stale?: boolean;
+          reminder_weekly?: boolean;
+          reminder_weekly_day?: number;
+          reminder_weekly_time?: string;
           total_low?: boolean;
           transaction_moments?: boolean;
           unusual_purchase?: boolean;
@@ -491,6 +504,11 @@ export type Database = {
           quiet_hours_enabled?: boolean;
           quiet_hours_end?: string;
           quiet_hours_start?: string;
+          reminder_payday?: boolean;
+          reminder_stale?: boolean;
+          reminder_weekly?: boolean;
+          reminder_weekly_day?: number;
+          reminder_weekly_time?: string;
           total_low?: boolean;
           transaction_moments?: boolean;
           unusual_purchase?: boolean;
@@ -563,6 +581,33 @@ export type Database = {
           timezone?: string;
           updated_at?: string;
           weekly_work_minutes?: number | null;
+        };
+        Relationships: [];
+      };
+      push_tokens: {
+        Row: {
+          created_at: string;
+          id: string;
+          platform: string;
+          token: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          platform: string;
+          token: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          platform?: string;
+          token?: string;
+          updated_at?: string;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -774,18 +819,38 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      acknowledge_transactions: { Args: { p_ids: string[] }; Returns: number };
       add_transactions: { Args: { p: Json }; Returns: Json };
+      claim_pushes: {
+        Args: { p_limit?: number; p_now?: string };
+        Returns: {
+          alert_id: string;
+          body: string;
+          data: Json;
+          sound: boolean;
+          title: string;
+          tokens: string[];
+          type: string;
+          user_id: string;
+        }[];
+      };
       complete_onboarding: { Args: { p: Json }; Returns: string };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
+      dismiss_alert: { Args: { p_id: string }; Returns: boolean };
       ensure_current_period: { Args: Record<PropertyKey, never>; Returns: string };
       export_my_data: { Args: Record<PropertyKey, never>; Returns: Json };
+      forget_push_tokens: { Args: { p_tokens: string[] }; Returns: number };
+      get_category_detail: { Args: { p_category_id: string }; Returns: Json };
       get_overview: { Args: Record<PropertyKey, never>; Returns: Json };
       get_transaction: { Args: { p_id: string }; Returns: Json };
+      list_alerts: { Args: { p: Json }; Returns: Json };
       list_transactions: { Args: { p: Json }; Returns: Json };
+      mark_alerts_read: { Args: { p_ids: string[] }; Returns: number };
       move_budget: {
         Args: { p_amount_rappen: number; p_from_budget: string; p_to_budget: string };
         Returns: undefined;
       };
+      pending_moments: { Args: Record<PropertyKey, never>; Returns: Json };
       period_containing: {
         Args: { p_date: string; p_payday: number };
         Returns: {
@@ -793,9 +858,13 @@ export type Database = {
           starts_on: string;
         }[];
       };
+      register_push_token: { Args: { p_platform: string; p_token: string }; Returns: undefined };
       remove_import: { Args: { p_data_source_id: string }; Returns: Json };
       roll_due_periods: { Args: Record<PropertyKey, never>; Returns: number };
+      run_scheduled_alerts: { Args: { p_now?: string }; Returns: number };
+      set_budget: { Args: { p_amount_rappen: number; p_category_id: string }; Returns: Json };
       set_transaction_splits: { Args: { p_id: string; p_parts: Json }; Returns: Json };
+      unregister_push_token: { Args: { p_token: string }; Returns: boolean };
       update_transaction: { Args: { p: Json; p_id: string }; Returns: Json };
     };
     Enums: {

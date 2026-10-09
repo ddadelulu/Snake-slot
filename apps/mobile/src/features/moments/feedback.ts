@@ -41,7 +41,6 @@ let coin: AudioPlayer | null = null;
 export function playCoin(intensity: MomentIntensity): void {
   if (!intensity.sound) return;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     coin ??= createAudioPlayer(require('../../../assets/sounds/coin.wav'));
     coin.volume = intensity.errorBuzz ? 1 : 0.7;
     quietly(coin.seekTo(0));

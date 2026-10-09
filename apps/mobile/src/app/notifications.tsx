@@ -87,7 +87,10 @@ export default function NotificationSettingsScreen() {
 
   const header = (
     <>
-      <ScreenHeader backLabel={t('notificationSettings.back')} onBack={() => goBackOr('/settings')} />
+      <ScreenHeader
+        backLabel={t('notificationSettings.back')}
+        onBack={() => goBackOr('/settings')}
+      />
       <AppText variant="title" accessibilityRole="header">
         {t('notificationSettings.title')}
       </AppText>
@@ -218,7 +221,10 @@ export default function NotificationSettingsScreen() {
                     valueText={clockText(s.weeklyReviewMinutes)}
                     onDecrement={() =>
                       save({
-                        weeklyReviewMinutes: shift(s.weeklyReviewMinutes, -QUIET_HOURS_STEP_MINUTES),
+                        weeklyReviewMinutes: shift(
+                          s.weeklyReviewMinutes,
+                          -QUIET_HOURS_STEP_MINUTES,
+                        ),
                       })
                     }
                     onIncrement={() =>

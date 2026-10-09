@@ -64,6 +64,7 @@ type Overview = {
   categories: OverviewCategory[];
   uncategorized_spent_rappen: number;
   needs_review_count: number;
+  unread_alert_count: number;
   recent_transactions: RecentTransaction[];
 };
 
@@ -186,6 +187,7 @@ describe('get_overview() shape', () => {
         categories: [],
         uncategorized_spent_rappen: 0,
         needs_review_count: 0,
+        unread_alert_count: 0,
         recent_transactions: [],
       });
     });

@@ -3,7 +3,10 @@
 Tests for the Supabase schema in `supabase/migrations`: the contracts shared with `@budget/core`,
 row-level security, privileges, constraints, triggers, account deletion, the budget engine
 (period math, spending rules, onboarding, the payday reset, budget moves) and the transaction
-pipeline (categorization, deduplication, imports, the transaction RPCs, the data export). They run against a
+pipeline (categorization, deduplication, imports, the transaction RPCs, the data export), and
+Milestone 4 (the alert engine and reminders, push tokens and `claim_pushes`, the write guard,
+moments, inbox and editors; fixtures in `m4.ts`). `send-pushes.test.ts` unit-tests the Edge
+Function's logic with a fake `fetch` and needs no database. They run against a
 real Postgres with the Supabase roles (`anon`, `authenticated`, `service_role`) and the `auth`
 schema, so what passes here is what the app gets in production.
 

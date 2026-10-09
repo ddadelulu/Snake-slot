@@ -11,7 +11,7 @@ import {
   SQLSTATE,
   type SqlState,
   asPostgres,
-  asUser,
+  asUserWritingDirectly,
   attempt,
   createUser,
   make,
@@ -51,7 +51,7 @@ async function tryProfileUpdate(db: Db, userId: string, values: Row): Promise<Ou
 function asNewUser(fn: (db: Db, user: string) => Promise<void>): Promise<void> {
   return withRollback(async (db) => {
     const user = await createUser(db);
-    await asUser(db, user);
+    await asUserWritingDirectly(db, user);
     await fn(db, user);
   });
 }
@@ -107,7 +107,7 @@ describe('money', () => {
       const user = await createUser(db);
       const period = await make.period(db, user);
       const category = await make.category(db, user);
-      await asUser(db, user);
+      await asUserWritingDirectly(db, user);
       expect(
         await tryInsert(db, 'public.budgets', {
           user_id: user,
@@ -127,7 +127,7 @@ describe('money', () => {
       const user = await createUser(db);
       const period = await make.period(db, user);
       const category = await make.category(db, user);
-      await asUser(db, user);
+      await asUserWritingDirectly(db, user);
       expect(
         await tryInsert(db, 'public.budgets', {
           user_id: user,
@@ -353,7 +353,7 @@ describe('categories', () => {
       const a = await createUser(db);
       const b = await createUser(db);
       await make.category(db, a, { name: null, default_key: 'eating_out' });
-      await asUser(db, b);
+      await asUserWritingDirectly(db, b);
       expect(
         await tryInsert(db, 'public.categories', { user_id: b, default_key: 'eating_out' }),
       ).toBe(OK);
@@ -389,7 +389,7 @@ describe('categorization rules', () => {
   async function tryRule(db: Db, user: string, values: Row): Promise<Outcome> {
     await asPostgres(db);
     const category = await make.category(db, user);
-    await asUser(db, user);
+    await asUserWritingDirectly(db, user);
     return tryInsert(db, 'public.categorization_rules', {
       user_id: user,
       category_id: category,

@@ -87,6 +87,22 @@ export async function asAnon(db: Db): Promise<void> {
   await setClaims(db, '', { role: 'anon' });
 }
 
+/**
+ * Acts as `userId` and lets role authenticated write transactions, transaction_splits and
+ * data_sources directly for the rest of the test, as the RPCs do (guard M4-06: they set the
+ * transaction-local flag batzen.via_rpc). Only for tests about constraints, RLS or triggers of
+ * those tables; the app can only write them through the RPCs.
+ */
+export async function asUserWritingDirectly(db: Db, userId: string): Promise<void> {
+  await asUser(db, userId);
+  await allowDirectWrites(db);
+}
+
+/** Sets the guard flag of M4-06 for the rest of the test (see asUserWritingDirectly). */
+export async function allowDirectWrites(db: Db): Promise<void> {
+  await db.query(`select set_config('batzen.via_rpc', 'on', true)`);
+}
+
 /** Back to the connection's own role (postgres): bypasses RLS, used to set up fixtures. */
 export async function asPostgres(db: Db): Promise<void> {
   await db.query('reset role');
@@ -383,6 +399,14 @@ export const make = {
       ...values,
     }),
 
+  pushToken: (db: Db, userId: string, values: Row = {}) =>
+    insertRow(db, 'public.push_tokens', {
+      user_id: userId,
+      token: `ExponentPushToken[device-${next()}]`,
+      platform: 'ios',
+      ...values,
+    }),
+
   consentEvent: (db: Db, userId: string, values: Row = {}) =>
     insertRow(db, 'public.consent_events', {
       user_id: userId,
@@ -492,6 +516,11 @@ export const NEW_ROW: Readonly<Record<string, (db: Db, userId: string) => Promis
     dedupe_key: `pace-${next()}`,
     title: 'Zu schnell unterwegs',
     body: 'Du gibst schneller aus als geplant.',
+  }),
+  push_tokens: async (_db, userId) => ({
+    user_id: userId,
+    token: `ExponentPushToken[device-${next()}]`,
+    platform: 'ios',
   }),
   ai_conversations: async (_db, userId) => ({ user_id: userId, title: 'Sparen' }),
   ai_messages: async (db, userId) => ({

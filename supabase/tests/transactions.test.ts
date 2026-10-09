@@ -1579,6 +1579,7 @@ const EXPORT_KEYS: Readonly<Record<string, string>> = {
   categorization_rules: 'categorization_rules',
   data_sources: 'data_sources',
   alerts: 'alerts',
+  push_tokens: 'push_tokens',
   ai_conversations: 'ai_conversations',
   ai_messages: 'ai_messages',
   consent_events: 'consent_events',

@@ -1,6 +1,7 @@
 import { addDays, localDateIn, type LocalDate } from '@budget/core';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, SectionList, View } from 'react-native';
 
@@ -427,7 +428,7 @@ function dayHeading(
   day: LocalDate,
   today: LocalDate,
   language: ReturnType<typeof useLanguage>['language'],
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction,
 ): string {
   if (day === today) return t('transactions.today');
   if (day === addDays(today, -1)) return t('transactions.yesterday');

@@ -45,11 +45,10 @@ async function registerToken(): Promise<void> {
 export async function enablePush(): Promise<PushStatus> {
   const current = await getPushStatus();
   if (current === 'unsupported' || current === 'blocked') return current;
-  let status = current;
+  let status: PushStatus = current;
   if (status !== 'granted') {
     const answer = await Notifications.requestPermissionsAsync();
-    status =
-      answer.status === 'granted' ? 'granted' : answer.canAskAgain ? 'denied' : 'blocked';
+    status = answer.status === 'granted' ? 'granted' : answer.canAskAgain ? 'denied' : 'blocked';
   }
   if (status === 'granted') await registerToken();
   return status;

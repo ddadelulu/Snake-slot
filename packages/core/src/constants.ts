@@ -122,6 +122,10 @@ export const ALERT_TYPES = [
   'payday',
   'weekly_review',
   'categorize',
+  // Reminders (D-044): plan the new month on payday, the weekly check-in, no budget change in 30 days.
+  'reminder_payday',
+  'reminder_weekly',
+  'reminder_stale',
 ] as const;
 export type AlertType = (typeof ALERT_TYPES)[number];
 

@@ -79,9 +79,7 @@ export default function CategoryDetailScreen() {
   const category = categories.data?.find((entry) => entry.id === id);
   const name = category ? categoryName(category, t) : '';
 
-  const header = (
-    <ScreenHeader backLabel={t('categoryDetail.back')} onBack={() => goBackOr('/')} />
-  );
+  const header = <ScreenHeader backLabel={t('categoryDetail.back')} onBack={() => goBackOr('/')} />;
 
   if (detail.isPending || categories.isPending) {
     return (
@@ -369,7 +367,9 @@ function Purchases({ categoryId }: { categoryId: string }) {
                 amount={item.amountRappen}
                 language={language}
                 subtitle={formatShortDate(item.bookedAt, language, timezone)}
-                onPress={() => router.push({ pathname: '/transaction/[id]', params: { id: item.id } })}
+                onPress={() =>
+                  router.push({ pathname: '/transaction/[id]', params: { id: item.id } })
+                }
                 accessibilityHint={t('transactions.openHint')}
                 testID={`category-transaction-${index}`}
               />

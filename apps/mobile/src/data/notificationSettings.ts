@@ -25,8 +25,8 @@ export const ALERT_TOGGLES = [
 ] as const;
 export type AlertToggle = (typeof ALERT_TOGGLES)[number];
 
-/** Reminder switches; `weekly_review` is the weekly "log cash, import your statement". */
-export const REMINDER_TOGGLES = ['reminder_payday', 'weekly_review', 'reminder_stale'] as const;
+/** The budget reminders (M4-09); the weekly one also has a day and a time. */
+export const REMINDER_TOGGLES = ['reminder_payday', 'reminder_weekly', 'reminder_stale'] as const;
 export type ReminderToggle = (typeof REMINDER_TOGGLES)[number];
 
 /** ISO weekdays, 1 = Monday … 7 = Sunday. */
@@ -34,22 +34,14 @@ export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 
 export type NotificationSettings = Record<AlertToggle | ReminderToggle, boolean> & {
-  weeklyReviewDay: Weekday;
+  weeklyDay: Weekday;
   /** Minutes after midnight in the profile's time zone. */
-  weeklyReviewMinutes: number;
+  weeklyMinutes: number;
   quietHoursEnabled: boolean;
   quietStartMinutes: number;
   quietEndMinutes: number;
   maxPerDay: number;
 };
-
-/** Columns the reminders add (M4-09); their database defaults until the row has them. */
-const REMINDER_DEFAULTS = {
-  reminder_payday: true,
-  reminder_stale: true,
-  weekly_review_day: 7,
-  weekly_review_time: '18:00',
-} as const;
 
 const read = jsonReader('notification_settings');
 
@@ -69,9 +61,9 @@ export function clockText(minutes: number): string {
 }
 
 export function parseNotificationSettings(json: unknown): NotificationSettings {
-  const row: Record<string, unknown> = { ...REMINDER_DEFAULTS, ...read.object(json, 'row') };
+  const row = read.object(json, 'row');
   const flag = (key: AlertToggle | ReminderToggle) => read.boolean(row[key], key);
-  const day = read.integer(row.weekly_review_day, 'weekly_review_day');
+  const day = read.integer(row.reminder_weekly_day, 'reminder_weekly_day');
   return {
     transaction_moments: flag('transaction_moments'),
     category_thresholds: flag('category_thresholds'),
@@ -82,12 +74,12 @@ export function parseNotificationSettings(json: unknown): NotificationSettings {
     payday: flag('payday'),
     categorize_requests: flag('categorize_requests'),
     reminder_payday: flag('reminder_payday'),
-    weekly_review: flag('weekly_review'),
+    reminder_weekly: flag('reminder_weekly'),
     reminder_stale: flag('reminder_stale'),
-    weeklyReviewDay: (WEEKDAYS as readonly number[]).includes(day)
+    weeklyDay: (WEEKDAYS as readonly number[]).includes(day)
       ? (day as Weekday)
-      : read.fail('weekly_review_day'),
-    weeklyReviewMinutes: clockMinutes(row.weekly_review_time, 'weekly_review_time'),
+      : read.fail('reminder_weekly_day'),
+    weeklyMinutes: clockMinutes(row.reminder_weekly_time, 'reminder_weekly_time'),
     quietHoursEnabled: read.boolean(row.quiet_hours_enabled, 'quiet_hours_enabled'),
     quietStartMinutes: clockMinutes(row.quiet_hours_start, 'quiet_hours_start'),
     quietEndMinutes: clockMinutes(row.quiet_hours_end, 'quiet_hours_end'),
@@ -100,8 +92,8 @@ export function toSettingsColumns(change: Partial<NotificationSettings>): Record
   const columns: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(change)) {
     if (value === undefined) continue;
-    if (key === 'weeklyReviewDay') columns.weekly_review_day = value;
-    else if (key === 'weeklyReviewMinutes') columns.weekly_review_time = clockText(value as number);
+    if (key === 'weeklyDay') columns.reminder_weekly_day = value;
+    else if (key === 'weeklyMinutes') columns.reminder_weekly_time = clockText(value as number);
     else if (key === 'quietHoursEnabled') columns.quiet_hours_enabled = value;
     else if (key === 'quietStartMinutes') columns.quiet_hours_start = clockText(value as number);
     else if (key === 'quietEndMinutes') columns.quiet_hours_end = clockText(value as number);
@@ -147,8 +139,7 @@ export function useUpdateNotificationSettings() {
   return useMutation<void, Error, Partial<NotificationSettings>, Context>({
     mutationFn: async (change) => {
       if (!userId) throw new RequestError('Not signed in', 401, 'not_signed_in');
-      // The reminder columns (M4-09) arrive with the database types of the M4 migration.
-      const columns = toSettingsColumns(change) as TablesUpdate<'notification_settings'>;
+      const columns: TablesUpdate<'notification_settings'> = toSettingsColumns(change);
       const { error, status } = await getSupabase()
         .from('notification_settings')
         .update(columns)
