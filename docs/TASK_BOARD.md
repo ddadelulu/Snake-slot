@@ -11,7 +11,7 @@ Status: ✅ done · 🔄 in progress · ⏳ not started · ⛔ blocked (by whom)
 - **D-001 Working title "Batzen".** Swiss for a coin, as in "e schöne Batze Gäld" (a nice bit of
   money). It lives in one file, `packages/core/src/app-identity.json`, so a rename is a one-line
   change. Julia Roberts checks the trademark before any store submission (M7).
-- **D-002 Location.** The app lives in `budget-app/` inside this repository on branch
+- **D-002 Location (replaced by D-045).** The app first lived in `budget-app/` inside this repository on branch
   `claude/magical-volta-pxs3wp`, fully separate from the slot game around it. It can move to its
   own repository with `git subtree split --prefix budget-app`.
 - Full decision log: [DECISIONS.md](DECISIONS.md).

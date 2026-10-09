@@ -16,7 +16,7 @@ pace and every category. The month resets on payday. Next: the cash-feel moment 
 ## Quick start
 
 ```sh
-cd budget-app
+git clone -b budget-app https://github.com/ddadelulu/Snake-slot.git batzen && cd batzen
 npm install
 supabase start                                    # local backend (Docker)
 cp apps/mobile/.env.example apps/mobile/.env.local # fill in URL + publishable key from `supabase status`

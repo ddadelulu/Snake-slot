@@ -17,7 +17,6 @@ and the edge cases below before sign-off.
 ## Running
 
 ```sh
-cd budget-app
 npm test                 # core + mobile unit/component/route tests
 npm run test:db          # needs `supabase start` (or DATABASE_URL to a disposable database)
 ```

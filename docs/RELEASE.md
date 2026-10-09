@@ -35,7 +35,7 @@ credentials offer to create it on the first build ([WIDGETS.md](WIDGETS.md#build
 
 ## CI
 
-`.github/workflows/budget-app.yml` runs on every push and pull request that touches `budget-app/`:
+`.github/workflows/ci.yml` runs on every push and pull request:
 
 1. **checks**: `npm ci`, Prettier, ESLint (no warnings), TypeScript, unit/component/route tests.
 2. **database**: `supabase db start` (migrations applied), database tests, generated types must

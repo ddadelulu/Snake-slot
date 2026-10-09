@@ -22,7 +22,7 @@ No stack changes from the spec defaults were needed.
 ## Repository layout
 
 ```
-budget-app/
+(repository root, branch budget-app)
 ├── package.json              npm workspaces, root scripts used by CI
 ├── tsconfig.base.json        strict compiler settings shared by all packages
 ├── packages/core/            @budget/core: shared contracts, no React, no I/O

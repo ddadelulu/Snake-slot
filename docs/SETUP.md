@@ -13,14 +13,14 @@ Owner: **Morgan Freeman**. From a fresh clone to the app running against a local
 ## 1. Install
 
 ```sh
-cd budget-app
+git clone -b budget-app https://github.com/ddadelulu/Snake-slot.git batzen && cd batzen
 npm install
 ```
 
 ## 2. Start the local backend
 
 ```sh
-supabase start          # from budget-app/; applies supabase/migrations
+supabase start          # from the repository root; applies supabase/migrations
 supabase status         # prints the API URL and the publishable/anon key
 ```
 
@@ -55,7 +55,7 @@ Development builds: `npx expo run:ios` / `npx expo run:android`, or
 ## 5. Check everything
 
 ```sh
-cd budget-app
+git clone -b budget-app https://github.com/ddadelulu/Snake-slot.git batzen && cd batzen
 npm run format:check && npm run lint && npm run typecheck && npm test   # what CI runs first
 npm run test:db                                                          # needs supabase start
 ```
