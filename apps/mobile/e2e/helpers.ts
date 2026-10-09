@@ -106,3 +106,24 @@ export async function apiAs(request: APIRequestContext, email: string, password 
     },
   };
 }
+
+/**
+ * Confirms every payment moment that is showing ("I paid this", spec section 8) and returns how
+ * many there were. On the Brutal pain level the button has to be held for two seconds, so the
+ * button is held down long enough for every level.
+ */
+export async function confirmMoments(page: Page): Promise<number> {
+  let confirmed = 0;
+  const screen = page.getByTestId('moment-screen').filter({ visible: true });
+  await page.waitForTimeout(300);
+  while ((await screen.count()) > 0 && confirmed < 20) {
+    const button = page.getByTestId('moment-confirm').filter({ visible: true });
+    await button.hover();
+    await page.mouse.down();
+    await page.waitForTimeout(2_300);
+    await page.mouse.up();
+    confirmed += 1;
+    await page.waitForTimeout(400);
+  }
+  return confirmed;
+}

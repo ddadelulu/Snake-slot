@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { apiAs, openTab, signUp, uniqueEmail } from './helpers';
+import { apiAs, confirmMoments, openTab, signUp, uniqueEmail } from './helpers';
 
 /**
  * Milestone 3 end to end (spec sections 6, 7, 12, 17): quick add in under five seconds, statement
@@ -106,6 +106,12 @@ async function quickAdd(page: Page, amount: string, category: string, merchant?:
   await page.getByTestId(`add-category-${category}`).click();
   if (merchant) await page.getByTestId('add-merchant').fill(merchant);
   await page.getByTestId('add-save').click();
+  // The cash-feel moment: the purchase, the balance spinning down, "I paid this".
+  await expect(page.getByTestId('moment-screen').filter({ visible: true })).toBeVisible();
+  await expect(page.getByTestId('moment-amount').filter({ visible: true })).toContainText(
+    `CHF ${amount}`,
+  );
+  expect(await confirmMoments(page)).toBe(1);
 }
 
 test.describe('transactions', () => {

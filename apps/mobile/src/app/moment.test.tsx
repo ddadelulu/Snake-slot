@@ -18,7 +18,7 @@ jest.mock('@/lib/supabase', () => ({
   authRedirectUrl: jest.fn(() => 'batzen://auth/callback'),
 }));
 
-const MANOR = momentJson({ id: 't-manor' });
+const MANOR = momentJson({ transaction_id: 't-manor' });
 const player = (Audio as unknown as { __player: { play: jest.Mock } }).__player;
 /** Anna: CHF 6'200 net, 42 hours a week. */
 const WORKER = { net_income_rappen: 620000, weekly_work_minutes: 42 * 60 };
@@ -69,7 +69,7 @@ describe('payment moment', () => {
   it('shows the purchase, the new balance, hours of work and the category, then closes', async () => {
     const fake = start();
     expect(await screen.findByTestId('moment-merchant')).toHaveTextContent('Manor');
-    expect(screen.getByTestId('moment-amount')).toHaveTextContent('CHF -84.00');
+    expect(screen.getByTestId('moment-amount')).toHaveTextContent('CHF 84.00');
     expect(screen.getByTestId('moment-work')).toHaveTextContent('= 2.5 hours of work');
     expect(screen.getByTestId('moment-category')).toHaveTextContent('Groceries: CHF 586.00 left');
     expect(screen.getByTestId('moment-balance')).toHaveProp(
@@ -175,7 +175,7 @@ describe('payment moment', () => {
     const fake = start({ moments: [MANOR, OVER_BUDGET_MOMENT] });
     fireEvent.press(await screen.findByTestId('moment-show-all'));
     expect(await screen.findByText('2 purchases to confirm')).toBeOnTheScreen();
-    expect(screen.getByTestId('moment-summary-total')).toHaveTextContent('Together: CHF -148.00');
+    expect(screen.getByTestId('moment-summary-total')).toHaveTextContent('Together: CHF 148.00');
     expect(screen.getByTestId('moment-summary-over')).toBeOnTheScreen();
     fireEvent.press(screen.getByTestId('moment-one-at-a-time'));
     fireEvent.press(await screen.findByTestId('moment-show-all'));

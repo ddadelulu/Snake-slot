@@ -6,13 +6,15 @@ import type { FakeRow } from './fakeSupabase';
  * after Anna's earlier purchases).
  */
 
-export function momentJson(overrides: Record<string, unknown> & { id: string }) {
+export function momentJson(overrides: Record<string, unknown> & { transaction_id: string }) {
   return {
     amount_rappen: -8400,
     booked_at: '2026-10-04T09:00:00+00:00',
     merchant: 'Manor',
-    note: null,
+    source: 'manual',
     category_id: 'c-groceries',
+    is_split: false,
+    period_id: 'p-oct',
     balance_before_rappen: 270950,
     balance_after_rappen: 262550,
     remaining_before_rappen: 67000,
@@ -25,7 +27,7 @@ export function momentJson(overrides: Record<string, unknown> & { id: string }) 
 
 /** A purchase that takes Eating out over its budget. */
 export const OVER_BUDGET_MOMENT = momentJson({
-  id: 't-dinner',
+  transaction_id: 't-dinner',
   merchant: 'Zeughauskeller',
   amount_rappen: -6400,
   category_id: 'c-eating-out',
@@ -66,9 +68,10 @@ export function settingsRow(overrides: Record<string, unknown> = {}): FakeRow {
     weekly_review: true,
     categorize_requests: true,
     reminder_payday: true,
+    reminder_weekly: true,
+    reminder_weekly_day: 7,
+    reminder_weekly_time: '18:00:00',
     reminder_stale: false,
-    weekly_review_day: 7,
-    weekly_review_time: '18:00:00',
     quiet_hours_enabled: true,
     quiet_hours_start: '22:00:00',
     quiet_hours_end: '07:00:00',
@@ -77,23 +80,48 @@ export function settingsRow(overrides: Record<string, unknown> = {}): FakeRow {
   };
 }
 
-/** Groceries: CHF 900 budget, CHF 230 spent, five earlier months. */
+/** Groceries: CHF 900 budget (+ 25 rolled over), CHF 230 spent, six earlier months. */
 export function categoryDetailJson(overrides: Record<string, unknown> = {}) {
+  const month = (starts: string, budget: number, spent: number) => ({
+    period_id: `p-${starts}`,
+    starts_on: starts,
+    ends_on: starts,
+    budget_amount_rappen: budget,
+    rollover_rappen: 0,
+    spent_rappen: spent,
+  });
   return {
-    category_id: 'c-groceries',
-    today: '2026-10-02',
+    category: {
+      id: 'c-groceries',
+      default_key: 'groceries',
+      name: null,
+      icon: null,
+      archived: false,
+    },
     period: { id: 'p-oct', starts_on: '2026-09-25', ends_on: '2026-10-25' },
-    budget_rappen: 90000,
+    budget_id: 'b-groceries',
+    budget_amount_rappen: 90000,
     rollover_rappen: 2500,
     spent_rappen: 23000,
+    remaining_rappen: 69500,
+    // Newest first, as the database sends it.
     history: [
-      { starts_on: '2026-04-25', budget_rappen: 90000, spent_rappen: 81000 },
-      { starts_on: '2026-05-25', budget_rappen: 90000, spent_rappen: 95000 },
-      { starts_on: '2026-06-25', budget_rappen: 90000, spent_rappen: 70000 },
-      { starts_on: '2026-07-25', budget_rappen: 90000, spent_rappen: 88000 },
-      { starts_on: '2026-08-25', budget_rappen: 85000, spent_rappen: 86000 },
-      { starts_on: '2026-09-25', budget_rappen: 90000, spent_rappen: 23000 },
+      month('2026-08-25', 85000, 86000),
+      month('2026-07-25', 90000, 88000),
+      month('2026-06-25', 90000, 70000),
+      month('2026-05-25', 90000, 95000),
+      month('2026-04-25', 90000, 81000),
+      month('2026-03-25', 90000, 60000),
     ],
+    pace: {
+      today: '2026-10-02',
+      days_elapsed: 8,
+      days_left: 23,
+      available_rappen: 92500,
+      spent_rappen: 23000,
+      daily_average_rappen: 2875,
+      runs_out_on: null,
+    },
     ...overrides,
   };
 }

@@ -2,7 +2,7 @@
   "name": "@budget/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -15,6 +15,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^5.0.0",
     "@budget/core": "*",
     "@expo/metro-runtime": "~57.0.16",
     "@expo/vector-icons": "^15.1.1",
@@ -47,6 +48,7 @@
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.15",
     "react-native": "0.86.3",
+    "react-native-android-widget": "^0.22.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-url-polyfill": "^4.0.0",

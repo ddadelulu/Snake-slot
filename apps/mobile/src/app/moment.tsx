@@ -344,7 +344,7 @@ function MomentView({
             {merchant}
           </AppText>
           <AppText variant="title" numeric testID="moment-amount">
-            {formatChf(moment.amountRappen, { language })}
+            {formatChf(moment.amountRappen, { language, sign: 'never' })}
           </AppText>
         </View>
 
@@ -469,7 +469,7 @@ function Summary({
       </Card>
       <View style={styles.section}>
         <AppText variant="bodyStrong" testID="moment-summary-total">
-          {t('moment.summaryTotal', { amount: formatChf(sum, { language }) })}
+          {t('moment.summaryTotal', { amount: formatChf(sum, { language, sign: 'never' }) })}
         </AppText>
         {last ? (
           <AppText tone={last.balanceAfterRappen < 0 ? 'danger' : 'secondary'}>

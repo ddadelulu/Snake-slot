@@ -331,6 +331,12 @@ export const en = {
     de: 'Deutsch',
     en: 'English',
   },
+  widget: {
+    add: 'Add expense',
+    open: 'Open Batzen',
+    setUp: 'Open Batzen to set up your month',
+    newMonth: 'New month: open Batzen',
+  },
   notFound: {
     title: 'Page not found',
     home: 'Go to Home',

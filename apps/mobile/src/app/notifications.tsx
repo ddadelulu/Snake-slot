@@ -202,7 +202,7 @@ export default function NotificationSettingsScreen() {
                 onValueChange={(value) => save({ [type]: value }, value)}
                 testID={`notifications-${type}`}
               />
-              {type === 'weekly_review' && s.weekly_review ? (
+              {type === 'reminder_weekly' && s.reminder_weekly ? (
                 <View style={styles.inset}>
                   <AppText variant="label">{t('notificationSettings.weeklyDay')}</AppText>
                   <ChoiceChips<`${Weekday}`>
@@ -211,25 +211,22 @@ export default function NotificationSettingsScreen() {
                       label: t(`notificationSettings.weekdays.${day}`),
                       testID: `notifications-weekly-day-${day}`,
                     }))}
-                    selected={`${s.weeklyReviewDay}`}
-                    onSelect={(day) => save({ weeklyReviewDay: Number(day) as Weekday })}
+                    selected={`${s.weeklyDay}`}
+                    onSelect={(day) => save({ weeklyDay: Number(day) as Weekday })}
                     accessibilityLabel={t('notificationSettings.weeklyDay')}
                     testID="notifications-weekly-day"
                   />
                   <Stepper
                     label={t('notificationSettings.weeklyTime')}
-                    valueText={clockText(s.weeklyReviewMinutes)}
+                    valueText={clockText(s.weeklyMinutes)}
                     onDecrement={() =>
                       save({
-                        weeklyReviewMinutes: shift(
-                          s.weeklyReviewMinutes,
-                          -QUIET_HOURS_STEP_MINUTES,
-                        ),
+                        weeklyMinutes: shift(s.weeklyMinutes, -QUIET_HOURS_STEP_MINUTES),
                       })
                     }
                     onIncrement={() =>
                       save({
-                        weeklyReviewMinutes: shift(s.weeklyReviewMinutes, QUIET_HOURS_STEP_MINUTES),
+                        weeklyMinutes: shift(s.weeklyMinutes, QUIET_HOURS_STEP_MINUTES),
                       })
                     }
                     decrementLabel={`${t('notificationSettings.weeklyTime')}: ${t('onboarding.notifications.earlier')}`}

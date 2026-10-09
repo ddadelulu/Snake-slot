@@ -334,6 +334,12 @@ export const de: Translations = {
     de: 'Deutsch',
     en: 'English',
   },
+  widget: {
+    add: 'Ausgabe erfassen',
+    open: 'Batzen öffnen',
+    setUp: 'Öffne Batzen, um deinen Monat einzurichten',
+    newMonth: 'Neuer Monat: Batzen öffnen',
+  },
   notFound: {
     title: 'Seite nicht gefunden',
     home: 'Zur Übersicht',

@@ -18,6 +18,7 @@ import { ConfigErrorScreen } from '@/features/config/ConfigErrorScreen';
 import { StartupErrorScreen } from '@/features/config/StartupErrorScreen';
 import { MomentWatcher } from '@/features/moments/MomentWatcher';
 import { useAfterOnboarding } from '@/features/onboarding/afterOnboarding';
+import { WidgetSync } from '@/features/widget/WidgetSync';
 import { useProfile } from '@/data/profile';
 import { LanguageProvider, ProfileLanguageSync, useLanguage } from '@/i18n';
 import { readEnv } from '@/lib/env';
@@ -117,6 +118,7 @@ function AppNavigator() {
     <NavigationThemeProvider value={navigationTheme}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {signedIn ? <ProfileLanguageSync /> : null}
+      <WidgetSync />
       {signedIn && !isPasswordRecovery && onboarded ? <MomentWatcher /> : null}
       <Stack
         screenOptions={{

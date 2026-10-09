@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { apiAs, next, signUp, skip, uniqueEmail } from './helpers';
+import { apiAs, confirmMoments, next, signUp, skip, uniqueEmail } from './helpers';
 
 /**
  * Spec section 17: "A new user can sign up, finish onboarding, and see a correct budget in under
@@ -116,6 +116,8 @@ test.describe('onboarding to a correct month', () => {
 
     // 3'429.50 − (84.00 − 20.00) − 15.00 = 3'350.50; groceries lose 64.00; rent and salary change nothing.
     await page.reload();
+    // The purchases are new to the person: each one plays its payment moment first.
+    expect(await confirmMoments(page)).toBeGreaterThan(0);
     await expect(page.getByTestId('home-balance')).toContainText('3,350.50');
     const remaining = ((groceriesBudget - 6400) / 100).toFixed(2);
     await expect(page.getByTestId('home-category-groceries')).toContainText(
