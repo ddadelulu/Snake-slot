@@ -436,7 +436,18 @@ describe('add_transactions() rejects an invalid row (22023, detail names the row
       manualRow({ original_amount_minor: 0, original_currency: 'EUR' }),
       'row 1: original_amount_minor must be a non-zero integer',
     ],
-    ['items that are not a list', manualRow({ items: { a: 1 } }), 'row 1: items must be a list'],
+    [
+      'items that are not a list',
+      manualRow({ items: { a: 1 } }),
+      'row 1: items must be a list of at most 500 items',
+    ],
+    [
+      'more than 500 items (checked before any item is read)',
+      manualRow({
+        items: Array.from({ length: 501 }, () => ({ description: 'x', amount_rappen: 1 })),
+      }),
+      'row 1: items must be a list of at most 500 items',
+    ],
     [
       'an item without description',
       manualRow({ items: [{ description: ' ', amount_rappen: -100 }] }),
@@ -805,6 +816,8 @@ describe('what is stored', () => {
                 { categoryId: ids.groceries ?? null, amountRappen: -2_000, note: 'Essen' },
                 { categoryId: null, amountRappen: -340 },
               ],
+              // A split cannot be compared by merchant: it looks like the statement row (D-040).
+              allowDuplicate: true,
             },
           ),
         ],
@@ -997,7 +1010,14 @@ describe('3. the same purchase from another source (merged)', () => {
             index: 0,
             outcome: 'merged',
             transaction_id: survivorId,
-            duplicate_of: null,
+            // The survivor, as it is after the merge.
+            duplicate_of: {
+              id: survivorId,
+              booked_at: '2026-10-03T12:23:00+00:00',
+              merchant: 'Coop',
+              amount_rappen: -2_340,
+              source: 'manual',
+            },
             category_id: ids.groceries,
             categorized_by: 'merchant_list',
             category_confidence: 90,
@@ -1032,6 +1052,25 @@ describe('3. the same purchase from another source (merged)', () => {
         data_source_id: result.data_source_id,
         acknowledged: true,
         booked_at: utc('2026-10-04T10:00:00Z'),
+      });
+      // What the survivor gained is kept on the evidence row, for remove_import (D-041).
+      const changes = await queryOne<{ changes: unknown; survivor_changes: unknown }>(
+        db,
+        `select (select merge_changes from public.transactions where id = $1) as changes,
+                (select merge_changes from public.transactions where id = $2) as survivor_changes`,
+        [evidence?.id, survivorId],
+      );
+      expect(changes).toEqual({
+        changes: {
+          raw_text: { from: null, to: 'KAUF COOP-4567 ZUERICH KARTE XXXX1234' },
+          mcc: { from: null, to: 5411 },
+          items: { from: null, to: [{ description: 'Brot', amount_rappen: -340 }] },
+          original: {
+            from: { amount_minor: null, currency: null },
+            to: { amount_minor: -2_500, currency: 'EUR' },
+          },
+        },
+        survivor_changes: null,
       });
     });
   });
@@ -1101,7 +1140,13 @@ describe('3. the same purchase from another source (merged)', () => {
         index: 0,
         outcome: 'merged',
         transaction_id: only(imported.results).transaction_id,
-        duplicate_of: null,
+        duplicate_of: {
+          id: only(imported.results).transaction_id,
+          booked_at: '2026-10-03T10:00:00+00:00',
+          merchant: 'Coop',
+          amount_rappen: -1_250,
+          source: 'statement_import',
+        },
         category_id: ids.eating_out,
         categorized_by: 'user',
         category_confidence: 100,
@@ -1110,6 +1155,23 @@ describe('3. the same purchase from another source (merged)', () => {
       });
       const survivor = await storedRow(db, only(imported.results).transaction_id);
       expect(survivor).toMatchObject({ merchant: 'Coop', note: 'Zmittag' });
+      const evidence = await queryOne<{ changes: unknown }>(
+        db,
+        'select merge_changes as changes from public.transactions where merged_into_id = $1',
+        [only(imported.results).transaction_id],
+      );
+      expect(evidence.changes).toEqual({
+        merchant: { from: null, to: 'Coop' },
+        note: { from: null, to: 'Zmittag' },
+        category: {
+          from: {
+            category_id: ids.groceries,
+            categorized_by: 'merchant_list',
+            category_confidence: 90,
+          },
+          to: { category_id: ids.eating_out, categorized_by: 'user', category_confidence: 100 },
+        },
+      });
     });
   });
 
@@ -1167,9 +1229,11 @@ describe('3. the same purchase from another source (merged)', () => {
     });
   });
 
+  // D-040: local dates in the person's zone at most 4 days apart, whatever the hour.
   it.each([
-    ['exactly 72 h apart: merged', '2026-10-03T10:00:00Z', 'merged'],
-    ['72 h and 1 s apart: added', '2026-10-03T09:59:59Z', 'added'],
+    // Zurich is UTC+2 until 25 October: 2026-10-02T22:00Z is 3 October 00:00 there.
+    ['the 3rd 00:00 and the 7th 23:59:59 (4 days): merged', '2026-10-02T22:00:00Z', 'merged'],
+    ['the 2nd 23:59:59 and the 7th (5 days): added', '2026-10-02T21:59:59Z', 'added'],
   ])('%s', async (_label, manualAt, outcome) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
@@ -1178,7 +1242,7 @@ describe('3. the same purchase from another source (merged)', () => {
         rows: [
           statementRow({
             booked_on: undefined,
-            booked_at: '2026-10-06T10:00:00Z',
+            booked_at: '2026-10-07T21:59:59Z',
             raw_text: 'KAUF COOP',
           }),
         ],
@@ -1189,8 +1253,8 @@ describe('3. the same purchase from another source (merged)', () => {
   });
 
   it.each([
-    ['72 h before the manual entry', '2026-10-06T10:00:00Z', 'merged'],
-    ['72 h and 1 s before', '2026-10-06T10:00:01Z', 'added'],
+    ['4 local days before the manual entry', '2026-10-07T21:59:59Z', 'merged'],
+    ['5 local days before', '2026-10-07T22:00:00Z', 'added'],
   ])('a statement row booked %s', async (_label, manualAt, outcome) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
@@ -1198,7 +1262,7 @@ describe('3. the same purchase from another source (merged)', () => {
         rows: [
           statementRow({
             booked_on: undefined,
-            booked_at: '2026-10-03T10:00:00Z',
+            booked_at: '2026-10-02T22:00:00Z',
             raw_text: 'KAUF COOP',
           }),
         ],
@@ -1212,17 +1276,45 @@ describe('3. the same purchase from another source (merged)', () => {
   });
 
   it.each([
-    ['12:00 Zurich on the 1st, statement dated the 4th', '2026-10-01T10:00:00Z', 'merged'],
-    ['one second earlier', '2026-10-01T09:59:59Z', 'added'],
-  ])('a date-only row counts from 12:00 that day: %s', async (_label, manualAt, outcome) => {
+    ['Friday 08:00, statement dated Monday (date only)', '2026-10-02T06:00:00Z', '2026-10-05', 'merged'],
+    ['Thursday 08:00, statement dated Monday', '2026-10-01T06:00:00Z', '2026-10-05', 'merged'],
+    ['Wednesday 23:59, statement dated Monday', '2026-09-30T21:59:00Z', '2026-10-05', 'added'],
+    // Daylight saving ends on 25 October: the 22nd 00:00 CEST to the 26th is 4 days, 13 hours.
+    ['the 22nd 00:00 CEST, statement dated the 26th (CET)', '2026-10-21T22:00:00Z', '2026-10-26', 'merged'],
+    ['the 21st 23:59 CEST, statement dated the 26th', '2026-10-21T21:59:00Z', '2026-10-26', 'added'],
+    // Daylight saving starts on 29 March: the 26th 00:00 CET to the 30th.
+    ['the 26th 00:00 CET, statement dated the 30th (CEST)', '2026-03-25T23:00:00Z', '2026-03-30', 'merged'],
+    ['the 25th 23:59 CET, statement dated the 30th', '2026-03-25T22:59:00Z', '2026-03-30', 'added'],
+  ])('%s: %s', async (_label, manualAt, statementDay, outcome) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
-      await add(db, user, { rows: [manualRow({ merchant: 'Coop', booked_at: manualAt })] });
+      await add(db, user, { rows: [manualRow({ merchant: 'Migros', booked_at: manualAt })] });
       const result = await add(db, user, {
-        rows: [statementRow({ booked_on: '2026-10-04', raw_text: 'KAUF COOP' })],
+        rows: [statementRow({ booked_on: statementDay, raw_text: 'MIGROS M ZUERICH' })],
         import: CSV,
       });
       expect(only(result.results).outcome).toBe(outcome);
+    });
+  });
+
+  it('counts local dates in the person’s own zone (America/New_York)', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db, { timeZone: 'America/New_York' });
+      // 2026-10-03T03:59Z is the 2nd 23:59 in New York: 5 days before the 7th.
+      await add(db, user, {
+        rows: [
+          manualRow({ merchant: 'Coop', booked_at: '2026-10-03T03:59:00Z' }),
+          manualRow({ merchant: 'Coop', booked_at: '2026-10-03T04:00:00Z', amount_rappen: -999 }),
+        ],
+      });
+      const result = await add(db, user, {
+        rows: [
+          statementRow({ booked_on: '2026-10-07', raw_text: 'KAUF COOP' }),
+          statementRow({ booked_on: '2026-10-07', raw_text: 'KAUF COOP', amount_rappen: -999 }),
+        ],
+        import: CSV,
+      });
+      expect(result.results.map((r) => r.outcome)).toEqual(['added', 'merged']);
     });
   });
 
@@ -1232,7 +1324,17 @@ describe('3. the same purchase from another source (merged)', () => {
     ['Coop', { merchant: 'Coopers' }, 'added'],
     ['TWINT *Coop Pronto', { merchant: 'Coop Pronto Bahnhof' }, 'added'],
     ['Migros', { raw_text: 'KAUF COOP' }, 'added'],
-    ['1234', { raw_text: '1234' }, 'added'], // neither has a key
+    // The dedupe corpus of QA M2: folded spellings and apostrophes merge,
+    ['Bäckerei Hug', { merchant: 'BAECKEREI HUG BERN' }, 'merged'],
+    ['Müller Drogerie', { merchant: 'MUELLER DROGERIE ZUERICH' }, 'merged'],
+    ['Sprüngli', { merchant: 'CONFISERIE SPRUENGLI' }, 'merged'],
+    ["McDonald's", { merchant: 'MCDONALDS 123' }, 'merged'],
+    // a shared generic first word does not.
+    ['Restaurant Krone', { merchant: 'Restaurant Sonne' }, 'added'],
+    ['Bäckerei Hug', { merchant: 'Bäckerei Müller' }, 'added'],
+    ['TWINT Coop', { merchant: 'TWINT Migros' }, 'added'],
+    // Neither has a key: they cannot be compared, so it is a look-alike (step 4).
+    ['1234', { raw_text: '1234' }, 'possible_duplicate'],
   ])('merchant %s vs %j → %s', async (merchant, statementValues, outcome) => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
@@ -1298,7 +1400,7 @@ describe('3. the same purchase from another source (merged)', () => {
     });
   });
 
-  it('rows with a split are never merged, in either direction', async () => {
+  it('rows with a split are never merged, in either direction: they are look-alikes', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await onboardedUser(db);
       const split = await add(db, user, {
@@ -1312,11 +1414,20 @@ describe('3. the same purchase from another source (merged)', () => {
           }),
         ],
       });
-      const imported = await add(db, user, {
+      expect(only(split.results).outcome).toBe('added');
+      const lookAlike = await add(db, user, {
         rows: [statementRow({ raw_text: 'KAUF COOP' })],
         import: CSV,
       });
-      expect(only(split.results).outcome).toBe('added');
+      expect(only(lookAlike.results)).toMatchObject({
+        outcome: 'possible_duplicate',
+        transaction_id: null,
+        duplicate_of: { id: only(split.results).transaction_id, merchant: 'Coop', source: 'manual' },
+      });
+      const imported = await add(db, user, {
+        rows: [statementRow({ raw_text: 'KAUF COOP', allow_duplicate: true })],
+        import: CSV,
+      });
       expect(only(imported.results).outcome).toBe('added');
       const second = await add(db, user, {
         rows: [
@@ -1330,7 +1441,10 @@ describe('3. the same purchase from another source (merged)', () => {
           }),
         ],
       });
-      expect(only(second.results).outcome).toBe('added');
+      expect(only(second.results)).toMatchObject({
+        outcome: 'possible_duplicate',
+        duplicate_of: { id: only(imported.results).transaction_id, source: 'statement_import' },
+      });
       await runDeferredChecks(db);
     });
   });
@@ -1492,7 +1606,7 @@ describe('4. possible duplicate from the same source (statement files)', () => {
     });
   });
 
-  it('uses the local day: 00:30 and 23:30 in Zurich are the same day, the next day is not', async () => {
+  it('uses local days at most 4 apart: the 3rd 00:30 and the 7th 23:30 in Zurich, not the 8th', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       await add(db, user, {
@@ -1501,12 +1615,57 @@ describe('4. possible duplicate from the same source (statement files)', () => {
       });
       const result = await add(db, user, {
         rows: [
-          statementRow({ booked_time: '23:30', raw_text: 'KAUF DENNER' }),
-          statementRow({ booked_on: '2026-10-04', booked_time: '00:10', raw_text: 'KAUF DENNER' }),
+          statementRow({ booked_on: '2026-10-07', booked_time: '23:30', raw_text: 'KAUF DENNER' }),
+          statementRow({ booked_on: '2026-10-08', booked_time: '00:10', raw_text: 'KAUF DENNER' }),
+          statementRow({ booked_on: '2026-09-29', booked_time: '00:10', raw_text: 'KAUF DENNER' }),
+          statementRow({ booked_on: '2026-09-28', booked_time: '23:50', raw_text: 'KAUF DENNER' }),
         ],
         import: CAMT,
       });
-      expect(result.results.map((r) => r.outcome)).toEqual(['possible_duplicate', 'added']);
+      expect(result.results.map((r) => r.outcome)).toEqual([
+        'possible_duplicate',
+        'added',
+        'possible_duplicate',
+        'added',
+      ]);
+    });
+  });
+
+  it('a CSV without purchase dates (booking day) and the camt.053 with the purchase day, 3 days earlier', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      // ZKB-style CSV: card purchases carry the booking day only.
+      const csv = await add(db, user, {
+        rows: [
+          statementRow({
+            booked_on: '2026-10-05',
+            raw_text: 'Einkauf ZKB Visa Debit Karte Coop Pronto Bern',
+            merchant: 'Coop Pronto Bern',
+            amount_rappen: -1_865,
+            external_id: 'zkb:2026-10-05:1',
+          }),
+        ],
+        import: { file_name: 'zkb.csv', format: 'csv', bank: 'zkb' },
+      });
+      // The bank's camt.053 for the same account: the purchase was on Friday the 2nd.
+      const camt = await add(db, user, {
+        rows: [
+          statementRow({
+            booked_on: '2026-10-02',
+            booked_time: '17:42',
+            raw_text: 'COOP PRONTO BERN',
+            merchant: 'Coop Pronto Bern',
+            amount_rappen: -1_865,
+            external_id: 'camt:ZKB-REF-123',
+          }),
+        ],
+        import: CAMT,
+      });
+      expect(only(camt.results)).toMatchObject({
+        outcome: 'possible_duplicate',
+        duplicate_of: { id: only(csv.results).transaction_id, source: 'statement_import' },
+      });
+      expect(await storedRows(db, user)).toHaveLength(1);
     });
   });
 
@@ -1519,6 +1678,18 @@ describe('4. possible duplicate from the same source (statement files)', () => {
         import: CAMT,
       });
       expect(result.results.map((r) => r.outcome)).toEqual(['possible_duplicate', 'added']);
+    });
+  });
+
+  it('the same purchase with another merchant key from the same source is no duplicate', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      await add(db, user, { rows: [statementRow({ raw_text: 'Restaurant Krone' })], import: CSV });
+      const result = await add(db, user, {
+        rows: [statementRow({ raw_text: 'Restaurant Sonne', booked_on: '2026-10-04' })],
+        import: CAMT,
+      });
+      expect(only(result.results).outcome).toBe('added');
     });
   });
 
@@ -1689,11 +1860,12 @@ describe('9. fixed cost by exact amount', () => {
         'select merchant_hint as hint from public.fixed_costs where id = $1',
         [gym],
       );
-      expect(hint.hint).toBe('lsv kraftwerk gym');
+      // Payment words (LSV) and numbers are left out of the hint.
+      expect(hint.hint).toBe('kraftwerk gym');
     });
   });
 
-  it('learns the merchant as printed when the row has one', async () => {
+  it('learns from the merchant when the row has one', async () => {
     await withRollback(async (db) => {
       const { user } = await onboardedUser(db);
       const gym = await make.fixedCost(db, user, { kind: 'other', amount_rappen: 9_900 });
@@ -1708,7 +1880,7 @@ describe('9. fixed cost by exact amount', () => {
         'select merchant_hint as hint from public.fixed_costs where id = $1',
         [gym],
       );
-      expect(hint.hint).toBe('Kraftwerk Gym AG');
+      expect(hint.hint).toBe('kraftwerk gym');
     });
   });
 

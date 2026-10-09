@@ -49,55 +49,72 @@ grant usage on schema internal to authenticated;
 --   5. words containing a digit dropped (store numbers, postal codes, card numbers), and the
 --      stopwords (legal forms and web noise) dropped;
 --   6. the remaining words joined by one space.
--- A text of ASCII characters only (byte length = character length) skips step 1's table. The
--- table is applied with one regular expression per letter, which is several times faster than
--- translate() on long statement texts. Postgres regular expressions compare bracket ranges by
--- code point, like JavaScript.
+-- A text of ASCII characters only (byte length = character length) skips step 1's table; else
+-- only the letter groups that occur are replaced (one regular expression each, several times
+-- faster than translate() on long statement texts). Postgres regular expressions compare bracket
+-- ranges by code point, like JavaScript.
+--
+-- The helpers on keys are PL/pgSQL rather than SQL functions: Postgres 17 plans an SQL function's
+-- body again on every call (and parses a nested one again), PL/pgSQL keeps its plans, which
+-- makes a key about ten times cheaper inside the pipeline.
 create function internal.merchant_key(p_text text)
 returns text
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select pg_catalog.btrim(pg_catalog.regexp_replace(
-           ' ' || pg_catalog.regexp_replace(
-             pg_catalog.regexp_replace(
-               pg_catalog.lower((
-                 case
-                   when pg_catalog.octet_length(source.text) = pg_catalog.char_length(source.text)
-                     then pg_catalog.replace(pg_catalog.replace(source.text, '''', ''), '`', '')
-                   else
-                     pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(
-                       pg_catalog.replace(
-                         pg_catalog.regexp_replace(pg_catalog.regexp_replace(
-                         pg_catalog.regexp_replace(pg_catalog.regexp_replace(
-                         pg_catalog.regexp_replace(pg_catalog.regexp_replace(
-                         pg_catalog.regexp_replace(pg_catalog.regexp_replace(
-                         pg_catalog.regexp_replace(pg_catalog.regexp_replace(
-                         pg_catalog.regexp_replace(
-                           source.text,
-                           '[''’´`]', '', 'g'),
-                           '[ÀÁÂÃÄÅàáâãäå]', 'a', 'g'),
-                           '[ÇçĆćČč]', 'c', 'g'),
-                           '[ÈÉÊËèéêë]', 'e', 'g'),
-                           '[ÌÍÎÏìíîï]', 'i', 'g'),
-                           '[Ññ]', 'n', 'g'),
-                           '[ÒÓÔÕÖØòóôõöø]', 'o', 'g'),
-                           '[ÙÚÛÜùúûü]', 'u', 'g'),
-                           '[ÝýÿŸ]', 'y', 'g'),
-                           '[ŠšŞş]', 's', 'g'),
-                           '[ŽžŹźŻż]', 'z', 'g'),
-                         'ß', 'ss'),
-                       'Æ', 'ae'), 'æ', 'ae'), 'Œ', 'oe'), 'œ', 'oe')
-                 end) collate "C"),
-               '([aou])e', '\1', 'g'),
-             '[^a-z0-9]+', ' ', 'g') || ' ',
-           -- Every word is now enclosed in single spaces. Remove " word" for each dropped word; the
-           -- lookahead leaves the following space for the next word.
-           ' (?:[a-z0-9]*[0-9][a-z0-9]*|ag|gmbh|sa|sarl|sagl|ltd|llc|inc|kg|co|cie|www|com|ch)(?= )',
-           '', 'g'))
-    from (select coalesce(p_text, '') as text) as source
+declare
+  plain text := pg_catalog.replace(pg_catalog.replace(coalesce(p_text, ''), '''', ''), '`', '');
+  non_ascii text;
+begin
+  if pg_catalog.octet_length(plain) <> pg_catalog.char_length(plain) then
+    plain := pg_catalog.replace(pg_catalog.replace(plain, '’', ''), '´', '');
+    -- The letter groups are replaced only when the text contains one of their letters.
+    non_ascii := pg_catalog.regexp_replace(plain, '[\x01-\x7f]+', '', 'g');
+    if non_ascii ~ '[ÀÁÂÃÄÅàáâãäå]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÀÁÂÃÄÅàáâãäå]', 'a', 'g');
+    end if;
+    if non_ascii ~ '[ÇçĆćČč]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÇçĆćČč]', 'c', 'g');
+    end if;
+    if non_ascii ~ '[ÈÉÊËèéêë]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÈÉÊËèéêë]', 'e', 'g');
+    end if;
+    if non_ascii ~ '[ÌÍÎÏìíîï]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÌÍÎÏìíîï]', 'i', 'g');
+    end if;
+    if non_ascii ~ '[Ññ]' then
+      plain := pg_catalog.regexp_replace(plain, '[Ññ]', 'n', 'g');
+    end if;
+    if non_ascii ~ '[ÒÓÔÕÖØòóôõöø]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÒÓÔÕÖØòóôõöø]', 'o', 'g');
+    end if;
+    if non_ascii ~ '[ÙÚÛÜùúûü]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÙÚÛÜùúûü]', 'u', 'g');
+    end if;
+    if non_ascii ~ '[ÝýÿŸ]' then
+      plain := pg_catalog.regexp_replace(plain, '[ÝýÿŸ]', 'y', 'g');
+    end if;
+    if non_ascii ~ '[ŠšŞş]' then
+      plain := pg_catalog.regexp_replace(plain, '[ŠšŞş]', 's', 'g');
+    end if;
+    if non_ascii ~ '[ŽžŹźŻż]' then
+      plain := pg_catalog.regexp_replace(plain, '[ŽžŹźŻż]', 'z', 'g');
+    end if;
+    plain := pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(
+               pg_catalog.replace(plain, 'ß', 'ss'), 'Æ', 'ae'), 'æ', 'ae'), 'Œ', 'oe'), 'œ', 'oe');
+  end if;
+  plain := pg_catalog.regexp_replace(
+             pg_catalog.regexp_replace(pg_catalog.lower(plain collate "C"), '([aou])e', '\1', 'g'),
+             '[^a-z0-9]+', ' ', 'g');
+  -- Every word is now enclosed in single spaces. Remove " word" for each dropped word; the
+  -- lookahead leaves the following space for the next word.
+  return pg_catalog.btrim(pg_catalog.regexp_replace(
+    ' ' || plain || ' ',
+    ' (?:[a-z0-9]*[0-9][a-z0-9]*|ag|gmbh|sa|sarl|sagl|ltd|llc|inc|kg|co|cie|www|com|ch)(?= )',
+    '', 'g'));
+end;
 $$;
 
 comment on function internal.merchant_key(text) is
@@ -107,14 +124,16 @@ comment on function internal.merchant_key(text) is
 -- An empty (or null) key never matches.
 create function internal.key_contains(p_text_key text, p_pattern_key text)
 returns boolean
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select coalesce(p_text_key, '') <> ''
+begin
+  return coalesce(p_text_key, '') <> ''
      and coalesce(p_pattern_key, '') <> ''
-     and pg_catalog.strpos(' ' || p_text_key || ' ', ' ' || p_pattern_key || ' ') > 0
+     and pg_catalog.strpos(' ' || p_text_key || ' ', ' ' || p_pattern_key || ' ') > 0;
+end;
 $$;
 
 comment on function internal.key_contains(text, text) is
@@ -124,12 +143,19 @@ comment on function internal.key_contains(text, text) is
 -- empty or has no key. Stored as transactions.merchant_key.
 create function internal.transaction_key(p_merchant text, p_raw_text text)
 returns text
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select coalesce(nullif(internal.merchant_key(p_merchant), ''), internal.merchant_key(p_raw_text))
+declare
+  merchant_only_key text := internal.merchant_key(p_merchant);
+begin
+  if merchant_only_key <> '' then
+    return merchant_only_key;
+  end if;
+  return internal.merchant_key(p_raw_text);
+end;
 $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -144,17 +170,19 @@ $$;
 -- proposed as a rule on its own.
 create function internal.generic_words()
 returns text[]
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select '{restaurant,ristorante,pizzeria,trattoria,osteria,brasserie,bistro,cafe,caffe,bar,pub,
+begin
+  return '{restaurant,ristorante,pizzeria,trattoria,osteria,brasserie,bistro,cafe,caffe,bar,pub,
            club,lounge,hotel,gasthaus,gasthof,backerei,boulangerie,panetteria,metzgerei,boucherie,
            macelleria,confiserie,apotheke,pharmacie,farmacia,drogerie,drogurie,kiosk,garage,
            tankstelle,coiffeur,coiffure,salon,shop,store,laden,markt,boutiqu,online,take,imbiss,
            kebab,pizza,sushi,burger,parking,parkhaus,taxi,kino,cinema,fitness,florist,blumen,
-           praxis,optik,studio,the,le,la,les,der,die,das,il,lo,el,zum,zur,chez}'::text[]
+           praxis,optik,studio,the,le,la,les,der,die,das,il,lo,el,zum,zur,chez}'::text[];
+end;
 $$;
 
 -- How or through whom something was paid, statement boilerplate and filler words ("TWINT",
@@ -163,36 +191,41 @@ $$;
 -- they are never proposed as a rule.
 create function internal.payment_words()
 returns text[]
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select '{twint,sumup,payrexx,paypal,stripe,kauf,einkauf,dienstleistung,zahlung,karte,karten,
+begin
+  return '{twint,sumup,payrexx,paypal,stripe,kauf,einkauf,dienstleistung,zahlung,karte,karten,
            kartennummer,card,purchase,debit,debitkarte,kreditkarte,pos,mastro,visa,mastercard,
            pay,achat,paiement,carte,acquisto,pagamento,lastschrift,lsv,daurauftrag,auftrag,
+           prelevement,virement,bonifico,addebito,
            uberweisung,gutschrift,belastung,e,banking,ebanking,ebill,rechnung,facture,fattura,
            invoice,an,von,vom,zugunsten,nr,ref,referenz,mitteilung,de,du,des,et,und,per,zkb,ubs,
            raiffeisen,postfinance,valiant,cler,bcv,bcge,bkb,bekb,lukb,sgkb,akb,glkb,tkb,szkb,gkb,
-           yuh,revolut}'::text[]
+           yuh,revolut}'::text[];
+end;
 $$;
 
 -- Month names in German, French, Italian and English, full and short ("Mietzins Oktober"): a
 -- fixed cost's merchant hint leaves them out, so next month's text still matches.
 create function internal.month_words()
 returns text[]
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select '{januar,februar,marz,april,mai,juni,juli,august,september,oktober,november,dezember,
+begin
+  return '{januar,februar,marz,april,mai,juni,juli,august,september,oktober,november,dezember,
            jan,feb,mar,apr,jun,jul,aug,sep,sept,okt,nov,dez,
            janvier,fevrier,mars,avril,juin,juillet,aout,septembre,octobre,novembre,decembre,
            janv,fevr,avr,juil,oct,dec,
            gennaio,febbraio,marzo,aprile,maggio,giugno,luglio,agosto,settembre,ottobre,dicembre,
            gen,mag,giu,lug,ago,set,ott,dic,
-           january,february,march,may,june,july,october,december}'::text[]
+           january,february,march,may,june,july,october,december}'::text[];
+end;
 $$;
 
 -- Deduplication's "same merchant" (D-040): both keys non-empty, and either one key contains the
@@ -202,18 +235,20 @@ $$;
 -- expression written out (a function call per candidate would cost more than the comparison).
 create function internal.same_merchant(p_key_a text, p_key_b text)
 returns boolean
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select coalesce(p_key_a, '') <> ''
+begin
+  return coalesce(p_key_a, '') <> ''
      and coalesce(p_key_b, '') <> ''
      and (pg_catalog.strpos(' ' || p_key_a || ' ', ' ' || p_key_b || ' ') > 0
           or pg_catalog.strpos(' ' || p_key_b || ' ', ' ' || p_key_a || ' ') > 0
           or (pg_catalog.split_part(p_key_a, ' ', 1) = pg_catalog.split_part(p_key_b, ' ', 1)
               and pg_catalog.split_part(p_key_a, ' ', 1)
-                  <> all (internal.generic_words() || internal.payment_words())))
+                  <> all (internal.generic_words() || internal.payment_words())));
+end;
 $$;
 
 -- Every contiguous run of up to p_max_words words of a key ("twint coop pronto" → "twint",
@@ -252,43 +287,50 @@ $$;
 -- the key of a hint itself (fixed_costs.merchant_hint_key).
 create function internal.hint_words(p_merchant text, p_raw_text text)
 returns text
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  -- CASE evaluates the statement text's key only when the merchant leaves no word.
-  select case
-           when words.from_merchant <> '' then words.from_merchant
-           else pg_catalog.array_to_string(array(
-                  select w.word
-                    from pg_catalog.unnest(pg_catalog.string_to_array(
-                           internal.merchant_key(p_raw_text), ' ')) with ordinality as w(word, n)
-                   where w.word <> all (internal.month_words() || internal.payment_words())
-                   order by w.n), ' ')
-         end
-    from (
-      select pg_catalog.array_to_string(array(
-               select w.word
-                 from pg_catalog.unnest(pg_catalog.string_to_array(
-                        internal.merchant_key(p_merchant), ' ')) with ordinality as w(word, n)
-                where w.word <> all (internal.month_words() || internal.payment_words())
-                order by w.n), ' ') as from_merchant
-    ) as words
+declare
+  skipped text[] := internal.month_words() || internal.payment_words();
+  words text;
+begin
+  words := pg_catalog.array_to_string(array(
+             select w.word
+               from pg_catalog.unnest(pg_catalog.string_to_array(
+                      internal.merchant_key(p_merchant), ' ')) with ordinality as w(word, n)
+              where w.word <> all (skipped)
+              order by w.n), ' ');
+  if words <> '' then
+    return words;
+  end if;
+  return pg_catalog.array_to_string(array(
+           select w.word
+             from pg_catalog.unnest(pg_catalog.string_to_array(
+                    internal.merchant_key(p_raw_text), ' ')) with ordinality as w(word, n)
+            where w.word <> all (skipped)
+            order by w.n), ' ');
+end;
 $$;
 
 -- What a fixed cost learns as its merchant_hint from a payment: the first three of its hint
--- words. Null when the payment has nothing identifying.
+-- words (as many of them as fit 120 characters). Null when the payment has nothing identifying.
 create function internal.fixed_cost_hint(p_merchant text, p_raw_text text)
 returns text
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select nullif(pg_catalog.array_to_string(
-           (pg_catalog.string_to_array(internal.hint_words(p_merchant, p_raw_text), ' '))[1:3],
-           ' '), '')
+declare
+  hint text := pg_catalog.array_to_string(
+    (pg_catalog.string_to_array(internal.hint_words(p_merchant, p_raw_text), ' '))[1:3], ' ');
+begin
+  -- merchant_hint holds at most 120 characters: fewer words when three are longer.
+  hint := pg_catalog.substring(hint, '^(.{1,120})(?: |$)');
+  return nullif(hint, '');
+end;
 $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -340,18 +382,20 @@ create function internal.needs_review(
   p_is_merged boolean
 )
 returns boolean
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select (p_amount_rappen < 0 or p_category_id is not null)
+begin
+  return (p_amount_rappen < 0 or p_category_id is not null)
      and p_fixed_cost_id is null
      and not coalesce(p_is_split, false)
      and not coalesce(p_is_deleted, false)
      and not coalesce(p_is_merged, false)
      and coalesce(p_categorized_by, 'none') not in ('user', 'rule')
-     and (p_category_id is null or coalesce(p_category_confidence, 0) < 70)
+     and (p_category_id is null or coalesce(p_category_confidence, 0) < 70);
+end;
 $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -638,6 +682,8 @@ language plpgsql
 stable
 security invoker
 set search_path = ''
+-- Called once per row of add_transactions: reuse one plan per query instead of planning each call.
+set plan_cache_mode to 'force_generic_plan'
 as $$
 declare
   me uuid := auth.uid();
@@ -922,8 +968,10 @@ grant execute on function internal.categorize(text, text, integer, bigint, times
 grant execute on function internal.suggest_rule(text) to authenticated;
 
 -- The generated key columns call these functions with the rights of whoever writes the row, so
--- the backend role (service_role, which writes the tables directly) needs them too. Nothing else
--- of schema internal is granted to it.
+-- the backend role (service_role, which writes the tables directly) needs them too, and USAGE on
+-- the schema because the PL/pgSQL bodies call each other by name. Nothing else of schema internal
+-- is granted to it (no table, no other function).
+grant usage on schema internal to service_role;
 grant execute on function internal.merchant_key(text) to service_role;
 grant execute on function internal.transaction_key(text, text) to service_role;
 grant execute on function internal.month_words() to service_role;

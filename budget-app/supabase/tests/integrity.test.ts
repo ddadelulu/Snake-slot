@@ -413,12 +413,14 @@ describe('deleting a referenced row clears only the reference', () => {
     });
   });
 
-  it('deleting a fixed cost sets transactions.fixed_cost_id to NULL and keeps user_id', async () => {
+  // Clients cannot delete fixed costs (privileges.test.ts); the backend and account deletion can.
+  it('deleting a fixed cost (backend) sets transactions.fixed_cost_id to NULL and keeps user_id', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
       await asUser(db, a);
       const fixedCost = await make.fixedCost(db, a);
       const tx = await make.transaction(db, a, { fixed_cost_id: fixedCost });
+      await asPostgres(db);
       await db.query('delete from public.fixed_costs where id = $1', [fixedCost]);
       const row = await queryOne<{ fixed_cost_id: string | null; user_id: string }>(
         db,

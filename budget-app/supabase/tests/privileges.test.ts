@@ -64,7 +64,8 @@ const AUTHENTICATED: Readonly<
   Record<string, { table: readonly TablePrivilege[]; updateColumns?: readonly string[] }>
 > = {
   profiles: { table: ['SELECT'], updateColumns: PROFILE_UPDATE_COLUMNS },
-  fixed_costs: { table: CRUD },
+  // Deactivated, never deleted: deleting would unlink its payments (QA L1).
+  fixed_costs: { table: ['SELECT', 'INSERT', 'UPDATE'] },
   categories: { table: CRUD },
   budget_periods: { table: ['SELECT'] },
   budgets: { table: CRUD },
@@ -99,8 +100,10 @@ const CLIENT_FUNCTIONS = [
 
 /** Helpers in schema internal that the RPCs call with the caller's rights (D-038). */
 const INTERNAL_FUNCTIONS = [
-  'internal.categorize(text,text,integer,bigint)',
+  'internal.categorize(text,text,integer,bigint,timestamp with time zone)',
   'internal.fixed_cost_hint(text,text)',
+  'internal.generic_words()',
+  'internal.hint_words(text,text)',
   'internal.ingest_row(jsonb,integer,text,text)',
   'internal.json_bigint(jsonb,bigint,bigint)',
   'internal.json_string(jsonb)',
@@ -108,10 +111,25 @@ const INTERNAL_FUNCTIONS = [
   'internal.key_contains(text,text)',
   'internal.key_runs(text,integer)',
   'internal.merchant_key(text)',
+  'internal.month_words()',
   'internal.needs_review(bigint,uuid,text,integer,uuid,boolean,boolean,boolean)',
-  'internal.rule_matches(text,text,text,text,text,integer)',
+  'internal.payment_words()',
   'internal.same_merchant(text,text)',
+  'internal.suggest_rule(text)',
   'internal.transaction_item(uuid)',
+  'internal.transaction_key(text,text)',
+];
+
+/**
+ * What the generated key columns (transactions.merchant_key, categorization_rules.pattern_key,
+ * fixed_costs.merchant_hint_key) call: the backend role writes those tables, so it needs exactly
+ * these and nothing else of schema internal.
+ */
+const SERVICE_ROLE_INTERNAL_FUNCTIONS = [
+  'internal.hint_words(text,text)',
+  'internal.merchant_key(text)',
+  'internal.month_words()',
+  'internal.payment_words()',
   'internal.transaction_key(text,text)',
 ];
 
@@ -382,6 +400,8 @@ describe('schema internal (D-038)', () => {
   it.each([
     ['anon', { usage: false, create: false }],
     ['authenticated', { usage: true, create: false }],
+    // For the generated key columns only (SERVICE_ROLE_INTERNAL_FUNCTIONS).
+    ['service_role', { usage: true, create: false }],
   ])('%s: USAGE and CREATE on schema internal', async (role, expected) => {
     const row = await withRollback((db) =>
       queryOne<{ usage: boolean; create: boolean }>(
@@ -453,6 +473,7 @@ describe('schema internal (D-038)', () => {
           .map((row) => row.fn)
           .sort();
       expect(await executable('authenticated')).toEqual(INTERNAL_FUNCTIONS);
+      expect(await executable('service_role')).toEqual(SERVICE_ROLE_INTERNAL_FUNCTIONS);
       expect(await executable('anon')).toEqual([]);
       const all = await queryRows<{ fn: string }>(
         db,
@@ -761,6 +782,50 @@ describe('client write restrictions', () => {
       } else {
         expect(outcome.error.code).toBe(SQLSTATE.insufficientPrivilege);
       }
+    });
+  });
+
+  it('authenticated cannot delete a fixed cost (it is deactivated instead, QA L1)', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const fixedCost = await make.fixedCost(db, a);
+      await make.transaction(db, a, { fixed_cost_id: fixedCost });
+      await asUser(db, a);
+      await expectSqlError(
+        db,
+        SQLSTATE.insufficientPrivilege,
+        'delete from public.fixed_costs where id = $1',
+        [fixedCost],
+      );
+      expect(
+        await affectedRows(db, 'update public.fixed_costs set active = false where id = $1', [
+          fixedCost,
+        ]),
+      ).toBe(1);
+      const row = await queryOne<{ linked: number }>(
+        db,
+        'select count(*)::int as linked from public.transactions where fixed_cost_id = $1',
+        [fixedCost],
+      );
+      expect(row.linked).toBe(1);
+    });
+  });
+
+  it('the backend role can write every table with a generated key column', async () => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      const category = await make.category(db, a);
+      await db.query('set local role service_role');
+      const fixedCost = await make.fixedCost(db, a, { merchant_hint: 'Verwaltung Muster AG' });
+      const tx = await make.transaction(db, a, { merchant: 'Bäckerei Hug', fixed_cost_id: null });
+      await make.rule(db, a, category, { pattern: 'Bäckerei' });
+      const keys = await queryOne<{ tx: string; hint: string }>(
+        db,
+        `select (select merchant_key from public.transactions where id = $1) as tx,
+                (select merchant_hint_key from public.fixed_costs where id = $2) as hint`,
+        [tx, fixedCost],
+      );
+      expect(keys).toEqual({ tx: 'backerei hug', hint: 'verwaltung muster' });
     });
   });
 

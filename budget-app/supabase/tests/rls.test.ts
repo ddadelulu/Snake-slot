@@ -81,7 +81,8 @@ describe('RLS applies inside the client RPCs', () => {
                         'public.set_transaction_splits(uuid, jsonb)'::regprocedure,
                         'public.remove_import(uuid)'::regprocedure,
                         'public.export_my_data()'::regprocedure,
-                        'internal.categorize(text, text, integer, bigint)'::regprocedure,
+                        'internal.categorize(text, text, integer, bigint, timestamptz)'::regprocedure,
+                        'internal.suggest_rule(text)'::regprocedure,
                         'internal.ingest_row(jsonb, integer, text, text)'::regprocedure,
                         'internal.transaction_item(uuid)'::regprocedure)
           order by 1`,
@@ -93,8 +94,9 @@ describe('RLS applies inside the client RPCs', () => {
         'export_my_data()',
         'get_overview()',
         'get_transaction(uuid)',
-        'internal.categorize(text,text,integer,bigint)',
+        'internal.categorize(text,text,integer,bigint,timestamp with time zone)',
         'internal.ingest_row(jsonb,integer,text,text)',
+        'internal.suggest_rule(text)',
         'internal.transaction_item(uuid)',
         'list_transactions(jsonb)',
         'move_budget(uuid,uuid,bigint)',
@@ -188,13 +190,14 @@ const CASES: readonly TableCase[] = [
     update: null,
     delete: false,
   },
+  // Deactivated, never deleted by clients: a deleted fixed cost would unlink its payments (QA L1).
   {
     table: 'fixed_costs',
     owner: 'user_id',
     key: 'id',
     insert: true,
     update: 'amount_rappen = 190000',
-    delete: true,
+    delete: false,
   },
   {
     table: 'categories',
