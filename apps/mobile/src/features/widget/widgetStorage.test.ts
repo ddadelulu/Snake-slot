@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { neutralSnapshot } from './snapshot';
+import * as android from './widgetStorage.android';
+import * as ios from './widgetStorage.ios';
+import * as web from './widgetStorage.web';
 
 jest.mock('expo-constants', () => ({
   __esModule: true,
@@ -26,7 +29,6 @@ describe('widget storage', () => {
 
   it('iOS: writes the JSON to the App Group and reloads the WidgetKit timeline', async () => {
     const { ExtensionStorage } = jest.requireMock('@bacons/apple-targets');
-    const ios = require('./widgetStorage.ios') as typeof import('./widgetStorage.ios');
     expect(ios.WIDGETS_SUPPORTED).toBe(true);
     await ios.writeWidgetSnapshot(snapshot);
     expect(ExtensionStorage).toHaveBeenCalledWith('group.com.example.batzen');
@@ -39,7 +41,6 @@ describe('widget storage', () => {
 
   it('Android: keeps the JSON for the background renderer and redraws both sizes', async () => {
     const { requestWidgetUpdate } = jest.requireMock('react-native-android-widget');
-    const android = require('./widgetStorage.android') as typeof import('./widgetStorage.android');
     await android.writeWidgetSnapshot(snapshot);
     expect(await AsyncStorage.getItem('batzen.widget.snapshot')).toBe(JSON.stringify(snapshot));
     expect(
@@ -51,7 +52,6 @@ describe('widget storage', () => {
   });
 
   it('web: does nothing', async () => {
-    const web = require('./widgetStorage.web') as typeof import('./widgetStorage.web');
     const { ExtensionStorage } = jest.requireMock('@bacons/apple-targets');
     const { requestWidgetUpdate } = jest.requireMock('react-native-android-widget');
     expect(web.WIDGETS_SUPPORTED).toBe(false);

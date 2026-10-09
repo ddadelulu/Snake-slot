@@ -80,7 +80,7 @@ detail and the Settings editors in **M4** (Robert Downey Jr., with the alert thr
 them), Insights in **M5** (with the assistant's monthly review). Pain level and notification
 settings stay in M4 (M4-02, M4-05), subscription in M7.
 
-## Milestone 4 · Cash-feel moment + alerts ⏳
+## Milestone 4 · Cash-feel moment + alerts ✅ (approved; device checks of push and widgets in M7)
 
 | ID    | Task                                                                                                                                                                                                                                                                                                  | Owner                          | Review             |
 | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------ |
@@ -137,8 +137,18 @@ settings stay in M4 (M4-02, M4-05), subscription in M7.
 | bLink (SIX) participation or a licensed aggregator contract                           | Licensing and contracts; Julia flags: lawyer + licensed partner | M6        |
 | LLM provider account with a no-training data agreement                                | Spec 15: the AI provider must not train on user data            | M5        |
 | Apple App Store / Google Play developer accounts, RevenueCat project                  | Store billing                                                   | M7        |
+| EAS project id and Apple team id (`EAS_PROJECT_ID`, `APPLE_TEAM_ID`, docs/RELEASE.md) | Push tokens and signing the widget extension; account-bound     | M4        |
 | Legal review of privacy policy and terms (revDSG + GDPR)                              | Julia: needs a lawyer                                           | M7        |
 | Trademark check for the final app name                                                | Julia                                                           | M7        |
+
+## M4 sign-off
+
+- **Daniel Craig (QA):** all suites green (core 572, app 1124, database 1139, end-to-end 20);
+  device checks for push and widgets listed in WIDGETS.md.
+- **Tom Cruise (security):** direct client writes to transactions, splits and data sources now
+  refused (guard); push tokens only through RPCs; `claim_pushes` service-role only.
+- **Samuel L. Jackson:** Milestone 4 approved. Milestone 5 (AI assistant) needs the LLM provider
+  agreement (needs a human) and starts on the product owner's go.
 
 ## M3 sign-off
 

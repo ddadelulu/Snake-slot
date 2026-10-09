@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 · Milestone 4: Cash-feel moment, alerts, reminders, widgets (2026-10-09)
+
+### Added
+
+- The payment moment: odometer spin-down, wallet, category bar draining, haptics, coin sound,
+  "= X hours of work", "I paid this" (hold on Brutal), queue with "Show all", Reduce Motion.
+- Alerts (category 50/80/100 %/over, total low, pace, unusual purchase, daily allowance, payday,
+  category questions), never twice; push delivery with quiet hours and a daily cap; inbox.
+- Budget reminders: payday, weekly (day and time), and after 30 days without a budget change.
+- Home-screen widgets for iOS and Android: balance, per day, days to payday, "+" for quick add.
+- Category detail with history; editors for income, fixed costs, categories and budgets; pain
+  level and sound in Settings.
+
+### Security
+
+- Transactions, splits and data sources can only be changed through the database functions.
+
 ## 0.3.0 · Milestone 3: Manual add, statement import, categorization (2026-10-09)
 
 ### Added

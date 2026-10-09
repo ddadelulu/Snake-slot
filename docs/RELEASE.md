@@ -22,6 +22,17 @@ Per-environment variables live in EAS (never in the repository):
 | `EXPO_PUBLIC_SUPABASE_URL` | local URL         | staging project     | production project     |
 | `EXPO_PUBLIC_SUPABASE_KEY` | local publishable | staging publishable | production publishable |
 
+Set once by a human (needs a human: they exist only after the Expo and Apple accounts are set up):
+
+| Variable         | What                                                           | Used for                                                                                                     |
+| ---------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `EAS_PROJECT_ID` | The EAS project id (`eas init`, or expo.dev → project)         | `extra.eas.projectId` in `app.config.ts`: Expo push tokens (M4-04). Left out of the config when not set.     |
+| `APPLE_TEAM_ID`  | The Apple Developer team id (developer.apple.com → Membership) | `ios.appleTeamId`: signs the app and the widget extension ([WIDGETS.md](WIDGETS.md)). Left out when not set. |
+
+Both go into the EAS environment variables of every profile (or the shell for local builds). The
+iOS widget also needs the App Group `group.<bundle id>` registered for each bundle id; EAS
+credentials offer to create it on the first build ([WIDGETS.md](WIDGETS.md#building-and-verifying)).
+
 ## CI
 
 `.github/workflows/budget-app.yml` runs on every push and pull request that touches `budget-app/`:
