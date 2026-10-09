@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 · Milestone 3: Manual add, statement import, categorization (2026-10-09)
+
+### Added
+
+- Quick add from the "+" button on Home and `batzen://add`: amount, category, Save; optional
+  refund, merchant, note, another day, split across categories; look-alikes offer "Add anyway".
+- Statement import (parsed on the phone): camt.053 in any 001.xx version and CSV from
+  PostFinance, UBS, ZKB, Raiffeisen, Neon, Revolut or any bank (column mapping), with preview,
+  skipped lines and reasons, re-import detection, look-alikes unchecked, and undo.
+- One transaction pipeline in the database: re-import check, cross-source deduplication that
+  keeps the richest data, fixed-cost payments recognized, categorization by your rules, known
+  Swiss merchants and MCC, refunds recognized; anything unsure is asked ("What was it?").
+- "Always do this for Manor?" rules, listed in Settings.
+- Transactions tab with search and filters; transaction detail with category, split, note,
+  merchant, fixed-cost link, delete with undo, and edits of typed-in entries.
+- Export my data: transactions as CSV, everything as JSON.
+- Onboarding step 9: import a statement right after setup.
+
+### Security
+
+- `complete_onboarding` reviewed as `security definer`; column-level grants on profiles and
+  budget periods; fixed costs cannot be deleted by clients.
+
 ## 0.2.0 · Milestone 2: Onboarding, budget engine, home screen (2026-10-02)
 
 ### Added

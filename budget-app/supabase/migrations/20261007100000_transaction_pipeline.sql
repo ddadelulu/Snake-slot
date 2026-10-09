@@ -1192,8 +1192,9 @@ comment on function public.add_transactions(jsonb) is
 
 -- Filters (all optional, combined with AND; category_ids and uncategorized with OR): search
 -- (merchant, note or statement text contain the term case-insensitively, % and _ matching
--- themselves; or the merchant key of the merchant, note or statement text contains the key of
--- the term, so "zurich" finds "Zürich" and "baeckerei" finds "Bäckerei"), category_ids (at most
+-- themselves; or, for a term without digits and without % _ \, the merchant key of the
+-- merchant, note or statement text contains the key of the term, so "zurich" finds "Zürich" and
+-- "baeckerei" finds "Bäckerei"), category_ids (at most
 -- 100; a split matches by any part), uncategorized (no category and not a fixed-cost payment, or
 -- a split part without category), sources (at most 8), from / to (local dates in the user's
 -- zone, inclusive), needs_review; limit 1-100 (default 50); cursor = the previous page's
@@ -1256,7 +1257,11 @@ begin
     if btrim(internal.json_string(value)) <> '' then
       search_pattern := '%' || replace(replace(replace(btrim(internal.json_string(value)),
                                  '\', '\\'), '%', '\%'), '_', '\_') || '%';
-      search_key := internal.merchant_key(internal.json_string(value));
+      -- The key comparison only for plain words: a term with digits or LIKE characters
+      -- (% _ \) is matched literally, as typed.
+      if internal.json_string(value) !~ '[0-9%_\\]' then
+        search_key := internal.merchant_key(internal.json_string(value));
+      end if;
     end if;
   end if;
 
@@ -1370,7 +1375,7 @@ begin
               or t.merchant ilike search_pattern escape '\'
               or t.note ilike search_pattern escape '\'
               or t.raw_text ilike search_pattern escape '\'
-              or (search_key <> ''
+              or (coalesce(search_key, '') <> ''
                   and (strpos(t.merchant_key, search_key) > 0
                        or (t.note is not null
                            and strpos(internal.merchant_key(t.note), search_key) > 0)

@@ -5,10 +5,12 @@ budgets once; every purchase is tracked, deducted from the right category, and t
 down like money leaving your wallet. An assistant helps along the way. iOS and Android, German and
 English, CHF 5/month.
 
-**Status: Milestone 2 done.** Sign-up (email, Google, Apple), a questionnaire that turns income
+**Status: Milestone 3 done.** Add purchases by hand in seconds, import bank statements (camt.053 or
+CSV), and let the app sort them into categories, asking when it is not sure.
+
+Earlier: **Milestone 2.** Sign-up (email, Google, Apple), a questionnaire that turns income
 and bills into a budget, and a home screen with the balance, daily allowance, days until payday,
-pace and every category. The month resets on payday. Manual entry, statement import and
-categorization come next ([task board](docs/TASK_BOARD.md)).
+pace and every category. The month resets on payday. Next: the cash-feel moment and alerts ([task board](docs/TASK_BOARD.md)).
 
 ## Quick start
 

@@ -56,22 +56,22 @@ Liam Neeson (M4), Brad Pitt (M7).
 | M2-08 | Tests: engine 100 % coverage, onboarding E2E "sign-up to correct budget in under 5 minutes"                                                                                                                                                         | Daniel Craig                       | –                         | ✅     |
 | M2-09 | Docs + help texts for onboarding                                                                                                                                                                                                                    | Morgan Freeman                     | Tom Hanks                 | ✅     |
 
-## Milestone 3 · Manual add + CSV/camt.053 import + categorization 🔄 (started on the product owner's go)
+## Milestone 3 · Manual add + CSV/camt.053 import + categorization ✅ (approved, see sign-off below)
 
 | ID    | Task                                                                                                                                                           | Owner                                    | Review                 | Status |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------- | ------ |
 | M3-00 | Contracts: `add_transactions` pipeline and transaction RPCs (API.md), categorization rules (CATEGORIZATION.md), `SourceTransaction` local dates, merchant keys | Keanu Reeves                             | Matt Damon, Tom Cruise | ✅     |
-| M3-01 | Manual quick-add (under 5 seconds) from the "+" button and `batzen://add`, split, note                                                                         | Benedict Cumberbatch + Robert Downey Jr. | Tom Hanks              | 🔄     |
-| M3-02 | Statement import: CSV (major Swiss banks, column mapping fallback) and camt.053 XML, parsed on the phone; preview, duplicates unchecked; undo an import        | Benedict Cumberbatch                     | Daniel Craig           | 🔄     |
-| M3-03 | Deduplication across sources (amount + close time + merchant, keep richest data)                                                                               | Benedict Cumberbatch + Matt Damon        | Russell Crowe          | 🔄     |
-| M3-04 | Categorization pipeline: user rules → merchant list → MCC (AI guess in M5, D-029), confidence; fixed-cost detection (D-031)                                    | Scarlett Johansson + Matt Damon          | Benedict Cumberbatch   | 🔄     |
-| M3-05 | "Always do this for Manor?" rules; low-confidence questions; rules list in Settings                                                                            | Robert Downey Jr.                        | Tom Hanks              | 🔄     |
-| M3-06 | Transactions screen (list, search, filters, detail/edit/split/delete)                                                                                          | Robert Downey Jr.                        | Tom Hanks              | 🔄     |
-| M3-07 | Data export (CSV + full JSON) in Settings                                                                                                                      | Matt Damon                               | Julia Roberts          | 🔄     |
-| M3-08 | Onboarding step 9 "connect sources" (D-037)                                                                                                                    | Anthony Hopkins                          | Tom Hanks              | 🔄     |
-| M3-09 | Column-level grants for `profiles` and `budget_periods` (accepted M2 item, D-036)                                                                              | Matt Damon                               | Tom Cruise             | 🔄     |
-| M3-10 | Tests: parsers 100 % coverage, pipeline database tests, E2E quick-add under 5 s, import CSV + camt.053, dedupe, rule, export                                   | Daniel Craig                             | –                      | 🔄     |
-| M3-11 | Docs + help texts (import guide per bank, categorization)                                                                                                      | Morgan Freeman                           | Tom Hanks              | 🔄     |
+| M3-01 | Manual quick-add (under 5 seconds) from the "+" button and `batzen://add`, split, note                                                                         | Benedict Cumberbatch + Robert Downey Jr. | Tom Hanks              | ✅     |
+| M3-02 | Statement import: CSV (major Swiss banks, column mapping fallback) and camt.053 XML, parsed on the phone; preview, duplicates unchecked; undo an import        | Benedict Cumberbatch                     | Daniel Craig           | ✅     |
+| M3-03 | Deduplication across sources (amount + close time + merchant, keep richest data)                                                                               | Benedict Cumberbatch + Matt Damon        | Russell Crowe          | ✅     |
+| M3-04 | Categorization pipeline: user rules → merchant list → MCC (AI guess in M5, D-029), confidence; fixed-cost detection (D-031)                                    | Scarlett Johansson + Matt Damon          | Benedict Cumberbatch   | ✅     |
+| M3-05 | "Always do this for Manor?" rules; low-confidence questions; rules list in Settings                                                                            | Robert Downey Jr.                        | Tom Hanks              | ✅     |
+| M3-06 | Transactions screen (list, search, filters, detail/edit/split/delete)                                                                                          | Robert Downey Jr.                        | Tom Hanks              | ✅     |
+| M3-07 | Data export (CSV + full JSON) in Settings                                                                                                                      | Matt Damon                               | Julia Roberts          | ✅     |
+| M3-08 | Onboarding step 9 "connect sources" (D-037)                                                                                                                    | Anthony Hopkins                          | Tom Hanks              | ✅     |
+| M3-09 | Column-level grants for `profiles` and `budget_periods` (accepted M2 item, D-036)                                                                              | Matt Damon                               | Tom Cruise             | ✅     |
+| M3-10 | Tests: parsers 100 % coverage, pipeline database tests, E2E quick-add under 5 s, import CSV + camt.053, dedupe, rule, export                                   | Daniel Craig                             | –                      | ✅     |
+| M3-11 | Docs + help texts (import guide per bank, categorization)                                                                                                      | Morgan Freeman                           | Tom Hanks              | ✅     |
 
 **Gap reported at the M3 kick-off (spec section 12, not yet in any milestone):** Category detail
 (budget, spent, history chart, its transactions, edit budget), Insights, and the Settings editors
@@ -137,6 +137,17 @@ settings stay in M4 (M4-02, M4-05), subscription in M7.
 | Apple App Store / Google Play developer accounts, RevenueCat project                  | Store billing                                                   | M7        |
 | Legal review of privacy policy and terms (revDSG + GDPR)                              | Julia: needs a lawyer                                           | M7        |
 | Trademark check for the final app name                                                | Julia                                                           | M7        |
+
+## M3 sign-off
+
+- **Daniel Craig (QA):** signed off after the adversarial review and its fixes; core 572 tests
+  (100 %), app 1016, database 999, end-to-end 20 ([TESTING.md](TESTING.md#milestone-3-results)).
+- **Tom Cruise (security):** no cross-tenant or escalation findings; the medium and low findings
+  are fixed; direct own-row writes accepted until M4-06 ([SECURITY.md](SECURITY.md)).
+- **Julia Roberts (privacy):** files stay on the phone, third-party texts handled and removable,
+  export complete ([PRIVACY.md](PRIVACY.md#milestone-3-review)).
+- **Tom Hanks (product):** quick add, import, questions and rules reviewed in English and German.
+- **Samuel L. Jackson:** Milestone 3 approved. Milestone 4 may start on the product owner's go.
 
 ## M2 sign-off
 

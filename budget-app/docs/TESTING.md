@@ -87,6 +87,36 @@ Also: answers survive closing the app; over-commitment is flagged.
 Bugs found and fixed during M2 QA: moving budget inside a closed period (now refused); the total status not turning red with a
 negative balance; a duplicate test id on the pain-level step; `settleLeftover` returning −0.
 
+## Milestone 3 results
+
+Run on 2026-10-09 against the same local stack (clean database from all migrations):
+
+| Suite                                | Result                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| Core (`@budget/core`)                | 26 files, 572 tests; coverage 100 % (import and export modules included) |
+| App (`@budget/mobile`, Jest)         | 83 suites, 1016 tests                                                    |
+| Database (`@budget/db`)              | 15 files, 999 tests                                                      |
+| End-to-end (Playwright)              | 20 tests                                                                 |
+| Format, lint (0 warnings), typecheck | clean; generated types match the schema                                  |
+
+New end-to-end proof: a cash purchase added in under five seconds (amount, category, Save) with
+delete and undo; a PostFinance CSV (Windows-1252) imported, categorized (Coop → Groceries by the
+merchant list), re-imported without duplicates and undone; a camt.053 line merged with the same
+purchase typed in by hand (counted once, statement text added); the "what was it?" question with
+"Always do this for Manor?" re-sorting the second Manor purchase; CSV and JSON export downloaded
+and checked; onboarding step 9 opening the import after setup.
+
+QA (Daniel Craig) reviewed the pipeline and parsers adversarially: 3 high, 7 medium and 15 low
+findings, every one turned into a permanent test. Fixed: salaries and transfers counted as
+refunds (D-039); the same statement as CSV and camt.053 double-counting (D-043); typed-in
+purchases without a merchant or with a split counting twice (D-040); weekend bookings, umlaut
+spellings and generic first words in deduplication (D-040); known-merchant over-matching; several
+payments linked to one fixed cost; learned merchant hints that failed the next month; over-broad
+rule suggestions (D-042); debit/credit columns; balance lines; US dates; encodings; camt edge
+cases; accent-insensitive search. Accepted: removing an older of two overlapping imports takes
+the shared rows with it (re-import the other file, IMPORT_GUIDE.md); a typed rule pattern is used
+as typed.
+
 ## Edge cases owned by later milestones
 
 These are in the plan now so each milestone's sign-off checks them:
@@ -104,6 +134,11 @@ These are in the plan now so each milestone's sign-off checks them:
 | Several transactions arriving at once (queued cash moments)  | M4        | component + E2E                     |
 | Alert thresholds crossed twice, quiet hours, daily cap       | M4        | alert engine tests                  |
 | Expired subscription: read-only mode                         | M7        | E2E                                 |
+
+## QA sign-off, Milestone 3
+
+Signed off by Daniel Craig on 2026-10-09: all suites green on a clean database, every finding of
+the M3 review fixed or accepted above.
 
 ## QA sign-off, Milestone 2
 

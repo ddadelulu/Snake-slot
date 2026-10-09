@@ -115,7 +115,7 @@ null and no data source is created):
                  "outcome": "added" | "merged" | "already_imported" | "possible_duplicate",
                  "transaction_id": "uuid" | null,
                  "duplicate_of": { "id", "booked_at", "merchant", "amount_rappen", "source" } | null,
-                 "category_id": "uuid" | null, "categorized_by": "none|user|rule|merchant_list|mcc",
+                 "category_id": "uuid" | null, "categorized_by": "none|user|rule|merchant_list|mcc|refund",
                  "category_confidence": 0-100 | null, "fixed_cost_id": "uuid" | null,
                  "needs_review": false } ],
   "counts": { "added": 0, "merged": 0, "already_imported": 0, "possible_duplicate": 0, "needs_review": 0 } }
@@ -127,8 +127,9 @@ null and no data source is created):
   (`duplicate_of` describes it too).
 - `already_imported`: this source sent this id before; nothing stored.
 - `possible_duplicate`: looks like a stored transaction (`duplicate_of`): from the same source
-  with the same amount, day and merchant but a different id, or from another source with the
-  same amount within four days when the merchants cannot be compared (no merchant, or a split).
+  with the same amount and merchant within four days but a different id, or from another source
+  with the same amount within four days when the merchants cannot be compared (no merchant, or a
+  split). Days are local dates in the person's time zone.
   Not stored unless the row says `allow_duplicate` (quick add offers "Add anyway").
 - With `import`, the call creates one `data_sources` row (kind `statement_import`) for the
   file when anything was stored, and links the stored rows to it. Imported rows are stored as
@@ -141,7 +142,7 @@ and the problem), `category_not_found`, `invalid_splits`. `55000 not_onboarded` 
 
 `list_transactions(p jsonb) → { items: TransactionItem[], next_cursor }`. Filters, all optional,
 combined with AND (categories and `uncategorized` with OR): `search` (merchant, note or statement
-text), `category_ids` (a split matches by any part), `uncategorized`, `sources`, `from` / `to`
+text; accents, case, ae/oe/ue spellings and apostrophes do not matter), `category_ids` (≤ 100; a split matches by any part), `uncategorized`, `sources` (≤ 8), `from` / `to`
 (local dates, inclusive), `needs_review`; `limit` 1–100 (default 50); `cursor` from the previous
 page. Newest first; deleted and merged rows are left out.
 
