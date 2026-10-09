@@ -5,14 +5,14 @@ and the edge cases below before sign-off.
 
 ## Layers
 
-| Layer                                                    | Tool                                                               | Where                             | Runs in CI job |
-| -------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------- | -------------- |
-| Money & contracts                                        | Vitest                                                             | `packages/core/src/*.test.ts`     | checks         |
-| Components, theme, i18n, auth logic, routes              | Jest (jest-expo) + Testing Library + expo-router `renderRouter`    | `apps/mobile/src/**/*.test.ts(x)` | checks         |
-| Database: schema, RLS, privileges, constraints, deletion | Vitest + `pg` against Supabase Postgres                            | `supabase/tests/`                 | database       |
-| Generated types match the schema                         | `supabase gen types` + diff                                        | CI step                           | database       |
-| End-to-end                                               | Playwright against the web build + local Supabase (auth, REST, DB) | `apps/mobile/e2e/`                | e2e            |
-| Native end-to-end (iOS, Android)                         | Maestro on development builds                                      | added in M7 with release builds   | –              |
+| Layer                                                    | Tool                                                               | Where                                                                                                               | Runs in CI job |
+| -------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Money & contracts                                        | Vitest                                                             | `packages/core/src/*.test.ts`                                                                                       | checks         |
+| Components, theme, i18n, auth logic, routes              | Jest (jest-expo) + Testing Library + expo-router `renderRouter`    | `apps/mobile/src/**/*.test.ts(x)` (route tests in `src/routes-test`, never in `src/app`, which Expo Router bundles) | checks         |
+| Database: schema, RLS, privileges, constraints, deletion | Vitest + `pg` against Supabase Postgres                            | `supabase/tests/`                                                                                                   | database       |
+| Generated types match the schema                         | `supabase gen types` + diff                                        | CI step                                                                                                             | database       |
+| End-to-end                                               | Playwright against the web build + local Supabase (auth, REST, DB) | `apps/mobile/e2e/`                                                                                                  | e2e            |
+| Native end-to-end (iOS, Android)                         | Maestro on development builds                                      | added in M7 with release builds                                                                                     | –              |
 
 ## Running
 
@@ -86,6 +86,29 @@ Also: answers survive closing the app; over-commitment is flagged.
 
 Bugs found and fixed during M2 QA: moving budget inside a closed period (now refused); the total status not turning red with a
 negative balance; a duplicate test id on the pain-level step; `settleLeftover` returning −0.
+
+## Milestone 4 results
+
+Run on 2026-10-09 (clean database from all migrations):
+
+| Suite                                | Result                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Core (`@budget/core`)                | 572 tests, coverage 100 %                                                                 |
+| App (`@budget/mobile`, Jest)         | 96 suites, 1124 tests                                                                     |
+| Database (`@budget/db`)              | 20 files, 1139 tests (alerts, push, guard, moments, editors)                              |
+| End-to-end (Playwright)              | 20 tests, now confirming the payment moment ("I paid this", incl. the 2 s hold on Brutal) |
+| Native bundles                       | Android and iOS JavaScript bundles build (`expo export`), checked in CI                   |
+| Format, lint (0 warnings), typecheck | clean                                                                                     |
+
+Found and fixed during M4: route tests inside `src/app` broke every native build (moved to
+`src/routes-test`, CI now builds the Android bundle); the payment moment showed purchases with a
+minus sign. Not verifiable here: push delivery to real devices and the iOS/Android widgets (see
+WIDGETS.md, needs EAS builds on a simulator or phone).
+
+## QA sign-off, Milestone 4
+
+Signed off by Daniel Craig on 2026-10-09 for everything verifiable without devices; the device
+checks in WIDGETS.md and push delivery are part of the M7 release QA.
 
 ## Milestone 3 results
 

@@ -5,7 +5,8 @@ budgets once; every purchase is tracked, deducted from the right category, and t
 down like money leaving your wallet. An assistant helps along the way. iOS and Android, German and
 English, CHF 5/month.
 
-**Status: Milestone 3 done.** Add purchases by hand in seconds, import bank statements (camt.053 or
+**Status: Milestone 4 done.** Every purchase plays the cash-feel moment, alerts and budget reminders
+arrive as push notifications, and home-screen widgets show what is left. Before that, **Milestone 3:** Add purchases by hand in seconds, import bank statements (camt.053 or
 CSV), and let the app sort them into categories, asking when it is not sure.
 
 Earlier: **Milestone 2.** Sign-up (email, Google, Apple), a questionnaire that turns income

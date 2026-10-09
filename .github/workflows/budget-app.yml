@@ -34,6 +34,9 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Native bundle builds (route tests must stay out of src/app)
+        run: npx expo export --platform android --output-dir /tmp/android-bundle
+        working-directory: budget-app/apps/mobile
 
   database:
     name: Database (migrations, RLS, generated types)

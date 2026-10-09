@@ -13,7 +13,7 @@ function loadAppConfig(env: Record<string, string | undefined> = {}) {
   try {
     let result: { config: ExpoConfig; color: string } | undefined;
     jest.isolateModules(() => {
-      const mod = require('../../../app.config');
+      const mod = jest.requireActual('../../../app.config');
       result = { config: mod.default({ config: {} }), color: mod.NOTIFICATION_COLOR };
     });
     return result!;
@@ -57,7 +57,7 @@ describe('app.config.ts', () => {
 });
 
 describe('targets/widget/expo-target.config.js', () => {
-  const target = require('../../../targets/widget/expo-target.config.js')({
+  const target = jest.requireActual('../../../targets/widget/expo-target.config.js')({
     name: 'Batzen',
     ios: { entitlements: { 'com.apple.security.application-groups': ['group.x'] } },
   });
