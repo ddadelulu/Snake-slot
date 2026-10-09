@@ -96,7 +96,7 @@ messages say what to do next, and destructive actions are red and confirmed. App
 As a new user, I want a short questionnaire that turns my income and bills into a budget, so I
 start with a plan instead of a blank screen.
 
-- One topic per screen, with a progress bar ("Step 3 of 9"), a back button on every step after the
+- One topic per screen, with a progress bar ("Step 3 of 10"), a back button on every step after the
   first, and Skip on optional steps (saving, how I pay, warnings).
 - Steps: income (net income, payday, irregular income, hours per week), fixed costs (rent, health
   insurance, phone/internet, travel pass, other insurance, subscriptions, tax provision,

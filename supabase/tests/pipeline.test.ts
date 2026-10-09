@@ -1276,14 +1276,34 @@ describe('3. the same purchase from another source (merged)', () => {
   });
 
   it.each([
-    ['Friday 08:00, statement dated Monday (date only)', '2026-10-02T06:00:00Z', '2026-10-05', 'merged'],
+    [
+      'Friday 08:00, statement dated Monday (date only)',
+      '2026-10-02T06:00:00Z',
+      '2026-10-05',
+      'merged',
+    ],
     ['Thursday 08:00, statement dated Monday', '2026-10-01T06:00:00Z', '2026-10-05', 'merged'],
     ['Wednesday 23:59, statement dated Monday', '2026-09-30T21:59:00Z', '2026-10-05', 'added'],
     // Daylight saving ends on 25 October: the 22nd 00:00 CEST to the 26th is 4 days, 13 hours.
-    ['the 22nd 00:00 CEST, statement dated the 26th (CET)', '2026-10-21T22:00:00Z', '2026-10-26', 'merged'],
-    ['the 21st 23:59 CEST, statement dated the 26th', '2026-10-21T21:59:00Z', '2026-10-26', 'added'],
+    [
+      'the 22nd 00:00 CEST, statement dated the 26th (CET)',
+      '2026-10-21T22:00:00Z',
+      '2026-10-26',
+      'merged',
+    ],
+    [
+      'the 21st 23:59 CEST, statement dated the 26th',
+      '2026-10-21T21:59:00Z',
+      '2026-10-26',
+      'added',
+    ],
     // Daylight saving starts on 29 March: the 26th 00:00 CET to the 30th.
-    ['the 26th 00:00 CET, statement dated the 30th (CEST)', '2026-03-25T23:00:00Z', '2026-03-30', 'merged'],
+    [
+      'the 26th 00:00 CET, statement dated the 30th (CEST)',
+      '2026-03-25T23:00:00Z',
+      '2026-03-30',
+      'merged',
+    ],
     ['the 25th 23:59 CET, statement dated the 30th', '2026-03-25T22:59:00Z', '2026-03-30', 'added'],
   ])('%s: %s', async (_label, manualAt, statementDay, outcome) => {
     await withRollback(async (db) => {
@@ -1422,7 +1442,11 @@ describe('3. the same purchase from another source (merged)', () => {
       expect(only(lookAlike.results)).toMatchObject({
         outcome: 'possible_duplicate',
         transaction_id: null,
-        duplicate_of: { id: only(split.results).transaction_id, merchant: 'Coop', source: 'manual' },
+        duplicate_of: {
+          id: only(split.results).transaction_id,
+          merchant: 'Coop',
+          source: 'manual',
+        },
       });
       const imported = await add(db, user, {
         rows: [statementRow({ raw_text: 'KAUF COOP', allow_duplicate: true })],
@@ -2123,6 +2147,425 @@ describe('statement imports', () => {
   });
 });
 
+describe('4b. look-alikes from another source (merchants that cannot be compared, D-040)', () => {
+  it('a typed-in purchase without merchant and the statement row for it: one question', async () => {
+    await withRollback(async (db) => {
+      const { user, ids } = await onboardedUser(db);
+      const manual = await add(db, user, {
+        rows: [manualRow({ merchant: null, amount_rappen: -990, category_id: ids.groceries })],
+      });
+      const before = await footprint(db, user);
+      const result = await add(db, user, {
+        rows: [statementRow({ merchant: 'Volg', raw_text: null, amount_rappen: -990 })],
+        import: CSV,
+      });
+      expect(only(result.results)).toEqual({
+        index: 0,
+        outcome: 'possible_duplicate',
+        transaction_id: null,
+        duplicate_of: {
+          id: only(manual.results).transaction_id,
+          booked_at: '2026-10-03T10:00:00+00:00',
+          merchant: null,
+          amount_rappen: -990,
+          source: 'manual',
+        },
+        category_id: null,
+        categorized_by: 'none',
+        category_confidence: null,
+        fixed_cost_id: null,
+        needs_review: false,
+      });
+      expect(await footprint(db, user)).toEqual(before);
+    });
+  });
+
+  it('quick add of a purchase the statement already brought: asked, stored with allow_duplicate', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const imported = await add(db, user, {
+        rows: [
+          statementRow({ raw_text: 'KAUF VOLG', amount_rappen: -990, booked_on: '2026-10-05' }),
+        ],
+        import: CSV,
+      });
+      const quick = manualRow({
+        merchant: null,
+        amount_rappen: -990,
+        booked_at: '2026-10-02T16:00:00Z',
+      });
+      const asked = await add(db, user, { rows: [quick] });
+      expect(only(asked.results)).toMatchObject({
+        outcome: 'possible_duplicate',
+        duplicate_of: { id: only(imported.results).transaction_id, source: 'statement_import' },
+      });
+      const anyway = await add(db, user, { rows: [{ ...quick, allow_duplicate: true }] });
+      expect(only(anyway.results).outcome).toBe('added');
+    });
+  });
+
+  it('a statement row without merchant key next to a typed-in purchase with one', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const manual = await add(db, user, { rows: [manualRow({ merchant: 'Kiosk Hug' })] });
+      const result = await add(db, user, {
+        rows: [statementRow({ merchant: null, raw_text: '4711 0815' })],
+        import: CSV,
+      });
+      expect(only(result.results)).toMatchObject({
+        outcome: 'possible_duplicate',
+        duplicate_of: { id: only(manual.results).transaction_id },
+      });
+    });
+  });
+
+  it('not when both merchants have keys, more than 4 days apart, or the amount differs', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      await add(db, user, { rows: [manualRow({ merchant: null, amount_rappen: -990 })] });
+      const result = await add(db, user, {
+        rows: [
+          statementRow({ raw_text: 'VOLG', amount_rappen: -990, booked_on: '2026-10-08' }),
+          statementRow({ raw_text: 'VOLG', amount_rappen: -991 }),
+        ],
+        import: CSV,
+      });
+      expect(result.results.map((r) => r.outcome)).toEqual(['added', 'added']);
+      await add(db, user, { rows: [manualRow({ merchant: 'Denner', amount_rappen: -555 })] });
+      const named = await add(db, user, {
+        rows: [statementRow({ raw_text: 'VOLG', amount_rappen: -555 })],
+        import: CSV,
+      });
+      expect(only(named.results).outcome).toBe('added');
+    });
+  });
+
+  it('a transaction that already absorbed a row from this source is no look-alike for the next', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      await add(db, user, { rows: [manualRow({ merchant: 'Kiosk', amount_rappen: -450 })] });
+      const result = await add(db, user, {
+        rows: [
+          statementRow({ raw_text: 'KIOSK BAHNHOF', amount_rappen: -450 }),
+          statementRow({ raw_text: null, amount_rappen: -450 }),
+        ],
+        import: CSV,
+      });
+      expect(result.results.map((r) => r.outcome)).toEqual(['merged', 'added']);
+    });
+  });
+
+  it('deleted and merged transactions are no look-alikes', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const manual = await add(db, user, {
+        rows: [manualRow({ merchant: null, amount_rappen: -990 })],
+      });
+      await db.query('update public.transactions set deleted_at = now() where id = $1', [
+        only(manual.results).transaction_id,
+      ]);
+      const result = await add(db, user, {
+        rows: [statementRow({ raw_text: 'VOLG', amount_rappen: -990 })],
+        import: CSV,
+      });
+      expect(only(result.results).outcome).toBe('added');
+    });
+  });
+});
+
+/** Gives `user` a current period (10 days before today to 20 after, Zurich); returns today. */
+async function currentPeriod(db: Db, user: string): Promise<string> {
+  await asPostgres(db);
+  const row = await queryOne<{ today: string; starts: string; ends: string }>(
+    db,
+    `select d::text as today, (d - 10)::text as starts, (d + 20)::text as ends
+       from (select (now() at time zone 'Europe/Zurich')::date as d) as x`,
+  );
+  await make.period(db, user, { starts_on: row.starts, ends_on: row.ends });
+  return row.today;
+}
+
+describe('money in (D-039)', () => {
+  it('salaries, transfers and deposits from known names change no category total and are not asked about', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db, {
+        categories: ['groceries', 'eating_out', 'transport', 'personal_care', 'other'],
+      });
+      const today = await currentPeriod(db, user);
+      await asUser(db, user);
+      const before = await queryOne<{ overview: Row }>(
+        db,
+        'select public.get_overview() as overview',
+      );
+      await asPostgres(db);
+      const result = await add(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: 520_000,
+            booked_on: today,
+            raw_text: 'Gutschrift Lohn SBB AG Oktober',
+          }),
+          statementRow({
+            amount_rappen: 480_000,
+            booked_on: today,
+            raw_text: 'LOHN MIGROS-GENOSSENSCHAFTS-BUND',
+            mcc: 5411,
+          }),
+          statementRow({
+            amount_rappen: 100_000,
+            booked_on: today,
+            raw_text: 'Einzahlung Bar Automat Zürich HB',
+          }),
+          statementRow({
+            amount_rappen: 5_000,
+            booked_on: today,
+            merchant: 'TWINT von Peter Müller',
+            raw_text: null,
+          }),
+          statementRow({
+            amount_rappen: 25_000,
+            booked_on: today,
+            raw_text: 'Übertrag von Migros Bank Sparkonto',
+          }),
+        ],
+        import: CSV,
+      });
+      expect(
+        result.results.map((r) => [r.outcome, r.category_id, r.categorized_by, r.needs_review]),
+      ).toEqual(Array.from({ length: 5 }, () => ['added', null, 'none', false]));
+      await asUser(db, user);
+      const after = await queryOne<{ overview: Row }>(
+        db,
+        'select public.get_overview() as overview',
+      );
+      expect(after.overview.categories).toEqual(before.overview.categories);
+      expect(after.overview.uncategorized_spent_rappen).toBe(0);
+      expect(after.overview.needs_review_count).toBe(before.overview.needs_review_count);
+    });
+  });
+
+  it('a refund from the merchant of an earlier purchase gets its category as a question (refund, 60)', async () => {
+    await withRollback(async (db) => {
+      const { user, ids } = await onboardedUser(db, { categories: ['groceries', 'clothes'] });
+      const today = await currentPeriod(db, user);
+      const purchase = await add(db, user, {
+        rows: [
+          manualRow({
+            merchant: 'Manor',
+            amount_rappen: -8_400,
+            category_id: ids.clothes,
+            booked_at: `${today}T08:00:00Z`,
+          }),
+        ],
+      });
+      expect(only(purchase.results).outcome).toBe('added');
+      const refund = await add(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: 3_000,
+            booked_on: today,
+            merchant: 'MANOR AG',
+            raw_text: 'Gutschrift Manor',
+          }),
+        ],
+        import: CSV,
+      });
+      expect(only(refund.results)).toMatchObject({
+        outcome: 'added',
+        category_id: ids.clothes,
+        categorized_by: 'refund',
+        category_confidence: 60,
+        needs_review: true,
+      });
+      await asUser(db, user);
+      const overview = await queryOne<{
+        overview: { categories: Row[]; needs_review_count: number };
+      }>(db, 'select public.get_overview() as overview');
+      const clothes = overview.overview.categories.find((c) => c.category_id === ids.clothes);
+      // The refund gives money back to the purchase's category until the person answers.
+      expect(clothes?.spent_rappen).toBe(5_400);
+      expect(overview.overview.needs_review_count).toBe(1);
+    });
+  });
+
+  it('rules never place money in, also when a rule is created later', async () => {
+    await withRollback(async (db) => {
+      const { user, ids } = await onboardedUser(db);
+      const rows = await add(db, user, {
+        rows: [
+          manualRow({ merchant: 'Volg', amount_rappen: -1_000 }),
+          manualRow({ merchant: 'Volg Rückzahlung', amount_rappen: 20_000 }),
+        ],
+      });
+      const [purchase, income] = rows.results;
+      await asUser(db, user);
+      const update = await queryOne<{ result: Row }>(
+        db,
+        'select public.update_transaction($1, $2::jsonb) as result',
+        [
+          purchase?.transaction_id,
+          JSON.stringify({
+            category_id: ids.hobbies,
+            rule: { match_field: 'merchant', match_type: 'contains', pattern: 'volg' },
+          }),
+        ],
+      );
+      expect(update.result.recategorized_count).toBe(0);
+      await asPostgres(db);
+      expect(await storedRow(db, income?.transaction_id ?? null)).toMatchObject({
+        category_id: null,
+        categorized_by: 'none',
+      });
+      const later = await add(db, user, {
+        rows: [manualRow({ merchant: 'Volg', amount_rappen: 500 })],
+      });
+      // Money in: only refund recognition, from the purchase now placed by the person.
+      expect(only(later.results)).toMatchObject({
+        category_id: ids.hobbies,
+        categorized_by: 'refund',
+      });
+    });
+  });
+});
+
+describe('fixed-cost guards and learned hints (QA M4, M7)', () => {
+  it('several payments of one fixed cost within 20 days: only one is linked (steps 5, 7, 9)', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const phone = await make.fixedCost(db, user, {
+        kind: 'phone_internet',
+        amount_rappen: 6_500,
+      });
+      const rent = await make.fixedCost(db, user, {
+        kind: 'rent',
+        amount_rappen: 185_000,
+        merchant_hint: 'Verwaltung Muster',
+      });
+      const result = await add(db, user, {
+        rows: [
+          // Step 7 (known provider ±20 %): the bill, then shop purchases of the same provider.
+          statementRow({
+            amount_rappen: -7_800,
+            booked_on: '2026-10-01',
+            merchant: 'Swisscom (Schweiz) AG',
+          }),
+          statementRow({
+            amount_rappen: -5_200,
+            booked_on: '2026-10-01',
+            merchant: 'Swisscom (Schweiz) AG',
+          }),
+          statementRow({
+            amount_rappen: -5_990,
+            booked_on: '2026-10-05',
+            merchant: 'Swisscom Shop Zürich',
+          }),
+          // Step 5 (hint ±20 %): the rent, then a second transfer to the same landlord.
+          statementRow({
+            amount_rappen: -185_000,
+            booked_on: '2026-10-01',
+            raw_text: 'Dauerauftrag Verwaltung Muster AG',
+          }),
+          statementRow({
+            amount_rappen: -170_000,
+            booked_on: '2026-10-20',
+            raw_text: 'Zahlung an Verwaltung Muster AG',
+          }),
+          // Next month (more than 20 days later): linked again.
+          statementRow({
+            amount_rappen: -185_000,
+            booked_on: '2026-10-22',
+            raw_text: 'Dauerauftrag Verwaltung Muster AG',
+          }),
+        ],
+        import: CSV,
+      });
+      expect(result.results.map((r) => r.fixed_cost_id)).toEqual([
+        phone,
+        null,
+        null,
+        rent,
+        null,
+        rent,
+      ]);
+      expect(result.results.map((r) => r.needs_review)).toEqual([
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+      ]);
+    });
+  });
+
+  it('step 9 links one payment by exact amount, not a second one within 20 days', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const gym = await make.fixedCost(db, user, { kind: 'other', amount_rappen: 9_900 });
+      const result = await add(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: -9_900,
+            booked_on: '2026-10-01',
+            raw_text: 'LSV KRAFTWERK GYM',
+          }),
+          statementRow({
+            amount_rappen: -9_900,
+            booked_on: '2026-10-15',
+            raw_text: 'Zahlung Velo Huber',
+          }),
+        ],
+        import: CSV,
+      });
+      expect(result.results.map((r) => r.fixed_cost_id)).toEqual([gym, null]);
+    });
+  });
+
+  it('a hint learned in October recognizes November’s text, whichever month it names', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const rent = await make.fixedCost(db, user, { kind: 'rent', amount_rappen: 185_000 });
+      const october = await add(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: -185_000,
+            booked_on: '2026-10-01',
+            raw_text: 'Dauerauftrag Mietzins Oktober Verwaltung Muster AG Okt. 2026',
+          }),
+        ],
+        import: CSV,
+      });
+      expect(only(october.results).fixed_cost_id).toBe(rent);
+      const hint = await queryOne<{ hint: string; key: string }>(
+        db,
+        'select merchant_hint as hint, merchant_hint_key as key from public.fixed_costs where id = $1',
+        [rent],
+      );
+      expect(hint).toEqual({
+        hint: 'mietzins verwaltung muster',
+        key: 'mietzins verwaltung muster',
+      });
+      // A new price (within ±20 %) and another month name in the middle: step 5 by the hint.
+      const later = await add(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: -190_000,
+            booked_on: '2026-11-02',
+            raw_text: 'DAUERAUFTRAG MIETZINS NOVEMBER VERWALTUNG MUSTER AG NOV. 2026',
+          }),
+          statementRow({
+            amount_rappen: -190_000,
+            booked_on: '2026-12-01',
+            raw_text: 'Ordre permanent Mietzins Dezember Verwaltung Muster décembre',
+          }),
+        ],
+        import: CAMT,
+      });
+      expect(later.results.map((r) => r.fixed_cost_id)).toEqual([rent, rent]);
+    });
+  });
+});
+
 describe('dry runs', () => {
   /** A user with a stored manual entry, a stored CSV row and a fixed cost without hint. */
   async function scenario(db: Db) {
@@ -2283,7 +2726,7 @@ describe('other users', () => {
 });
 
 describe('a full year of statement rows', () => {
-  it('imports 2000 rows in less than 10 seconds', async () => {
+  it('imports 2000 rows in less than 5 seconds (about 1.2 s locally)', async () => {
     await withRollback(async (db) => {
       const { user, ids } = await onboardedUser(db);
       for (const [index, pattern] of [
@@ -2346,9 +2789,32 @@ describe('a full year of statement rows', () => {
       const { added, merged, already_imported, possible_duplicate } = result.counts;
       expect(added + merged + already_imported + possible_duplicate).toBe(2000);
       expect(merged).toBeGreaterThan(0);
-      expect(seconds).toBeLessThan(10);
+      expect(seconds).toBeLessThan(5);
     });
   }, 60_000);
+
+  // Security review #5: thousands of identical amounts on one day, with 4000-character texts,
+  // stay well under the 8 s statement timeout (about 1.5 s per call locally).
+  it('2000 identical amounts on one day: a file, a second file and 2000 manual rows, each under 6 s', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const text = 'Einkauf Coop Zürich '.repeat(200);
+      const timed = async (input: unknown) => {
+        const started = Date.now();
+        const result = await add(db, user, input);
+        expect((Date.now() - started) / 1000).toBeLessThan(6);
+        return result.counts;
+      };
+      const file = (prefix: string) =>
+        Array.from({ length: 2000 }, (_, i) =>
+          statementRow({ merchant: `Shop ${i}`, raw_text: text, external_id: `${prefix}${i}` }),
+        );
+      expect((await timed({ rows: file('X'), import: CSV })).added).toBe(2000);
+      expect((await timed({ rows: file('Y'), import: CAMT })).possible_duplicate).toBe(2000);
+      const manual = Array.from({ length: 2000 }, (_, i) => manualRow({ merchant: `Other ${i}` }));
+      expect((await timed({ rows: manual })).added).toBe(2000);
+    });
+  }, 120_000);
 });
 
 describe('concurrent calls', () => {

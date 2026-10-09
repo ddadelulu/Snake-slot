@@ -281,6 +281,7 @@ export type Database = {
           match_field: string;
           match_type: string;
           pattern: string;
+          pattern_key: string;
           priority: number;
           updated_at: string;
           user_id: string;
@@ -292,6 +293,7 @@ export type Database = {
           match_field: string;
           match_type: string;
           pattern: string;
+          pattern_key?: never;
           priority?: number;
           updated_at?: string;
           user_id: string;
@@ -303,6 +305,7 @@ export type Database = {
           match_field?: string;
           match_type?: string;
           pattern?: string;
+          pattern_key?: never;
           priority?: number;
           updated_at?: string;
           user_id?: string;
@@ -408,6 +411,7 @@ export type Database = {
           kind: string;
           label: string | null;
           merchant_hint: string | null;
+          merchant_hint_key: string;
           updated_at: string;
           user_id: string;
         };
@@ -420,6 +424,7 @@ export type Database = {
           kind: string;
           label?: string | null;
           merchant_hint?: string | null;
+          merchant_hint_key?: never;
           updated_at?: string;
           user_id: string;
         };
@@ -432,6 +437,7 @@ export type Database = {
           kind?: string;
           label?: string | null;
           merchant_hint?: string | null;
+          merchant_hint_key?: never;
           updated_at?: string;
           user_id?: string;
         };
@@ -665,6 +671,8 @@ export type Database = {
           items: Json | null;
           mcc: number | null;
           merchant: string | null;
+          merchant_key: string;
+          merge_changes: Json | null;
           merged_into_id: string | null;
           note: string | null;
           original_amount_minor: number | null;
@@ -691,6 +699,8 @@ export type Database = {
           items?: Json | null;
           mcc?: number | null;
           merchant?: string | null;
+          merchant_key?: never;
+          merge_changes?: Json | null;
           merged_into_id?: string | null;
           note?: string | null;
           original_amount_minor?: number | null;
@@ -717,6 +727,8 @@ export type Database = {
           items?: Json | null;
           mcc?: number | null;
           merchant?: string | null;
+          merchant_key?: never;
+          merge_changes?: Json | null;
           merged_into_id?: string | null;
           note?: string | null;
           original_amount_minor?: number | null;
@@ -781,7 +793,7 @@ export type Database = {
           starts_on: string;
         }[];
       };
-      remove_import: { Args: { p_data_source_id: string }; Returns: number };
+      remove_import: { Args: { p_data_source_id: string }; Returns: Json };
       roll_due_periods: { Args: Record<PropertyKey, never>; Returns: number };
       set_transaction_splits: { Args: { p_id: string; p_parts: Json }; Returns: Json };
       update_transaction: { Args: { p: Json; p_id: string }; Returns: Json };

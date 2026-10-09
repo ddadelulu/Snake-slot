@@ -258,9 +258,7 @@ test.describe('transactions', () => {
     await expect(page.getByTestId('rules-list')).toContainText(/manor/i);
   });
 
-  test('the data export downloads transactions as CSV and everything as JSON', async ({
-    page,
-  }) => {
+  test('the data export downloads transactions as CSV and everything as JSON', async ({ page }) => {
     await signUp(page, uniqueEmail('export'));
     await quickAdd(page, '12.50', 'groceries', 'Bäckerei Exempla');
     await expect(page.getByTestId('home-balance')).toContainText('4,987.50');

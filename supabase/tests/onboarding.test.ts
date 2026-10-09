@@ -366,6 +366,34 @@ describe('complete_onboarding() refuses', () => {
   });
 
   it.each([
+    [
+      '51 categories',
+      { categories: Array.from({ length: 51 }, (_, i) => ({ name: `K${i}`, budget_rappen: 0 })) },
+    ],
+    [
+      '51 fixed costs',
+      {
+        fixed_costs: Array.from({ length: 51 }, () => ({
+          kind: 'other',
+          label: null,
+          amount_rappen: 100,
+        })),
+      },
+    ],
+  ])('%s (22023 too_many_items, checked before anything is stored)', async (_label, overrides) => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await expectRejected(
+        db,
+        a,
+        payload(overrides),
+        SQLSTATE.invalidParameterValue,
+        'too_many_items',
+      );
+    });
+  });
+
+  it.each([
     ['net income missing', { profile: { net_income_rappen: undefined } }],
     ['net income null', { profile: { net_income_rappen: null } }],
     ['payday missing', { profile: { payday: undefined } }],

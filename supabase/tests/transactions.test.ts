@@ -46,6 +46,7 @@ type TransactionItem = {
   original_amount_minor: number | null;
   original_currency: string | null;
   items: unknown;
+  suggested_rule: { match_field: string; match_type: string; pattern: string } | null;
   splits: Split[];
   merged_sources: string[];
   needs_review: boolean;
@@ -107,7 +108,12 @@ const setSplits = (db: Db, userId: string, id: string, parts: unknown) =>
   );
 
 const removeImport = (db: Db, userId: string, id: string) =>
-  call<number>(db, userId, 'select public.remove_import($1) as result', [id]);
+  call<{ removed: number; restored: number }>(
+    db,
+    userId,
+    'select public.remove_import($1) as result',
+    [id],
+  );
 
 const exportData = (db: Db, userId: string) =>
   call<Record<string, unknown>>(db, userId, 'select public.export_my_data() as result', []);
@@ -221,6 +227,7 @@ describe('list_transactions() and get_transaction()', () => {
         original_amount_minor: -10_500,
         original_currency: 'EUR',
         items: [{ description: 'Brot', amount_rappen: -500, quantity: 2 }],
+        suggested_rule: { match_field: 'merchant', match_type: 'contains', pattern: 'migros' },
         splits: [
           {
             id: expect.any(String) as string,
@@ -376,6 +383,41 @@ describe('list_transactions() filters', () => {
     });
   });
 
+  it('search ignores accents, case, ae/oe/ue spellings and apostrophes (QA L5)', async () => {
+    await withRollback(async (db) => {
+      const { user } = await onboardedUser(db);
+      const cafe = await make.transaction(db, user, {
+        merchant: 'Zürich Café',
+        booked_at: '2026-10-05T10:00:00Z',
+      });
+      const caps = await make.transaction(db, user, {
+        merchant: 'ZÜRICH CAFÉ',
+        booked_at: '2026-10-04T10:00:00Z',
+      });
+      const plain = await make.transaction(db, user, {
+        merchant: 'Zurich Cafe',
+        booked_at: '2026-10-03T10:00:00Z',
+      });
+      const baker = await make.transaction(db, user, {
+        merchant: 'Shop',
+        raw_text: 'KAUF BAECKEREI HUG',
+        booked_at: '2026-10-02T10:00:00Z',
+      });
+      const noted = await make.transaction(db, user, {
+        merchant: 'Kiosk',
+        note: "McDonald's mit Anna",
+        booked_at: '2026-10-01T10:00:00Z',
+      });
+      const all = [cafe, caps, plain];
+      for (const term of ['zürich', 'ZÜRICH', 'zurich', 'ZUERICH', 'café', 'CAFE', 'zur']) {
+        expect(ids(await list(db, user, { search: term }))).toEqual(all);
+      }
+      expect(ids(await list(db, user, { search: 'Bäckerei' }))).toEqual([baker]);
+      expect(ids(await list(db, user, { search: 'mcdonalds' }))).toEqual([noted]);
+      expect(ids(await list(db, user, { search: '--' }))).toEqual([]);
+    });
+  });
+
   it('category_ids (a split matches by any part) and uncategorized, combined with OR', async () => {
     await withRollback(async (db) => {
       const { user, ids: cat } = await onboardedUser(db);
@@ -486,6 +528,11 @@ describe('list_transactions() filters', () => {
     ['category_ids that are not a list', { category_ids: 'x' }],
     ['uncategorized that is not a boolean', { uncategorized: 'yes' }],
     ['an unknown source', { sources: ['cash'] }],
+    ['more than 8 sources', { sources: Array.from({ length: 9 }, () => 'manual') }],
+    [
+      'more than 100 category_ids',
+      { category_ids: Array.from({ length: 101 }, () => randomUUID()) },
+    ],
     ['a date that is no date', { from: '2026-02-30' }],
     ['a date in another format', { to: '01.10.2026' }],
     ['needs_review that is not a boolean', { needs_review: 1 }],
@@ -903,7 +950,8 @@ describe('update_transaction(): fixed costs', () => {
         'select merchant_hint as hint from public.fixed_costs where id = $1',
         [rent],
       );
-      expect(hint.hint).toBe('Verwaltung Muster AG');
+      // The hint words of the merchant, at most three (internal.fixed_cost_hint).
+      expect(hint.hint).toBe('verwaltung muster');
     });
   });
 
@@ -1297,7 +1345,8 @@ describe('remove_import()', () => {
       expect(after.results[0]).toMatchObject({ outcome: 'merged', transaction_id: denner });
       const source = imported.data_source_id ?? '';
 
-      expect(await removeImport(db, user, source)).toBe(2);
+      // Coop: what the merge copied (statement text) is put back; Denner and Volg removed.
+      expect(await removeImport(db, user, source)).toEqual({ removed: 2, restored: 1 });
 
       const rows = await queryRows<Row>(
         db,
@@ -1306,30 +1355,10 @@ describe('remove_import()', () => {
            from public.transactions where user_id = $1 order by source, amount_rappen`,
         [user],
       );
+      // The import's rows are deleted for good (D-041).
       expect(rows).toEqual([
         { source: 'manual', amount: -2_340, external_id: null, merged: false, deleted: false },
         { source: 'manual', amount: -1_500, external_id: null, merged: false, deleted: false },
-        {
-          source: 'statement_import',
-          amount: -2_340,
-          external_id: null,
-          merged: true,
-          deleted: true,
-        },
-        {
-          source: 'statement_import',
-          amount: -1_500,
-          external_id: null,
-          merged: false,
-          deleted: true,
-        },
-        {
-          source: 'statement_import',
-          amount: -320,
-          external_id: null,
-          merged: false,
-          deleted: true,
-        },
       ]);
       const revoked = await queryOne<Row>(
         db,
@@ -1358,8 +1387,14 @@ describe('remove_import()', () => {
         statementRow({ raw_text: 'KAUF VOLG', amount_rappen: -300 }),
       ];
       const first = await addRows(db, user, { rows, import: CSV });
-      expect(await removeImport(db, user, first.data_source_id ?? '')).toBe(2);
-      expect(await removeImport(db, user, first.data_source_id ?? '')).toBe(0);
+      expect(await removeImport(db, user, first.data_source_id ?? '')).toEqual({
+        removed: 2,
+        restored: 0,
+      });
+      expect(await removeImport(db, user, first.data_source_id ?? '')).toEqual({
+        removed: 0,
+        restored: 0,
+      });
       const again = await addRows(db, user, { rows, import: CSV });
       expect(again.results.map((r) => r.outcome)).toEqual(['added', 'added']);
       expect(ids(await list(db, user))).toHaveLength(2);
@@ -1374,7 +1409,140 @@ describe('remove_import()', () => {
         import: CSV,
       });
       await update(db, user, imported.results[0]?.transaction_id ?? '', { deleted: true });
-      expect(await removeImport(db, user, imported.data_source_id ?? '')).toBe(1);
+      expect(await removeImport(db, user, imported.data_source_id ?? '')).toEqual({
+        removed: 1,
+        restored: 0,
+      });
+      const left = await queryOne<{ n: number }>(
+        db,
+        'select count(*)::int as n from public.transactions where user_id = $1',
+        [user],
+      );
+      expect(left.n).toBe(0);
+    });
+  });
+
+  it('restores what its merges copied, field by field, unless the person changed it since (D-041)', async () => {
+    await withRollback(async (db) => {
+      const { user, ids: cat } = await onboardedUser(db);
+      const manual = await addRows(db, user, {
+        rows: [
+          {
+            amount_rappen: -4_590,
+            booked_at: '2026-10-03T10:00:00Z',
+            merchant: null,
+            source: 'manual',
+            category_id: cat.groceries,
+          },
+          {
+            amount_rappen: -1_990,
+            booked_at: '2026-10-03T11:00:00Z',
+            merchant: 'Kiosk Hug',
+            source: 'manual',
+          },
+          {
+            amount_rappen: -3_000,
+            booked_at: '2026-10-03T12:00:00Z',
+            merchant: 'Volg',
+            source: 'manual',
+          },
+        ],
+      });
+      const [, kioskId, volgId] = manual.results.map((r) => r.transaction_id ?? '');
+      const imported = await addRows(db, user, {
+        rows: [
+          statementRow({
+            amount_rappen: -1_990,
+            merchant: 'KIOSK HUG BERN',
+            raw_text: 'Einkauf Kiosk Hug, Karte von Erika Muster, IBAN CH9300762011623852957',
+            note: 'Geburtstag Erika',
+            items: [{ description: 'Champagner', amount_rappen: -1_990 }],
+            original_amount_minor: -2_100,
+            original_currency: 'EUR',
+            mcc: 5499,
+            category_id: cat.hobbies,
+          }),
+          statementRow({
+            amount_rappen: -3_000,
+            merchant: 'VOLG',
+            raw_text: 'KAUF VOLG',
+            mcc: 5411,
+          }),
+        ],
+        import: CSV,
+      });
+      expect(imported.results.map((r) => r.outcome)).toEqual(['merged', 'merged']);
+      // The person changes the Volg note-less row's statement text afterwards: that stays.
+      await db.query(`update public.transactions set raw_text = 'Wocheneinkauf' where id = $1`, [
+        volgId,
+      ]);
+
+      expect(await removeImport(db, user, imported.data_source_id ?? '')).toEqual({
+        removed: 0,
+        restored: 2,
+      });
+      const kiosk = await getTransaction(db, user, kioskId ?? '');
+      expect(kiosk).toMatchObject({
+        merchant: 'Kiosk Hug',
+        raw_text: null,
+        note: null,
+        items: null,
+        mcc: null,
+        original_amount_minor: null,
+        original_currency: null,
+        category_id: null,
+        categorized_by: 'none',
+        merged_sources: [],
+      });
+      const volg = await getTransaction(db, user, volgId ?? '');
+      expect(volg).toMatchObject({ raw_text: 'Wocheneinkauf', mcc: null });
+      // Nothing of the file is left in the account, also not in the export.
+      await asUser(db, user);
+      const exported = await queryOne<{ text: string }>(
+        db,
+        'select public.export_my_data()::text as text',
+      );
+      await asPostgres(db);
+      expect(exported.text.includes('Erika')).toBe(false);
+    });
+  });
+
+  it('a previous category that no longer exists comes back as no category', async () => {
+    await withRollback(async (db) => {
+      const { user, ids: cat } = await onboardedUser(db);
+      const gone = await make.category(db, user, { name: 'Weg' });
+      const manual = await addRows(db, user, {
+        rows: [
+          {
+            amount_rappen: -990,
+            booked_at: '2026-10-03T10:00:00Z',
+            merchant: 'Coop',
+            source: 'manual',
+          },
+        ],
+      });
+      const id = manual.results[0]?.transaction_id ?? '';
+      await db.query(
+        `update public.transactions set category_id = $2, categorized_by = 'mcc', category_confidence = 50 where id = $1`,
+        [id, gone],
+      );
+      const imported = await addRows(db, user, {
+        rows: [
+          statementRow({ amount_rappen: -990, raw_text: 'KAUF COOP', category_id: cat.hobbies }),
+        ],
+        import: CSV,
+      });
+      expect(imported.results[0]?.outcome).toBe('merged');
+      await db.query('delete from public.categories where id = $1', [gone]);
+      expect(await removeImport(db, user, imported.data_source_id ?? '')).toEqual({
+        removed: 0,
+        restored: 1,
+      });
+      expect(await getTransaction(db, user, id)).toMatchObject({
+        category_id: null,
+        categorized_by: 'none',
+        category_confidence: null,
+      });
     });
   });
 

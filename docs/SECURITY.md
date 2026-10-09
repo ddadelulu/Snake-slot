@@ -37,6 +37,25 @@ foundations honest. Report a vulnerability privately to the repository owner, no
 `onboarding_completed_at` or delete their own periods directly. This only affects their own data;
 M3 narrows `profiles` and `budget_periods` to column-level grants.
 
+## Milestone 3 review (2026-10-07, re-checked 2026-10-09)
+
+| Area                  | Check                                                                                                                                                                                                 | Result |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Tenant isolation      | Every new RPC tried with another user's transaction, category, fixed cost, rule and import ids: "not found", never their data; dedupe, rules and fixed-cost detection never look at other users' rows | ✅     |
+| `complete_onboarding` | Now `security definer`: every statement scoped to `auth.uid()`, empty `search_path`, input whitelisted, at most 50 fixed costs and 50 categories; hostile payloads only change the caller's rows      | ✅     |
+| Column grants (D-036) | `profiles`: only the 15 user-editable columns; `budget_periods`: read only; `fixed_costs`: no delete (deactivate instead)                                                                             | ✅     |
+| Schema `internal`     | Signed-in users may use it and read the reference lists, nothing else; PostgREST cannot reach it (D-038)                                                                                              | ✅     |
+| Input limits          | 2000 rows per import, ≤ 500 items, ≤ 50 split parts, ≤ 8 sources, ≤ 100 category filters, bounded strings; worst-case imports finish in under 2 s                                                     | ✅     |
+| Search                | `%`, `_` and `\` matched literally; no dynamic SQL anywhere in M3                                                                                                                                     | ✅     |
+| Removing an import    | Deletes the file's rows for good and restores what merges copied into earlier transactions (finding 1, fixed, D-041)                                                                                  | ✅     |
+| Statement files       | DOCTYPE/ENTITY refused, prototype keys refused, nesting limited; text cleanup linear on crafted input (1 MB cell < 1 s, finding 3 fixed)                                                              | ✅     |
+| CSV export            | Formula characters escaped at the start of a cell and after commas, tabs and line breaks (finding 4 fixed); the file is removed from the phone after sharing                                          | ✅     |
+
+**Accepted for M4 (M4-06):** clients can still write their own `transactions`,
+`transaction_splits` and `data_sources` rows directly instead of through the RPCs (e.g. forge
+`source` or consent fields). Only their own data is affected; the guard lands before alerts and
+bank feeds rely on these fields.
+
 ## Known limits, accepted for M1
 
 - **Access token after deletion or sign-out.** Supabase access tokens are JWTs valid up to one
@@ -50,6 +69,6 @@ M3 narrows `profiles` and `budget_periods` to column-level grants.
 
 ## Before release (M7)
 
-Dependency audit, secrets scan, review of every Edge Function (service-role use), token encryption
+Hosted API exposes only `public` (never `internal`/`private`), GraphQL off (SETUP.md); dependency audit, secrets scan, review of every Edge Function (service-role use), token encryption
 key management for `private.data_source_credentials`, store privacy labels, penetration test
 checklist (OWASP MASVS L1), and a check that the Supabase dashboard settings match SETUP.md.
