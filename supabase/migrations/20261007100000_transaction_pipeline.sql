@@ -64,12 +64,17 @@ $$;
 -- The text of a JSON string; null for anything else.
 create function internal.json_string(p_value jsonb)
 returns text
-language sql
+language plpgsql
 immutable
 parallel safe
 set search_path = ''
 as $$
-  select case when jsonb_typeof(p_value) = 'string' then p_value #>> '{}' end
+begin
+  if jsonb_typeof(p_value) = 'string' then
+    return p_value #>> '{}';
+  end if;
+  return null;
+end;
 $$;
 
 -- The uuid in a JSON string; null when the value is not a string holding a uuid.
@@ -548,8 +553,10 @@ $$;
 --   4. Unless the row says allow_duplicate, possible_duplicate (nothing stored; duplicate_of
 --      describes the stored transaction, the survivor when the match was merged):
 --      a. statement rows: a row of the same source stored before this call (not deleted; merged
---         evidence counts) with the same amount, the same local day, a different external_id
---         and the same merchant (or both without a key);
+--         evidence counts) with the same amount, booked at most 4 days before or after (by local
+--         date, as in 3), a different external_id and the same merchant (or both without a key):
+--         the same purchase can carry the booking day in one file (a CSV without purchase
+--         dates) and the purchase day in another (camt.053);
 --      b. any row: a visible transaction of another source with the same amount within 4 days
 --         (as in 3, not yet merged with a row from this source) when the merchants cannot be
 --         compared: either has no merchant key, or either is a split (D-040).
@@ -575,6 +582,9 @@ language plpgsql
 security invoker
 set search_path = ''
 set timezone to 'UTC'
+-- The per-row queries run up to 2000 times per call with the same shape; planning them again for
+-- every row (custom plans) cost more than running them.
+set plan_cache_mode to 'force_generic_plan'
 as $$
 declare
   me uuid := auth.uid();
@@ -604,8 +614,6 @@ declare
   local_day date;
   window_start timestamptz;
   window_end timestamptz;
-  day_start timestamptz;
-  day_end timestamptz;
   has_splits boolean;
   allow_duplicate boolean;
   existing public.transactions;
@@ -745,8 +753,6 @@ begin
       tx_first := split_part(tx_key, ' ', 1);
       tx_first_distinctive := tx_first <> '' and tx_first <> all (not_distinctive);
       local_day := (tx.booked_at at time zone user_zone)::date;
-      day_start := local_day::timestamp at time zone user_zone;
-      day_end := (local_day + 1)::timestamp at time zone user_zone;
       window_start := (local_day - 4)::timestamp at time zone user_zone;
       window_end := (local_day + 5)::timestamp at time zone user_zone;
       outcome := null;
@@ -822,7 +828,7 @@ begin
       end if;
 
       -- 4a. Possible duplicate from the same source (statement files): rows stored before this
-      -- call, on the same local day.
+      -- call, at most 4 local days apart.
       if outcome is null and check_same_source and not allow_duplicate then
         select c.id into candidate_id
           from (
@@ -831,7 +837,7 @@ begin
               where t.user_id = me
                 and t.amount_rappen = tx.amount_rappen
                 and t.source = tx.source
-                and t.booked_at >= day_start
+                and t.booked_at >= window_start
                 and t.booked_at <= tx.booked_at
                 and (new_data_source_id is null or t.data_source_id is distinct from new_data_source_id)
                 and t.deleted_at is null
@@ -845,7 +851,7 @@ begin
                 and t.amount_rappen = tx.amount_rappen
                 and t.source = tx.source
                 and t.booked_at > tx.booked_at
-                and t.booked_at < day_end
+                and t.booked_at < window_end
                 and (new_data_source_id is null or t.data_source_id is distinct from new_data_source_id)
                 and t.deleted_at is null
                 and t.external_id is distinct from tx.external_id
