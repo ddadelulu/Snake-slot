@@ -1,4 +1,6 @@
 import { BASE_CURRENCY, localDateIn, type IngestRow, type LocalDate } from '@budget/core';
+import { useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
@@ -19,12 +21,14 @@ import {
   TextLink,
 } from '@/components';
 import { useCategories } from '@/data/categories';
+import { hasPendingMoments } from '@/data/moments';
 import { useProfile } from '@/data/profile';
 import { useAddTransactions, type AddRowResult, type DuplicateMatch } from '@/data/transactions';
 import { categoryName } from '@/features/categories/categoryName';
 import { parseAmountInput } from '@/features/transactions/amount';
 import { transactionErrorCode, type TransactionErrorCode } from '@/features/transactions/errors';
 import { formatShortWeekdayDate, formatWeekdayDate } from '@/features/transactions/format';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { activeCategories, categoryTestKey } from '@/features/transactions/labels';
 import { LookAlikeCard } from '@/features/transactions/LookAlikeCard';
 import {
@@ -89,6 +93,14 @@ export default function AddScreen() {
   };
 
   const close = () => goBackOr('/');
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  /** A stored purchase gets its payment moment right away (spec section 8). */
+  const afterAdded = async () => {
+    if (user && (await hasPendingMoments(queryClient, user.id))) router.replace('/moment');
+    else close();
+  };
 
   /** Sends one row; afterwards the screen closes, explains, or asks about a look-alike. */
   const send = async (row: IngestRow) => {
@@ -105,7 +117,7 @@ export default function AddScreen() {
     else if (result?.outcome === 'possible_duplicate' && row.allow_duplicate !== true) {
       setLookAlike({ row, match: result.duplicateOf });
     } else if (result !== undefined && result.outcome !== 'added') setNotice('duplicate');
-    else close();
+    else await afterAdded();
   };
 
   const save = async () => {

@@ -1,11 +1,12 @@
 import { FIXED_COST_KINDS, type FixedCostKind, type Rappen } from '@budget/core';
-import { skipToken, useQuery } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { toRequestError } from '@/lib/requestError';
+import { RequestError, toRequestError } from '@/lib/requestError';
 import { getSupabase } from '@/lib/supabase';
 
 import { jsonReader } from './json';
+import { overviewKeys } from './overview';
 
 /** A fixed cost from onboarding (rent, health insurance, …), used to mark its payments. */
 export type FixedCost = {
@@ -52,5 +53,47 @@ export function useFixedCosts() {
   return useQuery({
     queryKey: userId ? fixedCostKeys.list(userId) : fixedCostKeys.all,
     queryFn: userId ? fetchFixedCosts : skipToken,
+  });
+}
+
+export type FixedCostFields = { kind: FixedCostKind; label: string | null; amountRappen: Rappen };
+
+export type FixedCostChange =
+  | { action: 'add'; fields: FixedCostFields }
+  | { action: 'edit'; id: string; fields: FixedCostFields }
+  | { action: 'stop'; id: string };
+
+const toColumns = (fields: FixedCostFields) => ({
+  kind: fields.kind,
+  label: fields.label?.trim() ? fields.label.trim() : null,
+  amount_rappen: fields.amountRappen,
+});
+
+/**
+ * Adds, edits or stops a fixed cost. Fixed costs are never deleted (`active = false`), so past
+ * payments keep their link; changes count from the next month (docs/API.md "Editors").
+ */
+export function useChangeFixedCost() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  return useMutation({
+    mutationFn: async (change: FixedCostChange) => {
+      if (!userId) throw new RequestError('Not signed in', 401, 'not_signed_in');
+      const table = getSupabase().from('fixed_costs');
+      const { error, status } =
+        change.action === 'add'
+          ? await table.insert({ user_id: userId, active: true, ...toColumns(change.fields) })
+          : change.action === 'edit'
+            ? await table.update(toColumns(change.fields)).eq('id', change.id)
+            : await table.update({ active: false }).eq('id', change.id);
+      if (error) throw toRequestError({ error, status });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: fixedCostKeys.all }),
+        queryClient.invalidateQueries({ queryKey: overviewKeys.all }),
+      ]);
+    },
   });
 }

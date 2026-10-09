@@ -16,6 +16,7 @@ import { AuthNoticeProvider } from '@/features/auth/AuthNotice';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { ConfigErrorScreen } from '@/features/config/ConfigErrorScreen';
 import { StartupErrorScreen } from '@/features/config/StartupErrorScreen';
+import { MomentWatcher } from '@/features/moments/MomentWatcher';
 import { useAfterOnboarding } from '@/features/onboarding/afterOnboarding';
 import { useProfile } from '@/data/profile';
 import { LanguageProvider, ProfileLanguageSync, useLanguage } from '@/i18n';
@@ -116,6 +117,7 @@ function AppNavigator() {
     <NavigationThemeProvider value={navigationTheme}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {signedIn ? <ProfileLanguageSync /> : null}
+      {signedIn && !isPasswordRecovery && onboarded ? <MomentWatcher /> : null}
       <Stack
         screenOptions={{
           headerShown: false,
@@ -131,6 +133,16 @@ function AppNavigator() {
           <Stack.Screen name="data-sources" />
           <Stack.Screen name="rules" />
           <Stack.Screen name="export" />
+          <Stack.Screen
+            name="moment"
+            options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
+          />
+          <Stack.Screen name="alerts" />
+          <Stack.Screen name="category/[id]" />
+          <Stack.Screen name="notifications" />
+          <Stack.Screen name="profile" />
+          <Stack.Screen name="fixed-costs" />
+          <Stack.Screen name="categories" />
         </Stack.Protected>
         <Stack.Protected guard={signedIn && !isPasswordRecovery && !onboarded}>
           <Stack.Screen name="onboarding" />

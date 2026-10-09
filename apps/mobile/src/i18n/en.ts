@@ -1,3 +1,4 @@
+import { alertsEn } from './alerts.en';
 import { importsEn } from './imports.en';
 import { transactionsEn } from './transactions.en';
 
@@ -138,6 +139,7 @@ export const en = {
   },
   ...transactionsEn,
   ...importsEn,
+  ...alertsEn,
   assistant: {
     emptyTitle: 'Ask about your money',
     emptyMessage:
@@ -252,7 +254,7 @@ export const en = {
       title: 'How much should it hurt?',
       message: 'Every purchase plays out like handing over cash. Pick how intense that feels.',
       mild: 'Mild',
-      mildHint: 'A gentle count-down, soft sound, light vibration.',
+      mildHint: 'A short, quiet count-down. No sound, no vibration.',
       normal: 'Normal',
       normalHint: 'You see and feel every franc leave.',
       brutal: 'Brutal',

@@ -1,7 +1,8 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { formatChf } from '@budget/core';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import {
   AppText,
@@ -16,8 +17,9 @@ import {
   TransactionRow,
 } from '@/components';
 import { useProfile } from '@/data/profile';
-import { useOverview, type HomeModel, type OverviewCategory } from '@/data/overview';
+import { useOverview, type HomeModel } from '@/data/overview';
 import { NoticeBanner } from '@/features/auth/NoticeBanner';
+import { categoryName } from '@/features/categories/categoryName';
 import { useLanguage } from '@/i18n';
 import { formatDayMonth, formatShortDate } from '@/i18n/format';
 import { makeStyles, useTheme } from '@/theme';
@@ -34,6 +36,28 @@ const useStyles = makeStyles((theme) => ({
     paddingVertical: theme.spacing.xxxl,
   },
   facts: { gap: theme.spacing.xs },
+  bellRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: -theme.spacing.lg },
+  bell: {
+    minWidth: theme.sizes.minTouchTarget,
+    minHeight: theme.sizes.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radii.pill,
+  },
+  bellPressed: { backgroundColor: theme.colors.surfaceMuted },
+  badge: {
+    position: 'absolute',
+    top: theme.spacing.xxs,
+    right: theme.spacing.xxs,
+    minWidth: theme.sizes.badge,
+    height: theme.sizes.badge,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.statusDanger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: theme.colors.textOnAccent },
 }));
 
 /** Spec section 5: balance, daily allowance, days until payday, categories, latest purchases. */
@@ -76,16 +100,10 @@ export default function HomeScreen() {
   );
 }
 
-function categoryName(
-  category: Pick<OverviewCategory, 'defaultKey' | 'name'>,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  return category.defaultKey ? t(`categories.${category.defaultKey}`) : (category.name ?? '');
-}
-
 function Month({ model }: { model: HomeModel }) {
   const { t } = useTranslation();
   const styles = useStyles();
+  const theme = useTheme();
   const { language } = useLanguage();
   const { data: profile } = useProfile();
   const { data, overview } = model;
@@ -102,8 +120,32 @@ function Month({ model }: { model: HomeModel }) {
           ? t('home.pace.exhausted')
           : null;
 
+  const unread = data.unreadAlertCount;
+
   return (
     <>
+      <View style={styles.bellRow}>
+        <Pressable
+          onPress={() => router.push('/alerts')}
+          accessibilityRole="button"
+          accessibilityLabel={unread > 0 ? t('alerts.bellUnread', { count: unread }) : t('alerts.bell')}
+          style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}
+          testID="home-alerts"
+        >
+          <Ionicons
+            name={unread > 0 ? 'notifications' : 'notifications-outline'}
+            size={theme.sizes.fabIcon}
+            color={theme.colors.textPrimary}
+          />
+          {unread > 0 ? (
+            <View style={styles.badge} testID="home-alerts-count">
+              <AppText variant="caption" style={styles.badgeText} numeric>
+                {unread > 99 ? '99+' : String(unread)}
+              </AppText>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
       <BalanceHeader
         remaining={overview.balanceRappen}
         language={language}
@@ -158,6 +200,12 @@ function Month({ model }: { model: HomeModel }) {
               language={language}
               remainingLabel={t('home.left')}
               overLabel={t('home.over')}
+              onPress={() =>
+                router.push({
+                  pathname: '/category/[id]',
+                  params: { id: category.categoryId },
+                })
+              }
               testID={`home-category-${info?.defaultKey ?? info?.name ?? category.categoryId}`}
             />
           );
