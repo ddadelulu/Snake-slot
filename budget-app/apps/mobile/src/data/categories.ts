@@ -27,7 +27,7 @@ export function toCategory(json: unknown, index: number): Category {
   return {
     id: read.text(row.id, at('id')),
     defaultKey:
-      row.default_key === null
+      row.default_key === null || row.default_key === undefined
         ? null
         : read.oneOf(DEFAULT_CATEGORY_KEYS, row.default_key, at('default_key')),
     name: read.optionalText(row.name, at('name')),

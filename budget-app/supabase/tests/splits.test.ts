@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Db,
   SQLSTATE,
-  asUser,
+  asUserWritingDirectly,
   countRows,
   createUser,
   expectDeferredError,
@@ -23,7 +23,7 @@ async function signedInUser(db: Db) {
   const user = await createUser(db);
   const groceries = await make.category(db, user, { name: null, default_key: 'groceries' });
   const household = await make.category(db, user, { name: 'Haushalt' });
-  await asUser(db, user);
+  await asUserWritingDirectly(db, user);
   return { user, groceries, household };
 }
 

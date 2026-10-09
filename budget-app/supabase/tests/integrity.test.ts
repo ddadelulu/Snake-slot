@@ -9,7 +9,7 @@ import {
   type Row,
   SQLSTATE,
   asPostgres,
-  asUser,
+  asUserWritingDirectly,
   countRows,
   createUser,
   expectSqlError,
@@ -175,7 +175,7 @@ describe('cross-tenant references are impossible', () => {
     async (kind, _target, values) => {
       await withRollback(async (db) => {
         const tenants = await twoTenants(db);
-        await asUser(db, tenants.b);
+        await asUserWritingDirectly(db, tenants.b);
         const [sql, params] = insertSql(tableOf(kind), values(tenants));
         await expectSqlError(db, SQLSTATE.foreignKeyViolation, sql, params);
       });
@@ -197,7 +197,7 @@ describe('cross-tenant references are impossible', () => {
   it('B cannot re-point its own transaction at A’s category (23503)', async () => {
     await withRollback(async (db) => {
       const { b, ofA, ofB } = await twoTenants(db);
-      await asUser(db, b);
+      await asUserWritingDirectly(db, b);
       await expectSqlError(
         db,
         SQLSTATE.foreignKeyViolation,
@@ -259,7 +259,7 @@ describe('deduplication', () => {
   it('the same (source, external_id) twice for one user is rejected (23505)', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       await make.transaction(db, a, imported(a, 'bank', 'ubs-2026-10-01-001'));
       const [sql, params] = insertSql(
         'public.transactions',
@@ -274,7 +274,7 @@ describe('deduplication', () => {
       const a = await createUser(db);
       const b = await createUser(db);
       await make.transaction(db, a, imported(a, 'bank', 'ubs-2026-10-01-001'));
-      await asUser(db, b);
+      await asUserWritingDirectly(db, b);
       await make.transaction(db, b, imported(b, 'bank', 'ubs-2026-10-01-001'));
     });
   });
@@ -282,7 +282,7 @@ describe('deduplication', () => {
   it('the same external_id is allowed from two sources', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       await make.transaction(db, a, imported(a, 'bank', '4711'));
       await make.transaction(db, a, imported(a, 'email', '4711'));
     });
@@ -291,7 +291,7 @@ describe('deduplication', () => {
   it('transactions without external_id are never deduplicated', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       await make.transaction(db, a, imported(a, 'manual', null));
       await make.transaction(db, a, imported(a, 'manual', null));
       expect(await countRows(db, 'select 1 from public.transactions where user_id = $1', [a])).toBe(
@@ -329,7 +329,7 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a category sets transactions.category_id to NULL and keeps user_id', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const category = await make.category(db, a);
       const tx = await make.transaction(db, a, { category_id: category });
       await db.query('delete from public.categories where id = $1', [category]);
@@ -348,7 +348,7 @@ describe('deleting a referenced row clears only the reference', () => {
       const a = await createUser(db);
       const category = await make.category(db, a);
       const alert = await make.alert(db, a, { category_id: category });
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       await db.query('delete from public.categories where id = $1', [category]);
       const row = await queryOne<{ category_id: string | null; user_id: string }>(
         db,
@@ -363,7 +363,7 @@ describe('deleting a referenced row clears only the reference', () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
       const period = await make.period(db, a); // periods are written with owner rights (D-036)
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const category = await make.category(db, a);
       await make.budget(db, a, period, category);
       await make.rule(db, a, category);
@@ -382,7 +382,7 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a data source sets transactions.data_source_id to NULL and keeps user_id', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const source = await make.dataSource(db, a);
       const tx = await make.transaction(db, a, { data_source_id: source, source: 'bank' });
       await db.query('delete from public.data_sources where id = $1', [source]);
@@ -400,7 +400,7 @@ describe('deleting a referenced row clears only the reference', () => {
       const a = await createUser(db);
       const source = await make.dataSource(db, a);
       await make.credential(db, a, source);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       await db.query('delete from public.data_sources where id = $1', [source]);
       await asPostgres(db);
       expect(
@@ -417,7 +417,7 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a fixed cost (backend) sets transactions.fixed_cost_id to NULL and keeps user_id', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const fixedCost = await make.fixedCost(db, a);
       const tx = await make.transaction(db, a, { fixed_cost_id: fixedCost });
       await asPostgres(db);
@@ -434,7 +434,7 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a transaction clears merged_into_id on the rows merged into it', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const kept = await make.transaction(db, a);
       const duplicate = await make.transaction(db, a, { merged_into_id: kept });
       await db.query('delete from public.transactions where id = $1', [kept]);
@@ -471,7 +471,7 @@ describe('deleting a referenced row clears only the reference', () => {
   it('deleting a conversation deletes its messages', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const conversation = await make.conversation(db, a);
       await make.message(db, a, conversation);
       await db.query('delete from public.ai_conversations where id = $1', [conversation]);

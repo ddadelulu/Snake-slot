@@ -128,7 +128,9 @@ function Month({ model }: { model: HomeModel }) {
         <Pressable
           onPress={() => router.push('/alerts')}
           accessibilityRole="button"
-          accessibilityLabel={unread > 0 ? t('alerts.bellUnread', { count: unread }) : t('alerts.bell')}
+          accessibilityLabel={
+            unread > 0 ? t('alerts.bellUnread', { count: unread }) : t('alerts.bell')
+          }
           style={({ pressed }) => [styles.bell, pressed && styles.bellPressed]}
           testID="home-alerts"
         >

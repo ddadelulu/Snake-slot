@@ -95,6 +95,7 @@ async function seedEverything(db: Db, userId: string): Promise<void> {
     content: 'Dir bleiben CHF 412.',
   });
   await make.consentEvent(db, userId);
+  await make.pushToken(db, userId);
 }
 
 describe('delete_my_account()', () => {

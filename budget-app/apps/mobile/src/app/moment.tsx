@@ -1,5 +1,6 @@
 import { formatChf, minutesOfWork, type PainLevel } from '@budget/core';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Animated, StyleSheet, View } from 'react-native';
@@ -36,7 +37,7 @@ const useStyles = makeStyles((theme) => ({
   center: { alignItems: 'center', gap: theme.spacing.xs },
   section: { gap: theme.spacing.sm },
   loading: { paddingVertical: theme.spacing.xxxl, alignItems: 'center' },
-  flash: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.statusDanger },
+  flash: { ...StyleSheet.absoluteFill, backgroundColor: theme.colors.statusDanger },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 }));
 
@@ -44,7 +45,7 @@ const useStyles = makeStyles((theme) => ({
 function workText(
   moment: Moment,
   income: { netIncomeRappen: number | null; weeklyWorkMinutes: number | null },
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction,
 ): string | null {
   const minutes = minutesOfWork(moment.amountRappen, income);
   if (minutes === null) return null;
@@ -65,26 +66,33 @@ export default function MomentScreen() {
   const { transaction } = useLocalSearchParams<{ transaction?: string }>();
   const pending = usePendingMoments();
   const acknowledge = useAcknowledgeTransactions();
-  const [queue, setQueue] = useState<Moment[] | null>(null);
-  const [total, setTotal] = useState(0);
+  const [snapshot, setSnapshot] = useState<{ moments: Moment[]; total: number } | null>(null);
+  const [confirmed, setConfirmed] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // Only a fresh answer counts: a cached one may predate the purchase this moment is for.
+  const fresh = pending.isFetchedAfterMount && !pending.isFetching ? pending.data : undefined;
+  const wanted = transaction ? fresh?.find((moment) => moment.id === transaction) : undefined;
+  // Already confirmed (or not a purchase): the push still leads to the transaction.
+  const missing = Boolean(transaction && fresh && !wanted);
+
   // The queue is taken once: confirming one must not reshuffle what is on screen.
+  if (snapshot === null && fresh && !missing) {
+    const ordered = wanted ? [wanted, ...fresh.filter((moment) => moment.id !== wanted.id)] : fresh;
+    setSnapshot({ moments: ordered, total: ordered.length });
+  }
+
   useEffect(() => {
-    if (queue !== null || !pending.data) return;
-    const wanted = pending.data.find((moment) => moment.id === transaction);
-    if (transaction && !wanted) {
-      // Already confirmed (or not a purchase): the push still leads to the transaction.
+    if (missing && transaction && snapshot === null) {
       router.replace({ pathname: '/transaction/[id]', params: { id: transaction } });
-      return;
     }
-    const ordered = wanted
-      ? [wanted, ...pending.data.filter((moment) => moment.id !== wanted.id)]
-      : pending.data;
-    setQueue(ordered);
-    setTotal(ordered.length);
-  }, [pending.data, queue, transaction]);
+  }, [missing, snapshot, transaction]);
+
+  const queue = snapshot
+    ? snapshot.moments.filter((moment) => !confirmed.includes(moment.id))
+    : null;
+  const total = snapshot?.total ?? 0;
 
   const close = () => goBackOr('/');
 
@@ -97,7 +105,7 @@ export default function MomentScreen() {
       return;
     }
     const rest = (queue ?? []).filter((moment) => !ids.includes(moment.id));
-    setQueue(rest);
+    setConfirmed((done) => [...done, ...ids]);
     setShowAll(false);
     if (rest.length === 0) close();
   };
@@ -188,11 +196,7 @@ function usePain(): { intensity: MomentIntensity; level: PainLevel } {
   };
 }
 
-function nameOf(
-  moment: Moment,
-  categories: Category[] | undefined,
-  t: ReturnType<typeof useTranslation>['t'],
-) {
+function nameOf(moment: Moment, categories: Category[] | undefined, t: TFunction) {
   const category = categories?.find((entry) => entry.id === moment.categoryId);
   return category ? categoryName(category, t) : null;
 }
@@ -331,7 +335,12 @@ function MomentView({
 
         <View style={styles.center}>
           <AppText tone="secondary">{t('moment.title')}</AppText>
-          <AppText variant="heading" align="center" accessibilityRole="header" testID="moment-merchant">
+          <AppText
+            variant="heading"
+            align="center"
+            accessibilityRole="header"
+            testID="moment-merchant"
+          >
             {merchant}
           </AppText>
           <AppText variant="title" numeric testID="moment-amount">
@@ -429,7 +438,9 @@ function Summary({
             holdMs={intensity.holdMs}
             onConfirm={onConfirm}
             loading={loading}
-            accessibilityHint={intensity.holdMs > 0 ? t('moment.holdHint') : t('moment.confirmHint')}
+            accessibilityHint={
+              intensity.holdMs > 0 ? t('moment.holdHint') : t('moment.confirmHint')
+            }
             testID="moment-confirm-all"
           />
         </>

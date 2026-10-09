@@ -53,8 +53,7 @@ export const alertsDe: Widen<typeof alertsEn> = {
     emptyMessage: 'Warnungen zu deinen Budgets und deine Erinnerungen erscheinen hier.',
     loadError: 'Deine Hinweise konnten nicht geladen werden.',
     loadMore: 'Ältere Hinweise anzeigen',
-    actionError:
-      'Das hat nicht geklappt. Prüfe deine Internetverbindung und versuche es nochmals.',
+    actionError: 'Das hat nicht geklappt. Prüfe deine Internetverbindung und versuche es nochmals.',
     settings: 'Mitteilungen einstellen',
   },
   notificationSettings: {

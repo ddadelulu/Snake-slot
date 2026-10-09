@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Row,
   asPostgres,
-  asUser,
+  asUserWritingDirectly,
   createUser,
   make,
   queryOne,
@@ -155,7 +155,7 @@ describe('updated_at (set_updated_at)', () => {
       const keyColumn = KEY_COLUMN[table] ?? 'id';
       const qualified = quoteTable(`public.${table}`);
       await db.query(`update ${qualified} set updated_at = $1 where ${keyColumn} = $2`, [OLD, key]);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const row = await queryOne<{ bumped: boolean }>(
         db,
         `update ${qualified} set ${setClause} where ${keyColumn} = $1
@@ -170,7 +170,7 @@ describe('updated_at (set_updated_at)', () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
       const category = await make.category(db, a);
-      await asUser(db, a);
+      await asUserWritingDirectly(db, a);
       const row = await queryOne<{ bumped: boolean }>(
         db,
         `update public.categories set updated_at = $1 where id = $2

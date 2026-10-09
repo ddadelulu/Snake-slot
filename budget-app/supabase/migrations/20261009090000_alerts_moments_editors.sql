@@ -1760,7 +1760,15 @@ revoke all on function public.get_category_detail(uuid) from public, anon, authe
 revoke all on function public.get_overview() from public, anon, authenticated;
 revoke all on function public.export_my_data() from public, anon, authenticated;
 
--- Helpers the client RPCs call with the caller's rights (the *_impl functions kept their grant).
+-- The *_impl functions kept their grants from schema public: authenticated keeps EXECUTE (the
+-- public wrappers call them with the caller's rights); the default grant to service_role there
+-- does not belong in schema internal.
+revoke all on function internal.add_transactions_impl(jsonb) from service_role;
+revoke all on function internal.update_transaction_impl(uuid, jsonb) from service_role;
+revoke all on function internal.set_transaction_splits_impl(uuid, jsonb) from service_role;
+revoke all on function internal.remove_import_impl(uuid) from service_role;
+
+-- Helpers the client RPCs call with the caller's rights.
 grant execute on function internal.counted_allocations(uuid, date, date, text) to authenticated;
 grant execute on function internal.period_spending(uuid, date, date, text) to authenticated;
 grant execute on function internal.pace_runs_out(bigint, bigint, date, date) to authenticated;

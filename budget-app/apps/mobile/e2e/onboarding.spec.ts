@@ -86,23 +86,33 @@ test.describe('onboarding to a correct month', () => {
       (budget) => budget.category_id === groceries!.id,
     )!.amount_rappen;
     const now = new Date().toISOString();
-    const user = (await api.get<{ id: string }[]>('profiles?select=id'))[0]!.id;
-    const base = { user_id: user, booked_at: now, source: 'manual' };
-    const chosen = { categorized_by: 'user', category_confidence: 100 };
-    await api.insert('transactions', [
-      { ...base, ...chosen, amount_rappen: -8400, merchant: 'Migros', category_id: groceries!.id },
+    // Booked through the same pipeline every source uses (direct table writes are refused).
+    const base = { booked_at: now, source: 'manual', raw_text: null, mcc: null, external_id: null };
+    const { results } = await api.rpc<{ results: { transaction_id: string }[] }>(
+      'add_transactions',
       {
-        ...base,
-        ...chosen,
-        amount_rappen: 2000,
-        merchant: 'Migros',
-        category_id: groceries!.id,
-        note: 'Refund',
+        p: {
+          rows: [
+            { ...base, amount_rappen: -8400, merchant: 'Migros', category_id: groceries!.id },
+            {
+              ...base,
+              amount_rappen: 2000,
+              merchant: 'Migros',
+              category_id: groceries!.id,
+              note: 'Refund',
+            },
+            { ...base, amount_rappen: -1500, merchant: 'Kiosk' },
+            { ...base, amount_rappen: -185000, merchant: 'Verwaltung AG' },
+            { ...base, amount_rappen: 620000, merchant: 'Employer' },
+          ],
+        },
       },
-      { ...base, amount_rappen: -1500, merchant: 'Kiosk' },
-      { ...base, amount_rappen: -185000, merchant: 'Verwaltung AG', fixed_cost_id: rent!.id },
-      { ...base, amount_rappen: 620000, merchant: 'Employer' },
-    ]);
+    );
+    // The rent payment is marked as the rent's payment (already in the plan).
+    await api.rpc('update_transaction', {
+      p_id: results[3]!.transaction_id,
+      p: { fixed_cost_id: rent!.id },
+    });
 
     // 3'429.50 − (84.00 − 20.00) − 15.00 = 3'350.50; groceries lose 64.00; rent and salary change nothing.
     await page.reload();

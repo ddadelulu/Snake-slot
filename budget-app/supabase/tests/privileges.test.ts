@@ -74,6 +74,8 @@ const AUTHENTICATED: Readonly<
   transaction_splits: { table: CRUD },
   categorization_rules: { table: CRUD },
   alerts: { table: ['SELECT'], updateColumns: ['read_at', 'dismissed_at'] },
+  // Written only by register_push_token / unregister_push_token (owner rights).
+  push_tokens: { table: ['SELECT'] },
   notification_settings: { table: ['SELECT', 'UPDATE'] },
   ai_conversations: { table: CRUD },
   ai_messages: { table: ['SELECT', 'INSERT'] },
@@ -83,24 +85,42 @@ const AUTHENTICATED: Readonly<
 
 /** The RPCs the app calls: the only functions in schema public role "authenticated" may execute. */
 const CLIENT_FUNCTIONS = [
+  'acknowledge_transactions(uuid[])',
   'add_transactions(jsonb)',
   'complete_onboarding(jsonb)',
   'delete_my_account()',
+  'dismiss_alert(uuid)',
   'ensure_current_period()',
   'export_my_data()',
+  'get_category_detail(uuid)',
   'get_overview()',
   'get_transaction(uuid)',
+  'list_alerts(jsonb)',
   'list_transactions(jsonb)',
+  'mark_alerts_read(uuid[])',
   'move_budget(uuid,uuid,bigint)',
+  'pending_moments()',
   'period_containing(date,integer)',
+  'register_push_token(text,text)',
   'remove_import(uuid)',
+  'set_budget(uuid,bigint)',
   'set_transaction_splits(uuid,jsonb)',
+  'unregister_push_token(text)',
   'update_transaction(uuid,jsonb)',
+];
+
+/** Only for the push sender (Edge Function send-pushes), never for clients. */
+const SERVICE_ROLE_ONLY_FUNCTIONS = [
+  'claim_pushes(integer,timestamp with time zone)',
+  'forget_push_tokens(text[])',
 ];
 
 /** Helpers in schema internal that the RPCs call with the caller's rights (D-038). */
 const INTERNAL_FUNCTIONS = [
+  'internal.add_transactions_impl(jsonb)',
   'internal.categorize(text,text,integer,bigint,timestamp with time zone)',
+  'internal.counted_allocations(uuid,date,date,text)',
+  'internal.evaluate_alerts(uuid,uuid[])',
   'internal.fixed_cost_hint(text,text)',
   'internal.generic_words()',
   'internal.hint_words(text,text)',
@@ -113,11 +133,16 @@ const INTERNAL_FUNCTIONS = [
   'internal.merchant_key(text)',
   'internal.month_words()',
   'internal.needs_review(bigint,uuid,text,integer,uuid,boolean,boolean,boolean)',
+  'internal.pace_runs_out(bigint,bigint,date,date)',
   'internal.payment_words()',
+  'internal.period_spending(uuid,date,date,text)',
+  'internal.remove_import_impl(uuid)',
   'internal.same_merchant(text,text)',
+  'internal.set_transaction_splits_impl(uuid,jsonb)',
   'internal.suggest_rule(text)',
   'internal.transaction_item(uuid)',
   'internal.transaction_key(text,text)',
+  'internal.update_transaction_impl(uuid,jsonb)',
 ];
 
 /**
@@ -241,6 +266,11 @@ describe('role anon', () => {
     `select public.set_transaction_splits(gen_random_uuid(), '[]')`,
     'select public.remove_import(gen_random_uuid())',
     'select public.export_my_data()',
+    'select public.pending_moments()',
+    `select public.list_alerts('{}')`,
+    `select public.register_push_token('ExponentPushToken[x]', 'ios')`,
+    `select * from public.claim_pushes(10)`,
+    'select public.run_scheduled_alerts()',
     `select internal.merchant_key('Coop')`,
     'select count(*) from internal.known_merchants',
   ])('cannot run %s (42501)', async (sql) => {
@@ -293,6 +323,38 @@ describe('role authenticated', () => {
     expect(executable.map((row) => row.fn).sort()).toEqual([...CLIENT_FUNCTIONS].sort());
   });
 
+  it.each([
+    `select * from public.claim_pushes(10)`,
+    `select public.forget_push_tokens(array['ExponentPushToken[x]'])`,
+    'select public.run_scheduled_alerts()',
+    `select internal.evaluate_alerts(gen_random_uuid())`,
+  ])('cannot run the backend function %s (42501)', async (sql) => {
+    await withRollback(async (db) => {
+      const a = await createUser(db);
+      await asUser(db, a);
+      await expectSqlError(db, SQLSTATE.insufficientPrivilege, sql);
+    });
+  });
+
+  it('the push sender functions are executable by service_role and no client role', async () => {
+    const rows = await withRollback((db) =>
+      queryRows<{ fn: string; service: boolean; client: boolean }>(
+        db,
+        `select oid::regprocedure::text as fn,
+                has_function_privilege('service_role', oid, 'EXECUTE') as service,
+                has_function_privilege('authenticated', oid, 'EXECUTE')
+                  or has_function_privilege('anon', oid, 'EXECUTE') as client
+           from pg_proc
+          where pronamespace = 'public'::regnamespace
+            and proname in ('claim_pushes', 'forget_push_tokens')
+          order by 1`,
+      ),
+    );
+    expect(rows).toEqual(
+      SERVICE_ROLE_ONLY_FUNCTIONS.map((fn) => ({ fn, service: true, client: false })),
+    );
+  });
+
   it('cannot run the scheduled reset for everyone (roll_due_periods, 42501)', async () => {
     await withRollback(async (db) => {
       const a = await createUser(db);
@@ -326,12 +388,17 @@ describe('functions', () => {
             and prosecdef`,
       ),
     );
+    // M4: evaluate_alerts writes alerts (clients may not), only for auth.uid(); the push token
+    // RPCs move a device's token between accounts (DATA_MODEL.md, "Access rules").
     expect(definers.map((row) => row.fn).sort()).toEqual([
       'complete_onboarding(jsonb)',
       'delete_my_account()',
       'ensure_current_period()',
       'handle_new_user()',
+      'internal.evaluate_alerts(uuid,uuid[])',
+      'register_push_token(text,text)',
       'roll_due_periods()',
+      'unregister_push_token(text)',
     ]);
   });
 });

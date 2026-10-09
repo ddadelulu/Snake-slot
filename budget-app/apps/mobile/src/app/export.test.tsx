@@ -148,11 +148,14 @@ describe('export my data', () => {
   it('shows the progress while the data loads', async () => {
     let answer: (value: ReturnType<RpcHandler>) => void = () => undefined;
     const fake = start(() => ({ data: null, error: null }));
-    fake.client.rpc.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          answer = (value) => resolve({ ...value, status: 200 });
-        }) as never,
+    // Only the export waits; other calls (the payment-moment check on start) answer at once.
+    const answerNow = fake.client.rpc.getMockImplementation();
+    fake.client.rpc.mockImplementation((name: string, args?: unknown) =>
+      name === 'export_my_data'
+        ? (new Promise((resolve) => {
+            answer = (value) => resolve({ ...value, status: 200 });
+          }) as never)
+        : answerNow!(name, args),
     );
     fireEvent.press(await screen.findByTestId('export-csv'));
     expect(await screen.findByTestId('export-working')).toHaveTextContent('Preparing your file…');

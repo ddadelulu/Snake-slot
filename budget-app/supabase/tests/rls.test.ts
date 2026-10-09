@@ -7,6 +7,7 @@ import {
   type Db,
   SQLSTATE,
   affectedRows,
+  allowDirectWrites,
   asAnon,
   asPostgres,
   asUser,
@@ -151,6 +152,18 @@ describe('RLS applies inside the client RPCs', () => {
   });
 });
 
+/**
+ * Tables clients write only through the RPCs (guard M4-06, guard.test.ts). The matrix tests RLS,
+ * so it writes them with the RPCs' flag set.
+ */
+const GUARDED = new Set(['transactions', 'transaction_splits', 'data_sources']);
+
+/** Acts as `userId`, with the RPCs' flag for the guarded tables. */
+async function asWriter(db: Db, table: string, userId: string): Promise<void> {
+  await asUser(db, userId);
+  if (GUARDED.has(table)) await allowDirectWrites(db);
+}
+
 /** How the RLS matrix exercises one table. */
 interface TableCase {
   table: string;
@@ -264,6 +277,15 @@ const CASES: readonly TableCase[] = [
     update: 'read_at = now()',
     delete: false,
   },
+  // Devices are registered through register_push_token / unregister_push_token only.
+  {
+    table: 'push_tokens',
+    owner: 'user_id',
+    key: 'id',
+    insert: false,
+    update: null,
+    delete: false,
+  },
   {
     table: 'ai_conversations',
     owner: 'user_id',
@@ -332,7 +354,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
       await withRollback(async (db) => {
         const a = await createUser(db);
         const values = await newRowValues(db, spec.table, a);
-        await asUser(db, a);
+        await asWriter(db, spec.table, a);
         await insertRow(db, table, values);
         expect(await countRows(db, `select 1 from ${table} where user_id = $1`, [a])).toBe(1);
       });
@@ -343,7 +365,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
         const a = await createUser(db);
         const b = await createUser(db);
         const values = await newRowValues(db, spec.table, a);
-        await asUser(db, b);
+        await asWriter(db, spec.table, b);
         const columns = Object.keys(values);
         await expectSqlError(
           db,
@@ -362,7 +384,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
     it('the owner updates their own row', async () => {
       await withRollback(async (db) => {
         const { a, keyOfA } = await setup(db, spec.table);
-        await asUser(db, a);
+        await asWriter(db, spec.table, a);
         expect(
           await affectedRows(db, `update ${table} set ${setClause} where ${spec.key} = $1`, [
             keyOfA,
@@ -380,7 +402,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
           `select to_jsonb(t)::text as row from ${table} t where ${spec.key} = $1`,
           [keyOfA],
         );
-        await asUser(db, b);
+        await asWriter(db, spec.table, b);
         expect(
           await affectedRows(db, `update ${table} set ${setClause} where ${spec.owner} = $1`, [a]),
         ).toBe(0);
@@ -399,7 +421,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
     it('the owner deletes their own row', async () => {
       await withRollback(async (db) => {
         const { a, keyOfA } = await setup(db, spec.table);
-        await asUser(db, a);
+        await asWriter(db, spec.table, a);
         expect(
           await affectedRows(db, `delete from ${table} where ${spec.key} = $1`, [keyOfA]),
         ).toBe(1);
@@ -409,7 +431,7 @@ describe.each(CASES)('RLS on public.$table', (spec) => {
     it('another user’s delete affects none of the owner’s rows', async () => {
       await withRollback(async (db) => {
         const { a, b, keyOfA } = await setup(db, spec.table);
-        await asUser(db, b);
+        await asWriter(db, spec.table, b);
         expect(await affectedRows(db, `delete from ${table} where ${spec.owner} = $1`, [a])).toBe(
           0,
         );
