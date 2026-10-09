@@ -208,3 +208,48 @@ put back. Error: `import_not_found`. Imports are listed from
 `transactions` (all, including deleted and merged rows), `transaction_splits`,
 `categorization_rules`, `data_sources` (never tokens), `alerts`, `ai_conversations`,
 `ai_messages`, `consent_events`. The app turns it into `transactions.csv` or saves it as JSON.
+
+## Alerts, moments, reminders, editors (Milestone 4)
+
+Contract for M4 (Keanu Reeves). All RPCs `security invoker` unless noted, signed-in only.
+
+**Alert engine (database).** `internal.evaluate_alerts(user, transaction_id null)` runs at the end
+of `add_transactions`, `update_transaction` and `set_transaction_splits` (same transaction), and
+the hourly job `run_scheduled_alerts()` (pg_cron) handles time-based ones. Each alert is one
+`alerts` row with a `dedupe_key` (never twice), `title`/`body` in the profile language (de/en),
+`params` (amounts in Rappen, dates). Only enabled types (`notification_settings`) are created.
+
+| Type                                                          | When (once per …)                                                                                                             |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `category_50`, `category_80`, `category_100`, `category_over` | spent crosses 50 / 80 / 100 % / goes over a category's budget (category and period)                                           |
+| `total_low`                                                   | balance below 20 % of spendable (period)                                                                                      |
+| `pace`                                                        | at the current rate a category or the total runs out before payday ("Eating out runs out on the 18th"); daily                 |
+| `unusual_purchase`                                            | a purchase over 3 × the category's median of the last 90 days and over CHF 50 (transaction)                                   |
+| `daily_allowance`                                             | today's spending exceeds the day's allowance (day)                                                                            |
+| `payday`                                                      | a new period opened, with last period's summary (period)                                                                      |
+| `categorize`                                                  | a transaction needs review ("CHF 84 at Manor: what was it?") (transaction)                                                    |
+| `reminder_payday`, `reminder_weekly`, `reminder_stale`        | "plan your new month" on payday; weekly "log cash, import your statement" (day/time set); no budget change in 30 days (D-044) |
+
+**Push.** `register_push_token(p_token, p_platform)` / `unregister_push_token(p_token)` (table
+`push_tokens`). `claim_pushes(p_limit)` (service role only) returns alerts not yet pushed whose
+user is outside quiet hours (in the profile time zone) and under `max_per_day`, and marks them
+`pushed_at`; the Edge Function `send-pushes` (scheduled every 5 minutes) sends them to the Expo
+push API. Transaction alerts carry `transaction_id`, so tapping opens the cash-feel moment.
+
+**Moments.** `pending_moments()` → recent (7 days) unacknowledged money-out transactions, oldest
+first, each with `balance_before/after_rappen`, the category's `remaining_before/after_rappen` and
+budget, and `over_budget`. `acknowledge_transactions(p_ids uuid[])` ("I paid this").
+
+**Inbox.** `list_alerts(p jsonb)` (newest first, cursor), `mark_alerts_read(p_ids uuid[])`,
+`dismiss_alert(p_id)`; `unread_alert_count` in `get_overview`.
+
+**Editors.** Profile income/payday/hours/savings/leftover/pain/sound via the profile (column
+grants); changes to income, fixed costs and saving apply from the next period. Fixed costs:
+insert/update, `active = false` instead of delete. Categories: insert, rename, archive
+(`archived_at`). `set_budget(p_category_id, p_amount_rappen)` for the open period (creates the
+budget row if missing). `get_category_detail(p_category_id)` → budget, rollover, spent, the last 6
+periods' budget and spent, and the pace forecast inputs.
+
+**Guard (M4-06).** Clients can no longer insert/update/delete `transactions`,
+`transaction_splits` or `data_sources` directly; only the RPCs (which set a transaction-local
+flag checked by triggers) can.
