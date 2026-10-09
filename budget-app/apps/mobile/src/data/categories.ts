@@ -1,11 +1,13 @@
 import { DEFAULT_CATEGORY_KEYS, type DefaultCategoryKey } from '@budget/core';
-import { skipToken, useQuery } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { toRequestError } from '@/lib/requestError';
+import { RequestError, toRequestError } from '@/lib/requestError';
 import { getSupabase } from '@/lib/supabase';
 
+import { categoryDetailKeys } from './categoryDetail';
 import { jsonReader } from './json';
+import { overviewKeys } from './overview';
 
 /** The person's categories, active and archived (archived ones still name old transactions). */
 export type Category = {
@@ -57,5 +59,45 @@ export function useCategories() {
   return useQuery({
     queryKey: userId ? categoryKeys.list(userId) : categoryKeys.all,
     queryFn: userId ? fetchCategories : skipToken,
+  });
+}
+
+export type CategoryChange =
+  | { kind: 'add'; name: string; sortOrder: number }
+  | { kind: 'rename'; id: string; name: string }
+  | { kind: 'archive'; id: string };
+
+/**
+ * Adds, renames or archives a category (direct table writes under row-level security, docs/API.md
+ * "Editors"). Archived categories stay, so old transactions keep their name. A rename stores the
+ * person's own name, which then wins over the translated default name.
+ */
+export function useChangeCategory() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  return useMutation({
+    mutationFn: async (change: CategoryChange) => {
+      if (!userId) throw new RequestError('Not signed in', 401, 'not_signed_in');
+      const table = getSupabase().from('categories');
+      const { error, status } =
+        change.kind === 'add'
+          ? await table.insert({
+              user_id: userId,
+              name: change.name.trim(),
+              sort_order: change.sortOrder,
+            })
+          : change.kind === 'rename'
+            ? await table.update({ name: change.name.trim() }).eq('id', change.id)
+            : await table.update({ archived_at: new Date().toISOString() }).eq('id', change.id);
+      if (error) throw toRequestError({ error, status });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: overviewKeys.all }),
+        queryClient.invalidateQueries({ queryKey: categoryDetailKeys.all }),
+      ]);
+    },
   });
 }

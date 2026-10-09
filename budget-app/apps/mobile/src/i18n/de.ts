@@ -1,4 +1,5 @@
 import type { Translations } from './en';
+import { alertsDe } from './alerts.de';
 import { importsDe } from './imports.de';
 import { transactionsDe } from './transactions.de';
 
@@ -136,6 +137,7 @@ export const de: Translations = {
   },
   ...transactionsDe,
   ...importsDe,
+  ...alertsDe,
   assistant: {
     emptyTitle: 'Frag nach deinem Geld',
     emptyMessage:
@@ -253,7 +255,7 @@ export const de: Translations = {
       title: 'Wie fest soll es wehtun?',
       message: 'Jeder Einkauf fühlt sich an wie Bargeld hergeben. Wähle, wie stark.',
       mild: 'Mild',
-      mildHint: 'Sanftes Herunterzählen, leiser Ton, leichte Vibration.',
+      mildHint: 'Kurzes, stilles Herunterzählen. Kein Ton, keine Vibration.',
       normal: 'Normal',
       normalHint: 'Du siehst und spürst jeden Franken gehen.',
       brutal: 'Brutal',

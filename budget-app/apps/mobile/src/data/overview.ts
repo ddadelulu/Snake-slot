@@ -66,6 +66,8 @@ export type OverviewData = {
   uncategorizedSpentRappen: Rappen;
   /** Transactions of this month that need a category from the person. */
   needsReviewCount: number;
+  /** Alerts in the inbox not opened yet (the bell on Home); 0 from servers before M4. */
+  unreadAlertCount: number;
   recentTransactions: RecentTransaction[];
 };
 
@@ -160,6 +162,10 @@ export function parseOverview(json: unknown): OverviewData | null {
     }),
     uncategorizedSpentRappen: rappen(root.uncategorized_spent_rappen, 'uncategorized_spent_rappen'),
     needsReviewCount: count(root.needs_review_count, 'needs_review_count'),
+    unreadAlertCount:
+      root.unread_alert_count === undefined
+        ? 0
+        : count(root.unread_alert_count, 'unread_alert_count'),
     recentTransactions: array(root.recent_transactions, 'recent_transactions').map(
       (entry, index) => {
         const row = object(entry, `recent_transactions[${index}]`);

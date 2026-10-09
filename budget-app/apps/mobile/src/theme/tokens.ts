@@ -224,6 +224,21 @@ const sizes = {
   fabIcon: 28,
   /** Icons inside fields and chips, e.g. the magnifier of the search field. */
   inlineIcon: 20,
+  /** The unread-count badge on the bell (Home). */
+  badge: 20,
+  /** Bar of the category on the payment moment (drains to its new level). */
+  momentBarHeight: 16,
+  /** Tallest bar of a category's six-month history. */
+  historyBarMaxHeight: 120,
+  /** Width of one bar of the history. */
+  historyBarWidth: 28,
+  /** The plain wallet drawn on the payment moment (no branding). */
+  wallet: { width: 168, height: 104, flapHeight: 30 },
+  /** A bill and a coin sliding out of the wallet. */
+  bill: { width: 76, height: 38 },
+  coin: 26,
+  /** How far bills and coins travel out of the wallet. */
+  walletTravel: 96,
 };
 
 const opacity = {
@@ -256,6 +271,21 @@ const motion = {
   },
   sheetEnter: 280,
   sheetExit: 220,
+  /**
+   * The payment moment (spec section 8). The pain level picks the spin length; Brutal also needs
+   * the button held for `holdToConfirm`. Reduce Motion skips every movement.
+   */
+  moment: {
+    spin: { mild: 900, normal: 1600, brutal: 2000 },
+    /** Bills and coins leaving the wallet, staggered by `walletStagger` each. */
+    walletOut: 700,
+    walletStagger: 120,
+    /** The red flash when the purchase goes over budget. */
+    flash: 450,
+    holdToConfirm: 2000,
+    /** Shortest gap between two haptic ticks during the spin. */
+    tickInterval: 70,
+  },
 };
 
 export type Typography = typeof typography;

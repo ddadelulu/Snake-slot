@@ -52,12 +52,13 @@ export type FakeSupabaseState = {
 };
 
 /**
- * A chainable stand-in for postgrest-js queries on a table: `select`, `delete`, the filters
- * `eq`, `neq`, `is`, `in`, then `order` and `limit`. Awaiting it runs the query against
- * `state.tables`.
+ * A chainable stand-in for postgrest-js queries on a table: `select`, `insert`, `update`,
+ * `delete`, the filters `eq`, `neq`, `is`, `in`, then `order` and `limit`. Awaiting it runs the
+ * query against `state.tables`. Inserted rows get an `id` and `created_at` when they have none.
  */
 class FakeQuery implements PromiseLike<{ data: unknown; error: unknown; status: number }> {
-  private operation: 'select' | 'delete' = 'select';
+  private operation: 'select' | 'delete' | 'insert' | 'update' = 'select';
+  private payload: FakeRow[] = [];
   private readonly filters: ((row: FakeRow) => boolean)[] = [];
   private sort: { column: string; ascending: boolean }[] = [];
   private max: number | null = null;
@@ -72,6 +73,16 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown; status: 
   }
   delete() {
     this.operation = 'delete';
+    return this;
+  }
+  insert(rows: FakeRow | FakeRow[]) {
+    this.operation = 'insert';
+    this.payload = Array.isArray(rows) ? rows : [rows];
+    return this;
+  }
+  update(patch: FakeRow) {
+    this.operation = 'update';
+    this.payload = [patch];
     return this;
   }
   eq(column: string, value: unknown) {
@@ -103,9 +114,24 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: unknown; status: 
     const failure = this.state.tableErrors[this.table];
     if (failure) return { data: null, error: failure, status: 400 };
     const rows = this.state.tables[this.table] ?? [];
+    if (this.operation === 'insert') {
+      const added = this.payload.map((row, index) => ({
+        id: `${this.table}-new-${rows.length + index + 1}`,
+        created_at: new Date().toISOString(),
+        ...row,
+      }));
+      this.state.tables[this.table] = [...rows, ...added];
+      return { data: null, error: null, status: 201 };
+    }
     const matches = rows.filter((row) => this.filters.every((filter) => filter(row)));
     if (this.operation === 'delete') {
       this.state.tables[this.table] = rows.filter((row) => !matches.includes(row));
+      return { data: null, error: null, status: 204 };
+    }
+    if (this.operation === 'update') {
+      this.state.tables[this.table] = rows.map((row) =>
+        matches.includes(row) ? { ...row, ...this.payload[0] } : row,
+      );
       return { data: null, error: null, status: 204 };
     }
     const sorted = [...matches].sort((a, b) => {
@@ -149,7 +175,8 @@ export function createFakeSupabase(options: {
   const auth = createFakeAuthClient(options.session);
   const state: FakeSupabaseState = {
     profile: profileRow(options.profile),
-    rpc: options.rpc ?? {},
+    // Every signed-in start asks for payment moments (spec section 8); none unless a test says so.
+    rpc: { pending_moments: () => ({ data: [], error: null }), ...options.rpc },
     tables: options.tables ?? {},
     tableErrors: {},
   };
